@@ -1,0 +1,91 @@
+import { useEffect, useState } from "react";
+import { apiRequest } from "../lib/api";
+import { clearTokens, getAccessToken, setTokens } from "../lib/token";
+
+export interface MeResponse {
+  id: number;
+  username: string;
+  email: string;
+  phone: string | null;
+  phone_verified: boolean;
+  providers: string[];
+}
+
+interface AuthTokens {
+  access: string;
+  refresh: string;
+}
+
+interface LoginResponse extends AuthTokens {
+  user: MeResponse;
+}
+
+interface SignupResponse extends AuthTokens {
+  user: MeResponse;
+  created: boolean;
+}
+
+export function useAuth() {
+  const [user, setUser] = useState<MeResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  async function fetchMe() {
+    try {
+      const me = await apiRequest<MeResponse>("/accounts/me/", {
+        auth: true,
+      });
+      setUser(me);
+    } catch {
+      clearTokens();
+      setUser(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    const token = getAccessToken();
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+    void fetchMe();
+  }, []);
+
+  async function login(email: string, password: string) {
+    const data = await apiRequest<LoginResponse>("/accounts/login/", {
+      method: "POST",
+      body: { email, password },
+    });
+
+    setTokens(data.access, data.refresh);
+    setUser(data.user);
+    return data.user;
+  }
+
+  async function signup(email: string, username: string, password: string) {
+    const data = await apiRequest<SignupResponse>("/accounts/signup/", {
+      method: "POST",
+      body: { email, username, password },
+    });
+
+    setTokens(data.access, data.refresh);
+    setUser(data.user);
+    return data.user;
+  }
+
+  function logout() {
+    clearTokens();
+    setUser(null);
+  }
+
+  return {
+    user,
+    loading,
+    isLoggedIn: !!user,
+    login,
+    signup,
+    logout,
+    refreshMe: fetchMe,
+  };
+}
