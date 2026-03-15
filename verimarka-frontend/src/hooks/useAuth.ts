@@ -5,9 +5,13 @@ import { clearTokens, getAccessToken, setTokens } from "../lib/token";
 export interface MeResponse {
   id: number;
   username: string;
+  nickname: string;
+  display_name: string;
   email: string;
   phone: string | null;
   phone_verified: boolean;
+  auth_provider: string;
+  is_profile_completed: boolean;
   providers: string[];
 }
 
