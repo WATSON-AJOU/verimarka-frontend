@@ -3,6 +3,11 @@ import { useNavigate } from "react-router-dom"
 import { apiRequest } from "../../lib/api"
 import { setTokens } from "../../lib/token"
 
+interface OAuthLoginResponse {
+  access: string
+  refresh: string
+}
+
 export default function KakaoCallback() {
   const navigate = useNavigate()
 
@@ -14,7 +19,7 @@ export default function KakaoCallback() {
       const redirect_uri =
         "http://localhost:5173/auth/kakao/callback"
 
-      const data = await apiRequest("/accounts/auth/oauth/kakao/", {
+      const data = await apiRequest<OAuthLoginResponse>("/accounts/auth/oauth/kakao/", {
         method: "POST",
         body: { code, redirect_uri },
       })
