@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
 import { apiRequest } from "../../lib/api"
 import { setTokens } from "../../lib/token"
 
@@ -22,7 +21,6 @@ interface OAuthLoginResponse {
 }
 
 export default function GoogleCallback() {
-  const navigate = useNavigate()
   const hasStartedRef = useRef(false)
 
   useEffect(() => {
@@ -36,8 +34,7 @@ export default function GoogleCallback() {
         throw new Error("Google authorization code가 없습니다.")
       }
 
-      const redirect_uri =
-        "http://localhost:5173/auth/google/callback"
+      const redirect_uri = `${window.location.origin}/auth/google/callback`
 
       const data = await apiRequest<OAuthLoginResponse>("/accounts/auth/oauth/google/", {
         method: "POST",
@@ -45,13 +42,11 @@ export default function GoogleCallback() {
       })
 
       setTokens(data.access, data.refresh)
-
-      navigate("/")
-      window.location.reload()
+      window.location.replace("/")
     }
 
     login()
-  }, [navigate])
+  }, [])
 
   return <div>Google 로그인 처리중...</div>
 }
