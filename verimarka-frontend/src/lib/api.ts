@@ -16,9 +16,12 @@ export async function apiRequest<T>(
 ): Promise<T> {
   const { method = "GET", body, auth = false } = options;
 
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-  };
+  const headers: Record<string, string> = {};
+  const isFormData = typeof FormData !== "undefined" && body instanceof FormData;
+
+  if (!isFormData) {
+    headers["Content-Type"] = "application/json";
+  }
 
   if (auth) {
     const token = getAccessToken();
@@ -30,7 +33,7 @@ export async function apiRequest<T>(
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
     headers,
-    body: body ? JSON.stringify(body) : undefined,
+    body: body ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
   });
 
   const data = await response.json().catch(() => ({}));

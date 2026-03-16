@@ -1,58 +1,88 @@
+import type { TabName } from "../../types/app";
+
+interface HeaderTab {
+  key: TabName;
+  label: string;
+}
+
 interface HeaderProps {
-  isLoggedIn: boolean;
+  tabs: HeaderTab[];
+  activeTab: TabName;
   loading: boolean;
+  isLoggedIn: boolean;
   displayName: string;
+  avatarInitial: string;
+  onMoveTab: (tab: TabName) => void;
   onOpenLogin: () => void;
+  onOpenSignup: () => void;
   onLogout: () => void;
 }
 
 export default function Header({
-  isLoggedIn,
+  tabs,
+  activeTab,
   loading,
+  isLoggedIn,
   displayName,
+  avatarInitial,
+  onMoveTab,
   onOpenLogin,
+  onOpenSignup,
   onLogout,
 }: HeaderProps) {
   return (
-    <header className="topbar">
-      <div className="topbarLeft">
-        <button className="brandButton" type="button" title="홈으로 이동">
-          <span className="brandGradient">VeriMarka</span>
+    <header className="site-header">
+      <div className="topbar">
+        <button className="brand" type="button" onClick={() => onMoveTab("home")}>
+          <span className="brand-word">VeriMarka</span>
         </button>
 
-        <nav className="nav">
-          <button className="navIconButton navIconButton--active" type="button">
-            홈
-          </button>
-          <button className="navLink" type="button">
-            저작물 등록
-          </button>
-          <button className="navLink" type="button">
-            저작물 검증
-          </button>
-          <button className="navLink" type="button">
-            분석 기록
-          </button>
-        </nav>
-      </div>
-
-      <div className="topbarActions">
-        {!loading && !isLoggedIn ? (
-          <button className="outlineActionButton" onClick={onOpenLogin}>
-            로그인
-          </button>
-        ) : null}
-
-        {!loading && isLoggedIn ? (
-          <>
-            <span className="nickname">{displayName}님</span>
-            <button className="textActionButton" onClick={onLogout}>
-              로그아웃
+        <nav className="tabs" aria-label="주요 메뉴">
+          {tabs.map((tab) => (
+            <button
+              key={tab.key}
+              type="button"
+              className={`tab ${activeTab === tab.key ? "is-active" : ""}`}
+              onClick={() => onMoveTab(tab.key)}
+            >
+              {tab.label}
             </button>
-          </>
-        ) : null}
+          ))}
+        </nav>
 
-        <button className="outlineActionButton">Languages ▾</button>
+        <div className="auth-slot">
+          {!loading && !isLoggedIn ? (
+            <div className="guest-actions">
+              <button className="auth-text-btn" type="button" onClick={onOpenLogin}>
+                로그인
+              </button>
+              <button className="auth-text-btn signup-link" type="button" onClick={onOpenSignup}>
+                회원가입
+              </button>
+            </div>
+          ) : null}
+
+          {!loading && isLoggedIn ? (
+            <>
+              <button className="user-session" type="button" onClick={() => onMoveTab("mypage")}>
+                <span className="user-nickname">{displayName}님</span>
+                <span className="profile-shortcut">
+                  <span className="profile-shortcut-circle">{avatarInitial}</span>
+                </span>
+              </button>
+              <button className="logout-btn" type="button" onClick={onLogout}>
+                로그아웃
+              </button>
+            </>
+          ) : null}
+
+          <div className="lang-switch">
+            <button className="lang-trigger" type="button">
+              Languages
+              <span className="lang-caret">⌄</span>
+            </button>
+          </div>
+        </div>
       </div>
     </header>
   );

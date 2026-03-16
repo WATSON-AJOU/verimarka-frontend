@@ -29,6 +29,18 @@ interface SignupResponse extends AuthTokens {
   created: boolean;
 }
 
+interface SignupPayload {
+  email: string;
+  username: string;
+  password: string;
+  terms_agreed: boolean;
+  privacy_agreed: boolean;
+}
+
+interface UpdateProfilePayload {
+  display_name?: string;
+}
+
 export function useAuth() {
   const [user, setUser] = useState<MeResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,10 +79,10 @@ export function useAuth() {
     return data.user;
   }
 
-  async function signup(email: string, username: string, password: string) {
+  async function signup(payload: SignupPayload) {
     const data = await apiRequest<SignupResponse>("/accounts/signup/", {
       method: "POST",
-      body: { email, username, password },
+      body: payload,
     });
 
     setTokens(data.access, data.refresh);
@@ -83,6 +95,17 @@ export function useAuth() {
     setUser(null);
   }
 
+  async function updateProfile(payload: UpdateProfilePayload) {
+    const data = await apiRequest<MeResponse>("/accounts/me/", {
+      method: "PATCH",
+      auth: true,
+      body: payload,
+    });
+
+    setUser(data);
+    return data;
+  }
+
   return {
     user,
     loading,
@@ -91,5 +114,6 @@ export function useAuth() {
     signup,
     logout,
     refreshMe: fetchMe,
+    updateProfile,
   };
 }
