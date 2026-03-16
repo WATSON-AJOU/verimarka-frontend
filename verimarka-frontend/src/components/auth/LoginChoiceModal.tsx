@@ -1,3 +1,7 @@
+import appleLogo from "../../assets/applelogo.svg";
+import googleLogo from "../../assets/googlelogo.svg";
+import kakaoLogo from "../../assets/kakaologo.svg";
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -42,20 +46,22 @@ export default function LoginChoiceModal({
   if (!open) return null;
 
   return (
-    <div className="modalOverlay" onClick={onClose}>
+    <div className="modalOverlay">
       <div className="modalCard authCard" onClick={(e) => e.stopPropagation()}>
         <button className="modalClose" onClick={onClose}>
           닫기
         </button>
 
-        <div className="authLogo">🍇</div>
         <h2 className="authTitle">로그인</h2>
+
+        <p className="authHint authHint--center">최초 로그인 시 자동으로 회원가입이 진행됩니다.</p>
 
         <div className="authActions">
           <button
             className="socialButton socialButton--google"
             onClick={loginWithGoogle}
           >
+            <img className="socialButton__icon" src={googleLogo} alt="" aria-hidden="true" />
             Google로 계속하기
           </button>
 
@@ -64,6 +70,7 @@ export default function LoginChoiceModal({
             disabled
             title="준비중"
           >
+            <img className="socialButton__icon socialButton__icon--apple" src={appleLogo} alt="" aria-hidden="true" />
             Apple로 계속하기
           </button>
 
@@ -71,6 +78,7 @@ export default function LoginChoiceModal({
             className="socialButton socialButton--kakao"
             onClick={loginWithKakao}
           >
+            <img className="socialButton__icon" src={kakaoLogo} alt="" aria-hidden="true" />
             Kakao로 계속하기
           </button>
 
@@ -79,9 +87,20 @@ export default function LoginChoiceModal({
           </button>
         </div>
 
-        <p className="authHint">최초 로그인 시 자동으로 회원가입이 진행됩니다.</p>
+        <p className="oauthAgreementText">
+          회원가입을 진행하면{" "}
+          <a href="/terms" target="_blank" rel="noreferrer">
+            이용약관
+          </a>
+          {" "}및
+          <br />
+          <a href="/privacy" target="_blank" rel="noreferrer">
+            개인정보 처리방침
+          </a>
+          에 동의하게 됩니다.
+        </p>
 
-        <p className="authSwitch">
+        <p className="authSwitch authSwitch--center">
           회원이 아니신가요?{" "}
           <button type="button" className="textLink" onClick={onSignup}>
             회원가입

@@ -5,9 +5,13 @@ import { clearTokens, getAccessToken, setTokens } from "../lib/token";
 export interface MeResponse {
   id: number;
   username: string;
+  nickname: string;
+  display_name: string;
   email: string;
   phone: string | null;
   phone_verified: boolean;
+  auth_provider: string;
+  is_profile_completed: boolean;
   providers: string[];
 }
 
@@ -23,6 +27,18 @@ interface LoginResponse extends AuthTokens {
 interface SignupResponse extends AuthTokens {
   user: MeResponse;
   created: boolean;
+}
+
+interface SignupPayload {
+  email: string;
+  username: string;
+  password: string;
+  terms_agreed: boolean;
+  privacy_agreed: boolean;
+}
+
+interface UpdateProfilePayload {
+  display_name?: string;
 }
 
 export function useAuth() {
@@ -63,10 +79,10 @@ export function useAuth() {
     return data.user;
   }
 
-  async function signup(email: string, username: string, password: string) {
+  async function signup(payload: SignupPayload) {
     const data = await apiRequest<SignupResponse>("/accounts/signup/", {
       method: "POST",
-      body: { email, username, password },
+      body: payload,
     });
 
     setTokens(data.access, data.refresh);
@@ -79,6 +95,17 @@ export function useAuth() {
     setUser(null);
   }
 
+  async function updateProfile(payload: UpdateProfilePayload) {
+    const data = await apiRequest<MeResponse>("/accounts/me/", {
+      method: "PATCH",
+      auth: true,
+      body: payload,
+    });
+
+    setUser(data);
+    return data;
+  }
+
   return {
     user,
     loading,
@@ -87,5 +114,6 @@ export function useAuth() {
     signup,
     logout,
     refreshMe: fetchMe,
+    updateProfile,
   };
 }
