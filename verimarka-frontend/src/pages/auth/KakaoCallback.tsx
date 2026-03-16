@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "react"
-import { useNavigate } from "react-router-dom"
 import { apiRequest } from "../../lib/api"
 import { setTokens } from "../../lib/token"
 
@@ -22,7 +21,6 @@ interface OAuthTokenResponse {
 }
 
 export default function KakaoCallback() {
-  const navigate = useNavigate()
   const hasStartedRef = useRef(false)
 
   useEffect(() => {
@@ -36,8 +34,7 @@ export default function KakaoCallback() {
         throw new Error("Kakao authorization code가 없습니다.")
       }
 
-      const redirect_uri =
-        "http://localhost:5173/auth/kakao/callback"
+      const redirect_uri = `${window.location.origin}/auth/kakao/callback`
 
       const data = await apiRequest<OAuthTokenResponse>("/accounts/auth/oauth/kakao/", {
         method: "POST",
@@ -45,13 +42,11 @@ export default function KakaoCallback() {
       })
 
       setTokens(data.access, data.refresh)
-
-      navigate("/")
-      window.location.reload()
+      window.location.replace("/")
     }
 
     login()
-  }, [navigate])
+  }, [])
 
   return <div>Kakao 로그인 처리중...</div>
 }
