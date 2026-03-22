@@ -19,6 +19,7 @@ import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
 import { historyItems, homeActivities, recentUploads, resultConfig, systemCards, tabs, verifyHistoryItems } from "./lib/mockData";
 import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest } from "./lib/api";
+import { getAccessToken } from "./lib/token";
 import type { AnalysisStage, ModalType, RegisteredContentResponse, TabName, VerifyResultResponse } from "./types/app";
 
 function formatFileSize(bytes: number) {
@@ -34,18 +35,62 @@ function formatPhoneNumber(value: string) {
   return digits;
 }
 
+function formatLastLogin(value: string | null | undefined) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}.${month}.${day} ${hours}:${minutes}`;
+}
+
+function buildWatermarkedFileName(fileName: string) {
+  const trimmed = fileName.trim();
+  if (!trimmed) return "watermarked_VM";
+
+  const dotIndex = trimmed.lastIndexOf(".");
+  if (dotIndex <= 0 || dotIndex === trimmed.length - 1) {
+    return `${trimmed}_VM`;
+  }
+
+  const baseName = trimmed.slice(0, dotIndex);
+  const extension = trimmed.slice(dotIndex);
+  return `${baseName}_VM${extension}`;
+}
+
+function buildMockVerificationUrl(tokenId?: number | null) {
+  return `https://verimarka.com/${tokenId ?? 82525}`;
+}
+
+function formatReviewVoteEndAt(baseTime: number) {
+  const date = new Date(baseTime + 72 * 60 * 60 * 1000);
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${month}월 ${day}일 ${hours}시 ${minutes}분`;
+}
+
 function getInitial(value: string) {
   const safeValue = value.trim();
   return safeValue ? safeValue.slice(0, 1).toUpperCase() : "V";
 }
 
 const LOADING_RING_DURATION_MS = 5000;
+const LOADING_RING_MAX_PENDING_PROGRESS = 99;
+const AUTO_LOGOUT_IDLE_MS = 30 * 60 * 1000;
+const POST_LOGOUT_TOAST_KEY = "verimarka:post-logout-toast";
 
 export default function App() {
   const { user, loading, isLoggedIn, login, signup, logout, withdraw, refreshMe, updateProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<TabName>("home");
   const [modal, setModal] = useState<ModalType>("none");
   const [toast, setToast] = useState({
+    id: 0,
     open: false,
     message: "로그인 완료했습니다.",
     duration: 3000,
@@ -75,6 +120,9 @@ export default function App() {
   const [reviewVoteProgress, setReviewVoteProgress] = useState(0);
   const [reviewVoteRequestPending, setReviewVoteRequestPending] = useState(false);
   const [reviewVoteModalOpen, setReviewVoteModalOpen] = useState(false);
+  const [reviewConsentModalOpen, setReviewConsentModalOpen] = useState(false);
+  const [reviewConsentNotifyByEmail, setReviewConsentNotifyByEmail] = useState(false);
+  const [reviewConsentOpenedAt, setReviewConsentOpenedAt] = useState<number | null>(null);
   const [reviewVoteDraft, setReviewVoteDraft] = useState<{
     contentId: string;
     upvotes: number;
@@ -92,9 +140,10 @@ export default function App() {
   const [verifyProgress, setVerifyProgress] = useState(0);
   const [verifyRunning, setVerifyRunning] = useState(false);
   const [verifyResult, setVerifyResult] = useState<VerifyResultResponse | null>(null);
-  const [historyFilter, setHistoryFilter] = useState<"all" | "allow" | "review">("all");
+  const [historyFilter, setHistoryFilter] = useState<"all" | "allow" | "block" | "review" | "verify">("all");
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const verifyInputRef = useRef<HTMLInputElement | null>(null);
+  const inactivityTimeoutRef = useRef<number | null>(null);
 
   const phoneVerified = Boolean(user?.phone_verified);
   const emailVerified = Boolean(user?.email_verified);
@@ -104,7 +153,9 @@ export default function App() {
   }, [user]);
   const profileEmail = user?.email || "user@verimarka.com";
   const profilePhone = user?.phone ? formatPhoneNumber(user.phone) : "미인증";
+  const lastLoginLabel = formatLastLogin(user?.last_login_at);
   const avatarInitial = getInitial(displayName);
+  const hasAuthSession = isLoggedIn || Boolean(getAccessToken());
 
   useEffect(() => {
     if (!phoneTimer) return;
@@ -125,6 +176,14 @@ export default function App() {
   }, [phoneVerificationModalOpen, emailVerificationModalOpen, user?.phone, user?.email]);
 
   useEffect(() => {
+    const postLogoutToast = window.sessionStorage.getItem(POST_LOGOUT_TOAST_KEY);
+    if (!postLogoutToast) return;
+
+    window.sessionStorage.removeItem(POST_LOGOUT_TOAST_KEY);
+    openToast(postLogoutToast, 3000);
+  }, []);
+
+  useEffect(() => {
     function handleRefreshSuccess() {
       openToast("세션이 갱신되었습니다.");
     }
@@ -142,6 +201,58 @@ export default function App() {
       window.removeEventListener(AUTH_REFRESH_FAILED_EVENT, handleRefreshFailure);
     };
   }, []);
+
+  useEffect(() => {
+    if (!hasAuthSession) {
+      if (inactivityTimeoutRef.current) {
+        window.clearTimeout(inactivityTimeoutRef.current);
+        inactivityTimeoutRef.current = null;
+      }
+      return;
+    }
+
+    const resetInactivityTimer = () => {
+      if (inactivityTimeoutRef.current) {
+        window.clearTimeout(inactivityTimeoutRef.current);
+      }
+
+      inactivityTimeoutRef.current = window.setTimeout(() => {
+        logout();
+        setActiveTab("home");
+        setModal("none");
+        setSelectedFile(null);
+        setVerifyFile(null);
+        setContentResult(null);
+        setVerifyResult(null);
+        openToast("30분 동안 활동이 없어 자동 로그아웃되었습니다.");
+      }, AUTO_LOGOUT_IDLE_MS);
+    };
+
+    const activityEvents: Array<keyof WindowEventMap> = [
+      "mousemove",
+      "mousedown",
+      "keydown",
+      "scroll",
+      "touchstart",
+      "click",
+    ];
+
+    activityEvents.forEach((eventName) => {
+      window.addEventListener(eventName, resetInactivityTimer, { passive: true });
+    });
+
+    resetInactivityTimer();
+
+    return () => {
+      activityEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, resetInactivityTimer);
+      });
+      if (inactivityTimeoutRef.current) {
+        window.clearTimeout(inactivityTimeoutRef.current);
+        inactivityTimeoutRef.current = null;
+      }
+    };
+  }, [hasAuthSession, logout]);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -218,7 +329,10 @@ export default function App() {
     const startedAt = Date.now();
     const intervalId = window.setInterval(() => {
       const elapsed = Date.now() - startedAt;
-      const next = Math.min(100, (elapsed / LOADING_RING_DURATION_MS) * 100);
+      const next = Math.min(
+        LOADING_RING_MAX_PENDING_PROGRESS,
+        (elapsed / LOADING_RING_DURATION_MS) * LOADING_RING_MAX_PENDING_PROGRESS,
+      );
       setAnalysisProgress(next);
     }, 50);
     return () => window.clearInterval(intervalId);
@@ -229,7 +343,10 @@ export default function App() {
     const startedAt = Date.now();
     const intervalId = window.setInterval(() => {
       const elapsed = Date.now() - startedAt;
-      const next = Math.min(100, (elapsed / LOADING_RING_DURATION_MS) * 100);
+      const next = Math.min(
+        LOADING_RING_MAX_PENDING_PROGRESS,
+        (elapsed / LOADING_RING_DURATION_MS) * LOADING_RING_MAX_PENDING_PROGRESS,
+      );
       setReviewVoteProgress(next);
     }, 50);
     return () => window.clearInterval(intervalId);
@@ -240,7 +357,10 @@ export default function App() {
     const startedAt = Date.now();
     const intervalId = window.setInterval(() => {
       const elapsed = Date.now() - startedAt;
-      const next = Math.min(100, (elapsed / LOADING_RING_DURATION_MS) * 100);
+      const next = Math.min(
+        LOADING_RING_MAX_PENDING_PROGRESS,
+        (elapsed / LOADING_RING_DURATION_MS) * LOADING_RING_MAX_PENDING_PROGRESS,
+      );
       setWatermarkProgress(next);
     }, 50);
     return () => window.clearInterval(intervalId);
@@ -251,7 +371,10 @@ export default function App() {
     const startedAt = Date.now();
     const intervalId = window.setInterval(() => {
       const elapsed = Date.now() - startedAt;
-      const next = Math.min(100, (elapsed / LOADING_RING_DURATION_MS) * 100);
+      const next = Math.min(
+        LOADING_RING_MAX_PENDING_PROGRESS,
+        (elapsed / LOADING_RING_DURATION_MS) * LOADING_RING_MAX_PENDING_PROGRESS,
+      );
       setMintProgress(next);
     }, 50);
     return () => window.clearInterval(intervalId);
@@ -272,7 +395,10 @@ export default function App() {
     const startedAt = Date.now();
     const intervalId = window.setInterval(() => {
       const elapsed = Date.now() - startedAt;
-      const next = Math.min(100, (elapsed / LOADING_RING_DURATION_MS) * 100);
+      const next = Math.min(
+        LOADING_RING_MAX_PENDING_PROGRESS,
+        (elapsed / LOADING_RING_DURATION_MS) * LOADING_RING_MAX_PENDING_PROGRESS,
+      );
       setVerifyProgress(next);
     }, 50);
     return () => window.clearInterval(intervalId);
@@ -293,11 +419,26 @@ export default function App() {
   const registerResult = registerDecision ? resultConfig[registerDecision] : null;
 
   function openToast(message: string, duration = 3000) {
-    setToast({ open: true, message, duration });
+    setToast((current) => ({
+      id: current.id + 1,
+      open: true,
+      message,
+      duration,
+    }));
   }
 
   function closeToast() {
     setToast((current) => ({ ...current, open: false }));
+  }
+
+  function downloadFile(url: string, fileName: string) {
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.rel = "noopener noreferrer";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   }
 
   function promptPhoneRequired(message = "서비스 이용을 위해 마이페이지에서 휴대폰 인증을 완료해주세요.") {
@@ -337,10 +478,8 @@ export default function App() {
     setEmailVerificationModalOpen(false);
     setPhoneRequiredModalOpen(false);
     setProfileEditOpen(false);
-    openToast("로그아웃되었습니다.");
-    window.setTimeout(() => {
-      window.location.reload();
-    }, 250);
+    window.sessionStorage.setItem(POST_LOGOUT_TOAST_KEY, "로그아웃되었습니다.");
+    window.location.reload();
   }
 
   async function handleProfileUpdate(payload: { display_name: string }) {
@@ -380,12 +519,12 @@ export default function App() {
 
   function moveToTab(nextTab: TabName) {
     const tabConfig = tabs.find((tab) => tab.key === nextTab);
-    if (tabConfig?.requiresAuth && !isLoggedIn) {
+    if (tabConfig?.requiresAuth && !hasAuthSession) {
       setModal("loginChoice");
       openToast("로그인 후 이용 가능합니다.");
       return;
     }
-    if (nextTab === "mypage" && !isLoggedIn) {
+    if (nextTab === "mypage" && !hasAuthSession) {
       setModal("loginChoice");
       openToast("로그인 후 마이페이지를 이용할 수 있습니다.");
       return;
@@ -410,7 +549,7 @@ export default function App() {
   }
 
   function triggerFilePicker() {
-    if (!isLoggedIn) {
+    if (!hasAuthSession) {
       setModal("loginChoice");
       openToast("로그인 후 업로드할 수 있습니다.");
       return;
@@ -419,7 +558,7 @@ export default function App() {
   }
 
   function triggerVerifyPicker() {
-    if (!isLoggedIn) {
+    if (!hasAuthSession) {
       setModal("loginChoice");
       openToast("로그인 후 이용 가능합니다.");
       return;
@@ -868,12 +1007,40 @@ export default function App() {
             onResetToReady={() => {
               setAnalysisStage("ready");
               setAnalysisProgress(0);
+              setAnalysisRequestPending(false);
               setReviewVoteProgress(0);
+              setReviewVoteRequestPending(false);
+              setReviewConsentModalOpen(false);
+              setReviewConsentNotifyByEmail(false);
+              setReviewConsentOpenedAt(null);
               setReviewVoteModalOpen(false);
+              setReviewVoteDraft(null);
               setWatermarkProgress(0);
+              setWatermarkRequestPending(false);
               setMintProgress(0);
+              setMintRequestPending(false);
+              setContentResult(null);
             }}
-            onSelectAnother={triggerFilePicker}
+            onSelectAnother={() => {
+              setSelectedFile(null);
+              setPreviewUrl("");
+              setAnalysisStage("idle");
+              setAnalysisProgress(0);
+              setAnalysisRequestPending(false);
+              setReviewVoteProgress(0);
+              setReviewVoteRequestPending(false);
+              setReviewConsentModalOpen(false);
+              setReviewConsentNotifyByEmail(false);
+              setReviewConsentOpenedAt(null);
+              setReviewVoteModalOpen(false);
+              setReviewVoteDraft(null);
+              setWatermarkProgress(0);
+              setWatermarkRequestPending(false);
+              setMintProgress(0);
+              setMintRequestPending(false);
+              setContentResult(null);
+              triggerFilePicker();
+            }}
             onPrimaryAction={() => {
               if (registerResult?.tone === "block") {
                 triggerFilePicker();
@@ -892,35 +1059,55 @@ export default function App() {
                 return;
               }
               if (registerResult?.tone === "review") {
-                void startReviewVote();
+                setReviewConsentNotifyByEmail(false);
+                setReviewConsentOpenedAt(Date.now());
+                setReviewConsentModalOpen(true);
                 return;
               }
               if (registerResult) openToast(registerResult.primaryAction);
             }}
             onDownloadWatermarked={() => {
               if (contentResult?.watermark_file_url) {
-                window.open(contentResult.watermark_file_url, "_blank", "noopener,noreferrer");
+                const shouldDownload = window.confirm("워터마크 이미지를 저장하시겠습니까?");
+                if (!shouldDownload) return;
+                downloadFile(
+                  contentResult.watermark_file_url,
+                  buildWatermarkedFileName(selectedFile?.name || contentResult.original_filename),
+                );
                 return;
               }
               openToast("워터마크 결과 파일이 아직 준비되지 않았습니다.");
             }}
             onMoveToHistory={() => setActiveTab("history")}
             onCopyVerificationUrl={() => {
-              const verificationLink = contentResult?.blockchain?.verification_link;
-              if (!verificationLink) {
-                openToast("복사할 검증 URL이 아직 준비되지 않았습니다.");
-                return;
-              }
+              const verificationLink =
+                contentResult?.blockchain?.verification_link ||
+                buildMockVerificationUrl(contentResult?.blockchain?.token_id);
               void navigator.clipboard.writeText(verificationLink);
               openToast("검증 URL을 복사했습니다.");
             }}
             uploadInputRef={uploadInputRef}
             formatFileSize={formatFileSize}
             reviewVoteProgress={reviewVoteProgress}
+            emailVerified={emailVerified}
+            emailAddress={user?.email || "-"}
+            reviewConsentModalOpen={reviewConsentModalOpen}
+            reviewConsentNotifyByEmail={reviewConsentNotifyByEmail}
+            reviewConsentEndAtLabel={formatReviewVoteEndAt(reviewConsentOpenedAt ?? Date.now())}
             watermarkProgress={watermarkProgress}
             mintProgress={mintProgress}
             reviewVoteDraft={reviewVoteDraft}
             reviewVoteModalOpen={reviewVoteModalOpen}
+            onCloseReviewConsentModal={() => setReviewConsentModalOpen(false)}
+            onToggleReviewConsentNotify={() => {
+              if (!emailVerified) return;
+              setReviewConsentNotifyByEmail((current) => !current);
+            }}
+            onOpenReviewGuide={() => openToast("절차 자세히 보기 기능은 준비 중입니다.")}
+            onConfirmReviewConsent={() => {
+              setReviewConsentModalOpen(false);
+              void startReviewVote();
+            }}
             onOpenReviewVoteModal={() => setReviewVoteModalOpen(true)}
             onCloseReviewVoteModal={() => setReviewVoteModalOpen(false)}
             onCastReviewDemoVote={castReviewDemoVote}
@@ -962,6 +1149,7 @@ export default function App() {
             displayName={displayName || "VeriMarka 사용자"}
             profileEmail={profileEmail}
             profilePhone={profilePhone}
+            lastLoginLabel={lastLoginLabel}
             avatarInitial={avatarInitial}
             emailVerified={emailVerified}
             phoneVerified={phoneVerified}
@@ -1052,6 +1240,7 @@ export default function App() {
       />
 
       <LoginSuccessToast
+        toastId={toast.id}
         open={toast.open}
         message={toast.message}
         duration={toast.duration}
