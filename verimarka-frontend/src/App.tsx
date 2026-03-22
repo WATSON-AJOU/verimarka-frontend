@@ -378,6 +378,7 @@ export default function App() {
       await refreshMe();
       setPhoneCodeInput("");
       setPhoneTimer(0);
+      setPhoneVerificationModalOpen(false);
       openToast("휴대폰 인증이 완료되었습니다.");
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "본인 인증에 실패했습니다.");
@@ -427,6 +428,7 @@ export default function App() {
       await refreshMe();
       setEmailCodeInput("");
       setEmailTimer(0);
+      setEmailVerificationModalOpen(false);
       openToast("이메일 인증이 완료되었습니다.");
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "이메일 인증에 실패했습니다.");
