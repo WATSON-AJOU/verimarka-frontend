@@ -4,6 +4,7 @@ import type {
   RegisterResultConfig,
   TabName,
   UploadHistoryItem,
+  VerifyHistoryItem,
 } from "../types/app";
 
 export const tabs: Array<{
@@ -95,6 +96,27 @@ export const historyItems: HistoryItem[] = [
     cosine: "0.1832 (18.3%)",
     phash: "Distance 12 / Threshold 8",
     extra: "Polygon · Token #82374",
+  },
+];
+
+export const verifyHistoryItems: VerifyHistoryItem[] = [
+  {
+    id: "verify-1",
+    title: "검증_도시A.png",
+    description: "검증 성공 · Token #82401",
+    tone: "blue",
+  },
+  {
+    id: "verify-2",
+    title: "검증_캐릭터B.png",
+    description: "검증 실패 · 유사 후보 1건",
+    tone: "review",
+  },
+  {
+    id: "verify-3",
+    title: "검증_풍경C.jpg",
+    description: "검증 성공 · Token #82374",
+    tone: "green",
   },
 ];
 

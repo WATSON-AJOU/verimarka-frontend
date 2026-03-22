@@ -19,6 +19,13 @@ export interface UploadHistoryItem {
   tone: string;
 }
 
+export interface VerifyHistoryItem {
+  id: string;
+  title: string;
+  description: string;
+  tone: string;
+}
+
 export interface HistoryItem {
   id: string;
   type: "allow" | "review";
@@ -113,4 +120,47 @@ export interface RegisterResultConfig {
   delta: string;
   primaryAction: string;
   metricLabel: string;
+}
+
+export interface VerifyResultResponse {
+  outcome: "verified" | "candidate";
+  headline_badge: string;
+  headline_title: string;
+  headline_subtitle: string;
+  uploaded: {
+    file_name: string;
+    file_size: number;
+    preview_url: string | null;
+    verified_at: string;
+    verifier_name: string;
+  };
+  detect: {
+    detected: boolean;
+    confidence?: number | null;
+    bit_accuracy?: number | null;
+    payload_id?: string | null;
+    model?: string | null;
+    model_version?: string | null;
+    status_label?: string;
+  };
+  blockchain?: {
+    token_id?: number | null;
+    owner_address?: string | null;
+    status?: string | null;
+    verification_link?: string | null;
+    network_name?: string | null;
+    content_hash?: string | null;
+    transaction_hash?: string | null;
+    minted_at?: string | null;
+  };
+  candidate?: {
+    preview_url?: string | null;
+    file_name?: string | null;
+    owner_name?: string | null;
+    registered_at?: string | null;
+    cosine?: number | null;
+    phash_dist?: number | null;
+    threshold?: number | null;
+    summary?: string | null;
+  };
 }

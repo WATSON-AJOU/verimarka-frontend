@@ -17,9 +17,9 @@ import VerifyPage from "./components/pages/VerifyPage";
 import Footer from "./components/layout/Footer";
 import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
-import { historyItems, homeActivities, recentUploads, resultConfig, systemCards, tabs } from "./lib/mockData";
+import { historyItems, homeActivities, recentUploads, resultConfig, systemCards, tabs, verifyHistoryItems } from "./lib/mockData";
 import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest } from "./lib/api";
-import type { AnalysisStage, ModalType, RegisteredContentResponse, TabName } from "./types/app";
+import type { AnalysisStage, ModalType, RegisteredContentResponse, TabName, VerifyResultResponse } from "./types/app";
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -75,8 +75,14 @@ export default function App() {
   const [mintProgress, setMintProgress] = useState(0);
   const [mintRequestPending, setMintRequestPending] = useState(false);
   const [contentResult, setContentResult] = useState<RegisteredContentResponse | null>(null);
+  const [verifyFile, setVerifyFile] = useState<File | null>(null);
+  const [verifyPreviewUrl, setVerifyPreviewUrl] = useState("");
+  const [verifyProgress, setVerifyProgress] = useState(0);
+  const [verifyRunning, setVerifyRunning] = useState(false);
+  const [verifyResult, setVerifyResult] = useState<VerifyResultResponse | null>(null);
   const [historyFilter, setHistoryFilter] = useState<"all" | "allow" | "review">("all");
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const verifyInputRef = useRef<HTMLInputElement | null>(null);
 
   const phoneVerified = Boolean(user?.phone_verified);
   const emailVerified = Boolean(user?.email_verified);
@@ -147,6 +153,24 @@ export default function App() {
   }, [selectedFile]);
 
   useEffect(() => {
+    if (!verifyFile) {
+      setVerifyPreviewUrl("");
+      setVerifyProgress(0);
+      setVerifyRunning(false);
+      setVerifyResult(null);
+      return;
+    }
+
+    const objectUrl = URL.createObjectURL(verifyFile);
+    setVerifyPreviewUrl(objectUrl);
+    setVerifyProgress(0);
+    setVerifyRunning(false);
+    setVerifyResult(null);
+
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [verifyFile]);
+
+  useEffect(() => {
     if (analysisStage !== "running" || !analysisRequestPending) return;
     const intervalId = window.setInterval(() => {
       setAnalysisProgress((current) => Math.min(92, current + 3 + Math.random() * 6));
@@ -169,6 +193,14 @@ export default function App() {
     }, 260);
     return () => window.clearInterval(intervalId);
   }, [analysisStage, mintRequestPending]);
+
+  useEffect(() => {
+    if (!verifyRunning) return;
+    const intervalId = window.setInterval(() => {
+      setVerifyProgress((current) => Math.min(92, current + 4 + Math.random() * 5));
+    }, 220);
+    return () => window.clearInterval(intervalId);
+  }, [verifyRunning]);
 
   const filteredHistory = useMemo(() => {
     if (historyFilter === "all") return historyItems;
@@ -310,6 +342,19 @@ export default function App() {
     uploadInputRef.current?.click();
   }
 
+  function triggerVerifyPicker() {
+    if (!isLoggedIn) {
+      setModal("loginChoice");
+      openToast("로그인 후 이용 가능합니다.");
+      return;
+    }
+    if (!phoneVerified) {
+      promptPhoneRequired("휴대폰 인증이 필요합니다.");
+      return;
+    }
+    verifyInputRef.current?.click();
+  }
+
   async function startAnalysis() {
     if (!selectedFile) {
       window.alert("먼저 업로드할 이미지를 선택해주세요.");
@@ -353,6 +398,61 @@ export default function App() {
       window.alert(error instanceof Error ? error.message : "등록 가능 여부 확인에 실패했습니다.");
     } finally {
       setAnalysisRequestPending(false);
+    }
+  }
+
+  function handlePickVerifyFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const nextFile = event.target.files?.[0];
+    if (!nextFile) return;
+    if (!/^image\/(jpeg|png)$/.test(nextFile.type)) {
+      window.alert("JPG 또는 PNG 파일만 업로드할 수 있습니다.");
+      return;
+    }
+    if (nextFile.size > 20 * 1024 * 1024) {
+      window.alert("파일 크기는 20MB 이하만 가능합니다.");
+      return;
+    }
+    setVerifyFile(nextFile);
+    setVerifyResult(null);
+    openToast("검증 이미지 업로드가 완료되었습니다.");
+  }
+
+  async function startVerify() {
+    if (!verifyFile) {
+      window.alert("먼저 검증할 이미지를 선택해주세요.");
+      return;
+    }
+    if (!phoneVerified) {
+      promptPhoneRequired("휴대폰 인증이 필요합니다.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("file", verifyFile);
+
+    setVerifyProgress(10);
+    setVerifyRunning(true);
+    setVerifyResult(null);
+    openToast("저작물 검증을 요청했습니다.");
+
+    try {
+      const response = await apiRequest<VerifyResultResponse>("/contents/verify/", {
+        method: "POST",
+        auth: true,
+        body: formData,
+      });
+      setVerifyResult(response);
+      setVerifyProgress(100);
+      openToast(
+        response.outcome === "verified"
+          ? "워터마크 검증이 완료되었습니다."
+          : "유사 이미지 후보 탐색이 완료되었습니다.",
+      );
+    } catch (error) {
+      setVerifyProgress(0);
+      window.alert(error instanceof Error ? error.message : "저작물 검증에 실패했습니다.");
+    } finally {
+      setVerifyRunning(false);
     }
   }
 
@@ -629,12 +729,23 @@ export default function App() {
 
         {activeTab === "verify" ? (
           <VerifyPage
-            onAttemptUpload={() => {
-              if (!phoneVerified) {
-                promptPhoneRequired("휴대폰 인증이 필요합니다.");
-                return;
-              }
-              openToast("검증 이미지 업로드 기능은 준비 중입니다.");
+            selectedFile={verifyFile}
+            previewUrl={verifyPreviewUrl}
+            verifyProgress={verifyProgress}
+            verifyRunning={verifyRunning}
+            verifyResult={verifyResult}
+            recentItems={verifyHistoryItems}
+            uploadInputRef={verifyInputRef}
+            formatFileSize={formatFileSize}
+            onPickFile={handlePickVerifyFile}
+            onTriggerPicker={triggerVerifyPicker}
+            onStartVerify={startVerify}
+            onResetVerify={() => {
+              setVerifyFile(null);
+              setVerifyPreviewUrl("");
+              setVerifyProgress(0);
+              setVerifyRunning(false);
+              setVerifyResult(null);
             }}
           />
         ) : null}
