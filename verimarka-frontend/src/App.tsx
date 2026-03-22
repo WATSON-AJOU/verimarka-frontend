@@ -74,6 +74,7 @@ export default function App() {
 
   const phoneVerified = Boolean(user?.phone_verified);
   const emailVerified = Boolean(user?.email_verified);
+  const identityVerified = phoneVerified && emailVerified;
   const displayName = useMemo(() => {
     if (!user) return "";
     return user.display_name || user.nickname || user.username || user.email.split("@")[0] || "회원";
@@ -240,12 +241,6 @@ export default function App() {
       openToast("로그인 후 이용 가능합니다.");
       return;
     }
-    if (tabConfig?.requiresVerified && !phoneVerified) {
-      setActiveTab("mypage");
-      setPhoneVerificationModalOpen(true);
-      openToast("휴대폰 인증 후 이용 가능합니다.");
-      return;
-    }
     if (nextTab === "mypage" && !isLoggedIn) {
       setModal("loginChoice");
       openToast("로그인 후 마이페이지를 이용할 수 있습니다.");
@@ -276,24 +271,12 @@ export default function App() {
       openToast("로그인 후 업로드할 수 있습니다.");
       return;
     }
-    if (!phoneVerified) {
-      setActiveTab("mypage");
-      setPhoneVerificationModalOpen(true);
-      openToast("휴대폰 인증 후 업로드할 수 있습니다.");
-      return;
-    }
     uploadInputRef.current?.click();
   }
 
   async function startAnalysis() {
     if (!selectedFile) {
       window.alert("먼저 업로드할 이미지를 선택해주세요.");
-      return;
-    }
-    if (!phoneVerified) {
-      setActiveTab("mypage");
-      setPhoneVerificationModalOpen(true);
-      openToast("휴대폰 인증 후 분석을 시작할 수 있습니다.");
       return;
     }
 
@@ -484,6 +467,12 @@ export default function App() {
                 triggerFilePicker();
                 return;
               }
+              if (!identityVerified) {
+                setActiveTab("mypage");
+                setPhoneVerificationModalOpen(true);
+                openToast("본인 인증 완료 후 워터마크 삽입을 진행할 수 있습니다.");
+                return;
+              }
               if (registerResult) openToast(registerResult.primaryAction);
             }}
             uploadInputRef={uploadInputRef}
@@ -491,7 +480,19 @@ export default function App() {
           />
         ) : null}
 
-        {activeTab === "verify" ? <VerifyPage /> : null}
+        {activeTab === "verify" ? (
+          <VerifyPage
+            onAttemptUpload={() => {
+              if (!identityVerified) {
+                setActiveTab("mypage");
+                setPhoneVerificationModalOpen(true);
+                openToast("본인 인증 완료 후 검증 이미지를 업로드할 수 있습니다.");
+                return;
+              }
+              openToast("검증 이미지 업로드 기능은 준비 중입니다.");
+            }}
+          />
+        ) : null}
 
         {activeTab === "history" ? (
           <HistoryPage items={filteredHistory} historyFilter={historyFilter} onFilterChange={setHistoryFilter} />

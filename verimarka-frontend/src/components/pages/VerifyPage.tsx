@@ -1,4 +1,8 @@
-export default function VerifyPage() {
+interface VerifyPageProps {
+  onAttemptUpload: () => void;
+}
+
+export default function VerifyPage({ onAttemptUpload }: VerifyPageProps) {
   return (
     <section className="register-layout">
       <article className="register-card">
@@ -38,6 +42,10 @@ export default function VerifyPage() {
                 <li>블록체인 자산 정보 조회</li>
                 <li>미검출 시 유사도 분석으로 재확인</li>
               </ul>
+              <button className="btn btn-primary analysis-cta" type="button" onClick={onAttemptUpload}>
+                검증 이미지 업로드
+              </button>
+              <p className="analysis-tip">본인 인증 완료 후 이미지를 업로드해 검증을 진행할 수 있습니다.</p>
             </div>
           </div>
         </div>

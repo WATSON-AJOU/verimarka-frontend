@@ -13,9 +13,9 @@ export const tabs: Array<{
   requiresVerified?: boolean;
 }> = [
   { key: "home", label: "홈" },
-  { key: "add", label: "저작물 등록", requiresAuth: true, requiresVerified: true },
-  { key: "verify", label: "저작물 검증", requiresAuth: true, requiresVerified: true },
-  { key: "history", label: "분석 기록", requiresAuth: true, requiresVerified: true },
+  { key: "add", label: "저작물 등록", requiresAuth: true },
+  { key: "verify", label: "저작물 검증", requiresAuth: true },
+  { key: "history", label: "분석 기록", requiresAuth: true },
 ];
 
 export const systemCards = [
