@@ -4,7 +4,7 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 export const AUTH_REFRESH_SUCCESS_EVENT = "verimarka:auth-refresh-success";
 export const AUTH_REFRESH_FAILED_EVENT = "verimarka:auth-refresh-failed";
 
-type HttpMethod = "GET" | "POST" | "PATCH";
+type HttpMethod = "GET" | "POST" | "PATCH" | "DELETE";
 
 interface RequestOptions {
   method?: HttpMethod;

@@ -106,6 +106,15 @@ export function useAuth() {
     return data;
   }
 
+  async function withdraw() {
+    await apiRequest<{ message: string }>("/accounts/withdraw/", {
+      method: "DELETE",
+      auth: true,
+    });
+    clearTokens();
+    setUser(null);
+  }
+
   return {
     user,
     loading,
@@ -113,6 +122,7 @@ export function useAuth() {
     login,
     signup,
     logout,
+    withdraw,
     refreshMe: fetchMe,
     updateProfile,
   };

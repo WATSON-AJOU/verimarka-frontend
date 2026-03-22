@@ -6,6 +6,7 @@ import LoginChoiceModal from "./components/auth/LoginChoiceModal";
 import LoginSuccessToast from "./components/auth/LoginSuccessToast";
 import ProfileEditModal from "./components/auth/ProfileEditModal";
 import SignupModal from "./components/auth/SignupModal";
+import WithdrawConfirmModal from "./components/auth/WithdrawConfirmModal";
 import HistoryPage from "./components/pages/HistoryPage";
 import HomePage from "./components/pages/HomePage";
 import MyPage from "./components/pages/MyPage";
@@ -37,7 +38,7 @@ function getInitial(value: string) {
 }
 
 export default function App() {
-  const { user, loading, isLoggedIn, login, signup, logout, refreshMe, updateProfile } = useAuth();
+  const { user, loading, isLoggedIn, login, signup, logout, withdraw, refreshMe, updateProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<TabName>("home");
   const [modal, setModal] = useState<ModalType>("none");
   const [toast, setToast] = useState({
@@ -53,6 +54,8 @@ export default function App() {
   const [verifyingCode, setVerifyingCode] = useState(false);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState("");
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>("idle");
@@ -183,6 +186,24 @@ export default function App() {
       openToast("표시명이 변경되었습니다.");
     } finally {
       setProfileSaving(false);
+    }
+  }
+
+  async function handleWithdraw() {
+    setWithdrawing(true);
+    try {
+      await withdraw();
+      setWithdrawOpen(false);
+      setActiveTab("home");
+      setSelectedFile(null);
+      setIdentityModalOpen(false);
+      setProfileEditOpen(false);
+      openToast("회원 탈퇴가 완료되었습니다.");
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 350);
+    } finally {
+      setWithdrawing(false);
     }
   }
 
@@ -410,6 +431,7 @@ export default function App() {
             onOpenProfileEdit={() => setProfileEditOpen(true)}
             onOpenIdentity={() => setIdentityModalOpen(true)}
             onLogout={handleLogout}
+            onOpenWithdraw={() => setWithdrawOpen(true)}
           />
         ) : null}
       </main>
@@ -457,6 +479,13 @@ export default function App() {
         submitting={profileSaving}
         onClose={() => setProfileEditOpen(false)}
         onSubmit={handleProfileUpdate}
+      />
+
+      <WithdrawConfirmModal
+        open={withdrawOpen}
+        submitting={withdrawing}
+        onClose={() => setWithdrawOpen(false)}
+        onConfirm={handleWithdraw}
       />
 
       <LoginSuccessToast

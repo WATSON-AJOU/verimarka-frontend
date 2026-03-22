@@ -7,6 +7,7 @@ interface MyPageProps {
   onOpenProfileEdit: () => void;
   onOpenIdentity: () => void;
   onLogout: () => void;
+  onOpenWithdraw: () => void;
 }
 
 export default function MyPage({
@@ -18,6 +19,7 @@ export default function MyPage({
   onOpenProfileEdit,
   onOpenIdentity,
   onLogout,
+  onOpenWithdraw,
 }: MyPageProps) {
   return (
     <section className="mypage-shell">
@@ -41,6 +43,9 @@ export default function MyPage({
             <a href="/terms">이용약관</a>
             <a href="/privacy">개인정보처리방침</a>
             <a href="/support">고객센터</a>
+            <button className="mypage-withdraw-link" type="button" onClick={onOpenWithdraw}>
+              회원 탈퇴
+            </button>
           </div>
         </aside>
 

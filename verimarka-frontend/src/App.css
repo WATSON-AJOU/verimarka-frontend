@@ -1259,6 +1259,24 @@ main {
   text-decoration: none;
 }
 
+.mypage-withdraw-link {
+  margin-top: 6px;
+  justify-self: start;
+  border: 0;
+  padding: 0;
+  color: rgba(96, 110, 139, 0.68);
+  font-size: 0.76rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  background: transparent;
+}
+
+.mypage-withdraw-link:hover {
+  color: rgba(160, 74, 91, 0.82);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .mypage-content {
   display: grid;
   gap: 12px;
@@ -1763,6 +1781,16 @@ body.modal-open {
   font-weight: 800;
 }
 
+.dangerButton {
+  height: 56px;
+  border: 0;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 0.98rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, #c85a6b, #a7486d);
+}
+
 .identityCard {
   width: min(470px, 100%);
 }
@@ -1815,10 +1843,21 @@ body.modal-open {
   width: min(460px, 100%);
 }
 
+.withdrawCard {
+  width: min(440px, 100%);
+}
+
 .profileEditActions {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+}
+
+.withdrawWarning {
+  margin: -2px 0 6px;
+  color: #8a5762;
+  font-size: 0.88rem;
+  line-height: 1.5;
 }
 
 .textLink {
