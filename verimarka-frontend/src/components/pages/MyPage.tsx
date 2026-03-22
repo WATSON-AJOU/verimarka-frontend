@@ -3,9 +3,11 @@ interface MyPageProps {
   profileEmail: string;
   profilePhone: string;
   avatarInitial: string;
+  emailVerified: boolean;
   phoneVerified: boolean;
   onOpenProfileEdit: () => void;
-  onOpenIdentity: () => void;
+  onOpenPhoneIdentity: () => void;
+  onOpenEmailIdentity: () => void;
   onLogout: () => void;
   onOpenWithdraw: () => void;
 }
@@ -15,9 +17,11 @@ export default function MyPage({
   profileEmail,
   profilePhone,
   avatarInitial,
+  emailVerified,
   phoneVerified,
   onOpenProfileEdit,
-  onOpenIdentity,
+  onOpenPhoneIdentity,
+  onOpenEmailIdentity,
   onLogout,
   onOpenWithdraw,
 }: MyPageProps) {
@@ -53,23 +57,39 @@ export default function MyPage({
           <article className="mypage-card">
             <div className="mypage-card-head">
               <h3>본인 인증</h3>
-              <span className={`mypage-chip ${phoneVerified ? "is-verified" : "is-pending"}`}>
-                {phoneVerified ? "인증 완료" : "인증 필요"}
+              <span className={`mypage-chip ${phoneVerified && emailVerified ? "is-verified" : "is-pending"}`}>
+                {phoneVerified && emailVerified ? "인증 완료" : "인증 필요"}
               </span>
             </div>
             <p>
-              {phoneVerified
-                ? "휴대폰 본인 인증이 완료되었습니다."
-                : "서비스 이용을 위해 휴대폰 인증을 진행해주세요."}
+              {phoneVerified && emailVerified
+                ? "휴대폰과 이메일 인증이 모두 완료되었습니다."
+                : "서비스 이용을 위해 휴대폰과 이메일 인증을 진행해주세요."}
             </p>
-            <div className="mypage-actions">
+            <div className="mypage-verify-status">
+              <span className={`mypage-verify-item ${phoneVerified ? "is-done" : "is-pending"}`}>
+                {phoneVerified ? "휴대폰 인증 완료" : "휴대폰 인증 필요"}
+              </span>
+              <span className={`mypage-verify-item ${emailVerified ? "is-done" : "is-pending"}`}>
+                {emailVerified ? "이메일 인증 완료" : "이메일 인증 필요"}
+              </span>
+            </div>
+            <div className="mypage-actions mypage-actions--double">
               <button
                 className={`btn btn-primary ${phoneVerified ? "is-static" : ""}`}
                 type="button"
                 disabled={phoneVerified}
-                onClick={onOpenIdentity}
+                onClick={onOpenPhoneIdentity}
               >
-                {phoneVerified ? "인증 완료" : "인증하기"}
+                {phoneVerified ? "휴대폰 인증 완료" : "휴대폰 인증하기"}
+              </button>
+              <button
+                className={`btn btn-primary ${emailVerified ? "is-static" : ""}`}
+                type="button"
+                disabled={emailVerified}
+                onClick={onOpenEmailIdentity}
+              >
+                {emailVerified ? "이메일 인증 완료" : "이메일 인증하기"}
               </button>
             </div>
           </article>

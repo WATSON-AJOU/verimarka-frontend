@@ -11,6 +11,7 @@ interface OAuthLoginResponse {
     nickname: string
     display_name: string
     email: string
+    email_verified: boolean
     phone: string | null
     phone_verified: boolean
     auth_provider: string

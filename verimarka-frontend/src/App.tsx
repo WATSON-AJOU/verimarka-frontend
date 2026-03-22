@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import EmailLoginModal from "./components/auth/EmailLoginModal";
-import IdentityModal from "./components/auth/IdentityModal";
+import EmailVerificationModal from "./components/auth/EmailVerificationModal";
 import LoginChoiceModal from "./components/auth/LoginChoiceModal";
 import LoginSuccessToast from "./components/auth/LoginSuccessToast";
+import PhoneVerificationModal from "./components/auth/PhoneVerificationModal";
 import ProfileEditModal from "./components/auth/ProfileEditModal";
 import SignupModal from "./components/auth/SignupModal";
 import WithdrawConfirmModal from "./components/auth/WithdrawConfirmModal";
@@ -46,12 +47,18 @@ export default function App() {
     message: "로그인 완료했습니다.",
     duration: 3000,
   });
-  const [identityModalOpen, setIdentityModalOpen] = useState(false);
+  const [phoneVerificationModalOpen, setPhoneVerificationModalOpen] = useState(false);
+  const [emailVerificationModalOpen, setEmailVerificationModalOpen] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
-  const [codeInput, setCodeInput] = useState("");
-  const [identityTimer, setIdentityTimer] = useState(0);
-  const [sendingCode, setSendingCode] = useState(false);
-  const [verifyingCode, setVerifyingCode] = useState(false);
+  const [phoneCodeInput, setPhoneCodeInput] = useState("");
+  const [phoneTimer, setPhoneTimer] = useState(0);
+  const [sendingPhoneCode, setSendingPhoneCode] = useState(false);
+  const [verifyingPhoneCode, setVerifyingPhoneCode] = useState(false);
+  const [emailInput, setEmailInput] = useState("");
+  const [emailCodeInput, setEmailCodeInput] = useState("");
+  const [emailTimer, setEmailTimer] = useState(0);
+  const [sendingEmailCode, setSendingEmailCode] = useState(false);
+  const [verifyingEmailCode, setVerifyingEmailCode] = useState(false);
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -66,6 +73,7 @@ export default function App() {
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const phoneVerified = Boolean(user?.phone_verified);
+  const emailVerified = Boolean(user?.email_verified);
   const displayName = useMemo(() => {
     if (!user) return "";
     return user.display_name || user.nickname || user.username || user.email.split("@")[0] || "회원";
@@ -75,10 +83,22 @@ export default function App() {
   const avatarInitial = getInitial(displayName);
 
   useEffect(() => {
-    if (!identityTimer) return;
-    const timerId = window.setTimeout(() => setIdentityTimer((current) => Math.max(0, current - 1)), 1000);
+    if (!phoneTimer) return;
+    const timerId = window.setTimeout(() => setPhoneTimer((current) => Math.max(0, current - 1)), 1000);
     return () => window.clearTimeout(timerId);
-  }, [identityTimer]);
+  }, [phoneTimer]);
+
+  useEffect(() => {
+    if (!emailTimer) return;
+    const timerId = window.setTimeout(() => setEmailTimer((current) => Math.max(0, current - 1)), 1000);
+    return () => window.clearTimeout(timerId);
+  }, [emailTimer]);
+
+  useEffect(() => {
+    if (!phoneVerificationModalOpen && !emailVerificationModalOpen) return;
+    setPhoneInput(user?.phone ?? "");
+    setEmailInput(user?.email ?? "");
+  }, [phoneVerificationModalOpen, emailVerificationModalOpen, user?.phone, user?.email]);
 
   useEffect(() => {
     function handleRefreshSuccess() {
@@ -170,7 +190,8 @@ export default function App() {
     logout();
     setActiveTab("home");
     setSelectedFile(null);
-    setIdentityModalOpen(false);
+    setPhoneVerificationModalOpen(false);
+    setEmailVerificationModalOpen(false);
     setProfileEditOpen(false);
     openToast("로그아웃되었습니다.");
     window.setTimeout(() => {
@@ -178,12 +199,12 @@ export default function App() {
     }, 250);
   }
 
-  async function handleProfileUpdate(nextDisplayName: string) {
+  async function handleProfileUpdate(payload: { display_name: string }) {
     setProfileSaving(true);
     try {
-      await updateProfile({ display_name: nextDisplayName });
+      await updateProfile(payload);
       setProfileEditOpen(false);
-      openToast("표시명이 변경되었습니다.");
+      openToast("프로필이 변경되었습니다.");
     } finally {
       setProfileSaving(false);
     }
@@ -196,7 +217,12 @@ export default function App() {
       setWithdrawOpen(false);
       setActiveTab("home");
       setSelectedFile(null);
-      setIdentityModalOpen(false);
+      setPhoneVerificationModalOpen(false);
+      setEmailVerificationModalOpen(false);
+      setPhoneCodeInput("");
+      setEmailCodeInput("");
+      setPhoneTimer(0);
+      setEmailTimer(0);
       setProfileEditOpen(false);
       openToast("회원 탈퇴가 완료되었습니다.");
       window.setTimeout(() => {
@@ -216,7 +242,7 @@ export default function App() {
     }
     if (tabConfig?.requiresVerified && !phoneVerified) {
       setActiveTab("mypage");
-      setIdentityModalOpen(true);
+      setPhoneVerificationModalOpen(true);
       openToast("휴대폰 인증 후 이용 가능합니다.");
       return;
     }
@@ -252,7 +278,7 @@ export default function App() {
     }
     if (!phoneVerified) {
       setActiveTab("mypage");
-      setIdentityModalOpen(true);
+      setPhoneVerificationModalOpen(true);
       openToast("휴대폰 인증 후 업로드할 수 있습니다.");
       return;
     }
@@ -266,7 +292,7 @@ export default function App() {
     }
     if (!phoneVerified) {
       setActiveTab("mypage");
-      setIdentityModalOpen(true);
+      setPhoneVerificationModalOpen(true);
       openToast("휴대폰 인증 후 분석을 시작할 수 있습니다.");
       return;
     }
@@ -311,14 +337,14 @@ export default function App() {
     }
   }
 
-  async function sendVerificationCode() {
+  async function sendPhoneVerificationCode() {
     const normalizedPhone = phoneInput.replace(/\D/g, "");
     if (!/^01\d{8,9}$/.test(normalizedPhone)) {
       window.alert("휴대폰 번호를 정확히 입력해주세요.");
       return;
     }
 
-    setSendingCode(true);
+    setSendingPhoneCode(true);
     try {
       await apiRequest("/accounts/phone/send-code/", {
         method: "POST",
@@ -326,38 +352,86 @@ export default function App() {
         body: { phone: normalizedPhone },
       });
       setPhoneInput(formatPhoneNumber(normalizedPhone));
-      setIdentityTimer(180);
+      setPhoneTimer(180);
       openToast("인증번호를 전송했습니다. 메시지를 확인해주세요.");
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "인증번호 발송에 실패했습니다.");
     } finally {
-      setSendingCode(false);
+      setSendingPhoneCode(false);
     }
   }
 
   async function verifyPhone() {
     const normalizedPhone = phoneInput.replace(/\D/g, "");
-    if (!/^\d{6}$/.test(codeInput)) {
+    if (!/^\d{6}$/.test(phoneCodeInput)) {
       window.alert("인증번호 6자리를 입력해주세요.");
       return;
     }
 
-    setVerifyingCode(true);
+    setVerifyingPhoneCode(true);
     try {
       await apiRequest("/accounts/phone/verify-code/", {
         method: "POST",
         auth: true,
-        body: { phone: normalizedPhone, code: codeInput },
+        body: { phone: normalizedPhone, code: phoneCodeInput },
       });
       await refreshMe();
-      setIdentityModalOpen(false);
-      setCodeInput("");
-      setIdentityTimer(0);
-      openToast("본인 인증이 완료되었습니다.");
+      setPhoneCodeInput("");
+      setPhoneTimer(0);
+      openToast("휴대폰 인증이 완료되었습니다.");
     } catch (error) {
       window.alert(error instanceof Error ? error.message : "본인 인증에 실패했습니다.");
     } finally {
-      setVerifyingCode(false);
+      setVerifyingPhoneCode(false);
+    }
+  }
+
+  async function sendEmailVerificationCode() {
+    const normalizedEmail = emailInput.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      window.alert("이메일 주소를 정확히 입력해주세요.");
+      return;
+    }
+
+    setSendingEmailCode(true);
+    try {
+      await apiRequest("/accounts/email/send-code/", {
+        method: "POST",
+        auth: true,
+        body: { email: normalizedEmail },
+      });
+      setEmailInput(normalizedEmail);
+      setEmailTimer(180);
+      openToast("이메일로 인증번호를 전송했습니다.");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "이메일 인증번호 발송에 실패했습니다.");
+    } finally {
+      setSendingEmailCode(false);
+    }
+  }
+
+  async function verifyEmail() {
+    const normalizedEmail = emailInput.trim().toLowerCase();
+    if (!/^\d{6}$/.test(emailCodeInput)) {
+      window.alert("이메일 인증번호 6자리를 입력해주세요.");
+      return;
+    }
+
+    setVerifyingEmailCode(true);
+    try {
+      await apiRequest("/accounts/email/verify-code/", {
+        method: "POST",
+        auth: true,
+        body: { email: normalizedEmail, code: emailCodeInput },
+      });
+      await refreshMe();
+      setEmailCodeInput("");
+      setEmailTimer(0);
+      openToast("이메일 인증이 완료되었습니다.");
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : "이메일 인증에 실패했습니다.");
+    } finally {
+      setVerifyingEmailCode(false);
     }
   }
 
@@ -427,9 +501,11 @@ export default function App() {
             profileEmail={profileEmail}
             profilePhone={profilePhone}
             avatarInitial={avatarInitial}
+            emailVerified={emailVerified}
             phoneVerified={phoneVerified}
             onOpenProfileEdit={() => setProfileEditOpen(true)}
-            onOpenIdentity={() => setIdentityModalOpen(true)}
+            onOpenPhoneIdentity={() => setPhoneVerificationModalOpen(true)}
+            onOpenEmailIdentity={() => setEmailVerificationModalOpen(true)}
             onLogout={handleLogout}
             onOpenWithdraw={() => setWithdrawOpen(true)}
           />
@@ -459,18 +535,34 @@ export default function App() {
         onLogin={() => setModal("emailLogin")}
       />
 
-      <IdentityModal
-        open={identityModalOpen}
+      <PhoneVerificationModal
+        open={phoneVerificationModalOpen}
         phone={phoneInput}
-        code={codeInput}
-        timer={identityTimer}
-        sending={sendingCode}
-        verifying={verifyingCode}
+        phoneCode={phoneCodeInput}
+        phoneTimer={phoneTimer}
+        sendingPhone={sendingPhoneCode}
+        verifyingPhone={verifyingPhoneCode}
+        phoneVerified={phoneVerified}
         onPhoneChange={setPhoneInput}
-        onCodeChange={setCodeInput}
-        onClose={() => setIdentityModalOpen(false)}
-        onSendCode={sendVerificationCode}
-        onVerify={verifyPhone}
+        onPhoneCodeChange={setPhoneCodeInput}
+        onClose={() => setPhoneVerificationModalOpen(false)}
+        onSendPhoneCode={sendPhoneVerificationCode}
+        onVerifyPhone={verifyPhone}
+      />
+
+      <EmailVerificationModal
+        open={emailVerificationModalOpen}
+        email={emailInput}
+        emailCode={emailCodeInput}
+        emailTimer={emailTimer}
+        sendingEmail={sendingEmailCode}
+        verifyingEmail={verifyingEmailCode}
+        emailVerified={emailVerified}
+        onEmailChange={setEmailInput}
+        onEmailCodeChange={setEmailCodeInput}
+        onClose={() => setEmailVerificationModalOpen(false)}
+        onSendEmailCode={sendEmailVerificationCode}
+        onVerifyEmail={verifyEmail}
       />
 
       <ProfileEditModal
