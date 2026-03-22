@@ -105,9 +105,27 @@ export async function apiRequest<T>(
   }
 
   if (!response.ok) {
+    const flattenError = (value: unknown): string | null => {
+      if (typeof value === "string") return value;
+      if (Array.isArray(value)) {
+        const messages = value
+          .map((item) => flattenError(item))
+          .filter((item): item is string => Boolean(item));
+        return messages.length ? messages.join(" ") : null;
+      }
+      if (value && typeof value === "object") {
+        const messages = Object.values(value as Record<string, unknown>)
+          .map((item) => flattenError(item))
+          .filter((item): item is string => Boolean(item));
+        return messages.length ? messages.join(" ") : null;
+      }
+      return null;
+    };
+
     const message =
       data?.detail ||
       data?.message ||
+      flattenError(data) ||
       "요청 처리 중 오류가 발생했습니다.";
     throw new Error(message);
   }

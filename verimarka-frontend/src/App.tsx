@@ -5,6 +5,7 @@ import EmailVerificationModal from "./components/auth/EmailVerificationModal";
 import LoginChoiceModal from "./components/auth/LoginChoiceModal";
 import LoginSuccessToast from "./components/auth/LoginSuccessToast";
 import PhoneVerificationModal from "./components/auth/PhoneVerificationModal";
+import PhoneRequiredModal from "./components/auth/PhoneRequiredModal";
 import ProfileEditModal from "./components/auth/ProfileEditModal";
 import SignupModal from "./components/auth/SignupModal";
 import WithdrawConfirmModal from "./components/auth/WithdrawConfirmModal";
@@ -49,6 +50,7 @@ export default function App() {
   });
   const [phoneVerificationModalOpen, setPhoneVerificationModalOpen] = useState(false);
   const [emailVerificationModalOpen, setEmailVerificationModalOpen] = useState(false);
+  const [phoneRequiredModalOpen, setPhoneRequiredModalOpen] = useState(false);
   const [phoneInput, setPhoneInput] = useState("");
   const [phoneCodeInput, setPhoneCodeInput] = useState("");
   const [phoneTimer, setPhoneTimer] = useState(0);
@@ -163,6 +165,11 @@ export default function App() {
     setToast((current) => ({ ...current, open: false }));
   }
 
+  function promptPhoneRequired(message = "서비스 이용을 위해 마이페이지에서 휴대폰 인증을 완료해주세요.") {
+    setPhoneRequiredModalOpen(true);
+    openToast(message);
+  }
+
   async function handleLogin(email: string, password: string) {
     await login(email, password);
     setModal("none");
@@ -193,6 +200,7 @@ export default function App() {
     setSelectedFile(null);
     setPhoneVerificationModalOpen(false);
     setEmailVerificationModalOpen(false);
+    setPhoneRequiredModalOpen(false);
     setProfileEditOpen(false);
     openToast("로그아웃되었습니다.");
     window.setTimeout(() => {
@@ -220,6 +228,7 @@ export default function App() {
       setSelectedFile(null);
       setPhoneVerificationModalOpen(false);
       setEmailVerificationModalOpen(false);
+      setPhoneRequiredModalOpen(false);
       setPhoneCodeInput("");
       setEmailCodeInput("");
       setPhoneTimer(0);
@@ -468,9 +477,7 @@ export default function App() {
                 return;
               }
               if (!identityVerified) {
-                setActiveTab("mypage");
-                setPhoneVerificationModalOpen(true);
-                openToast("본인 인증 완료 후 워터마크 삽입을 진행할 수 있습니다.");
+                promptPhoneRequired("휴대폰 인증이 필요합니다.");
                 return;
               }
               if (registerResult) openToast(registerResult.primaryAction);
@@ -484,9 +491,7 @@ export default function App() {
           <VerifyPage
             onAttemptUpload={() => {
               if (!identityVerified) {
-                setActiveTab("mypage");
-                setPhoneVerificationModalOpen(true);
-                openToast("본인 인증 완료 후 검증 이미지를 업로드할 수 있습니다.");
+                promptPhoneRequired("휴대폰 인증이 필요합니다.");
                 return;
               }
               openToast("검증 이미지 업로드 기능은 준비 중입니다.");
@@ -551,6 +556,15 @@ export default function App() {
         onClose={() => setPhoneVerificationModalOpen(false)}
         onSendPhoneCode={sendPhoneVerificationCode}
         onVerifyPhone={verifyPhone}
+      />
+
+      <PhoneRequiredModal
+        open={phoneRequiredModalOpen}
+        onClose={() => setPhoneRequiredModalOpen(false)}
+        onMoveToMyPage={() => {
+          setPhoneRequiredModalOpen(false);
+          setActiveTab("mypage");
+        }}
       />
 
       <EmailVerificationModal

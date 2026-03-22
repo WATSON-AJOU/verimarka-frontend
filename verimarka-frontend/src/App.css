@@ -1834,6 +1834,25 @@ body.modal-open {
   width: min(470px, 100%);
 }
 
+.phoneRequiredCard {
+  width: min(440px, 100%);
+}
+
+.phoneRequiredText {
+  margin: 0;
+  color: #6b7894;
+  font-size: 1.02rem;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.phoneRequiredActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
 .identityDescription,
 .authHint,
 .authSwitch,
