@@ -1,5 +1,25 @@
 import type { VerifyHistoryItem, VerifyResultResponse } from "../../types/app";
 
+function getStepClass(progress: number, index: number, total: number) {
+  const normalized = Math.max(0, Math.min(progress, 100));
+  const segment = 100 / total;
+  const completedCount = Math.min(Math.floor(normalized / segment), total);
+
+  if (index < completedCount) return "analysis-step is-done";
+  if (index === completedCount && completedCount < total) return "analysis-step is-running";
+  return "analysis-step";
+}
+
+function getStepState(progress: number, index: number, total: number) {
+  const normalized = Math.max(0, Math.min(progress, 100));
+  const segment = 100 / total;
+  const completedCount = Math.min(Math.floor(normalized / segment), total);
+
+  if (index < completedCount) return "완료";
+  if (index === completedCount && completedCount < total) return "진행 중";
+  return "대기";
+}
+
 interface VerifyPageProps {
   selectedFile: File | null;
   previewUrl: string;
@@ -49,9 +69,13 @@ export default function VerifyPage({
 
         {!selectedFile ? (
           <button className="verify-dropzone" type="button" onClick={onTriggerPicker}>
-            <div className="verify-dropzone-icon">✓</div>
-            <strong>검증할 이미지를 드래그하거나 클릭하여 업로드하세요.</strong>
-            <span>지원 포맷: JPG, PNG / 최대 20MB</span>
+            <div className="upload-empty">
+              <div>
+                <div className="verify-dropzone-icon">✓</div>
+                <p className="upload-title">검증할 이미지를 드래그하거나 클릭하여 업로드하세요.</p>
+                <p className="upload-desc">지원 포맷: JPG, PNG / 최대 20MB</p>
+              </div>
+            </div>
           </button>
         ) : verifyRunning ? (
           <div className="verify-shell">
@@ -69,21 +93,21 @@ export default function VerifyPage({
                 <h3 className="analysis-running-title">검증을 진행하고 있습니다.</h3>
                 <p className="analysis-running-subtitle">검증 결과를 정리하고 있습니다.</p>
                 <ul className="analysis-step-list">
-                  <li className="analysis-step is-done">
+                  <li className={getStepClass(verifyProgress, 0, 4)}>
                     <span className="analysis-step-dot" />
-                    <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 워터마크 검출 시도</p>
+                    <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(verifyProgress, 0, 4)}]</span> 워터마크 검출 시도</p>
                   </li>
-                  <li className="analysis-step is-done">
+                  <li className={getStepClass(verifyProgress, 1, 4)}>
                     <span className="analysis-step-dot" />
-                    <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 토큰 연계 정보 확인 (검출 성공 시)</p>
+                    <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(verifyProgress, 1, 4)}]</span> 토큰 연계 정보 확인 (검출 성공 시)</p>
                   </li>
-                  <li className="analysis-step is-pending">
+                  <li className={getStepClass(verifyProgress, 2, 4)}>
                     <span className="analysis-step-dot" />
-                    <p className="analysis-step-title"><span className="analysis-step-state">[건너뜀]</span> 유사 이미지 탐색 (검출 실패 시)</p>
+                    <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(verifyProgress, 2, 4)}]</span> 유사 이미지 탐색 (검출 실패 시)</p>
                   </li>
-                  <li className="analysis-step is-running">
+                  <li className={getStepClass(verifyProgress, 3, 4)}>
                     <span className="analysis-step-dot" />
-                    <p className="analysis-step-title"><span className="analysis-step-state">[진행 중]</span> 최종 검증 결과 생성</p>
+                    <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(verifyProgress, 3, 4)}]</span> 최종 검증 결과 생성</p>
                   </li>
                 </ul>
               </div>
