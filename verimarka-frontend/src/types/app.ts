@@ -38,7 +38,7 @@ export interface VerifyHistoryItem {
 
 export interface HistoryItem {
   id: string;
-  type: "allow" | "review";
+  type: "allow" | "review" | "block" | "verify";
   fileName: string;
   summary: string;
   timestamp: string;
@@ -67,12 +67,20 @@ export interface RegisteredContentResponse {
     db_file?: string | null;
     cosine?: number | null;
     phash_dist?: number | null;
+    preview_url?: string | null;
+    public_id?: string | null;
+    owner_name?: string | null;
+    registered_at?: string | null;
   };
   candidates: Array<{
     db_key?: string | null;
     db_file?: string | null;
     cosine?: number | null;
     phash_dist?: number | null;
+    preview_url?: string | null;
+    public_id?: string | null;
+    owner_name?: string | null;
+    registered_at?: string | null;
   }>;
   watermark: {
     requested?: boolean;

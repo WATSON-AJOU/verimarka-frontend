@@ -1,6 +1,40 @@
 import grapeImage from "../../assets/verimarka.png";
 import type { AnalysisStage, RegisterResultConfig, RegisteredContentResponse, UploadHistoryItem } from "../../types/app";
 
+function getStepClass(progress: number, index: number, total: number) {
+  const normalized = Math.max(0, Math.min(progress, 100));
+  const segment = 100 / total;
+  const completedCount = Math.min(Math.floor(normalized / segment), total);
+
+  if (index < completedCount) return "analysis-step is-done";
+  if (index === completedCount && completedCount < total) return "analysis-step is-running";
+  return "analysis-step";
+}
+
+function getStepState(progress: number, index: number, total: number) {
+  const normalized = Math.max(0, Math.min(progress, 100));
+  const segment = 100 / total;
+  const completedCount = Math.min(Math.floor(normalized / segment), total);
+
+  if (index < completedCount) return "완료";
+  if (index === completedCount && completedCount < total) return "진행 중";
+  return "대기";
+}
+
+function buildWatermarkedFileName(fileName: string) {
+  const trimmed = fileName.trim();
+  if (!trimmed) return "watermarked_VM";
+
+  const dotIndex = trimmed.lastIndexOf(".");
+  if (dotIndex <= 0 || dotIndex === trimmed.length - 1) {
+    return `${trimmed}_VM`;
+  }
+
+  const baseName = trimmed.slice(0, dotIndex);
+  const extension = trimmed.slice(dotIndex);
+  return `${baseName}_VM${extension}`;
+}
+
 interface RegisterPageProps {
   isLoggedIn: boolean;
   selectedFile: File | null;
@@ -23,6 +57,11 @@ interface RegisterPageProps {
   uploadInputRef: React.RefObject<HTMLInputElement | null>;
   formatFileSize: (bytes: number) => string;
   reviewVoteProgress: number;
+  emailVerified: boolean;
+  emailAddress: string;
+  reviewConsentModalOpen: boolean;
+  reviewConsentNotifyByEmail: boolean;
+  reviewConsentEndAtLabel: string;
   reviewVoteDraft: {
     contentId: string;
     upvotes: number;
@@ -33,6 +72,10 @@ interface RegisterPageProps {
   reviewVoteModalOpen: boolean;
   watermarkProgress: number;
   mintProgress: number;
+  onCloseReviewConsentModal: () => void;
+  onToggleReviewConsentNotify: () => void;
+  onOpenReviewGuide: () => void;
+  onConfirmReviewConsent: () => void;
   onOpenReviewVoteModal: () => void;
   onCloseReviewVoteModal: () => void;
   onCastReviewDemoVote: (choice: "yes" | "no") => void;
@@ -60,17 +103,34 @@ export default function RegisterPage({
   uploadInputRef,
   formatFileSize,
   reviewVoteProgress,
+  emailVerified,
+  emailAddress,
+  reviewConsentModalOpen,
+  reviewConsentNotifyByEmail,
+  reviewConsentEndAtLabel,
   reviewVoteDraft,
   reviewVoteModalOpen,
   watermarkProgress,
   mintProgress,
+  onCloseReviewConsentModal,
+  onToggleReviewConsentNotify,
+  onOpenReviewGuide,
+  onConfirmReviewConsent,
   onOpenReviewVoteModal,
   onCloseReviewVoteModal,
   onCastReviewDemoVote,
   onRefreshReviewVote,
 }: RegisterPageProps) {
-  const candidatePreviewUrl = previewUrl || grapeImage;
+  const candidatePreviewUrl = contentResult?.top_match?.preview_url || grapeImage;
   const watermarkedPreviewUrl = contentResult?.watermark_file_url || previewUrl || grapeImage;
+  const mintedFileName = buildWatermarkedFileName(selectedFile?.name || contentResult?.original_filename || "apple.jpg");
+  const mintedNetwork = contentResult?.blockchain?.network_name || "Sepolia";
+  const mintedTokenId = contentResult?.blockchain?.token_id ? `#${contentResult.blockchain.token_id}` : "#82525";
+  const mintedContentHash = contentResult?.blockchain?.file_hash || "0xbda0f453...5479";
+  const mintedTxHash = contentResult?.blockchain?.tx_hash || "0x0a2536...60e7";
+  const mintedWalletAddress =
+    contentResult?.blockchain?.owner_address || contentResult?.blockchain?.recipient_address || "0x4f5b...7bf0";
+  const mintedAtLabel = contentResult?.blockchain?.minted_at_display || "2026.03.24 10:14 UTC";
   const topCosineValue = contentResult?.top_cosine;
   const topCosineLabel =
     typeof topCosineValue === "number"
@@ -194,21 +254,21 @@ export default function RegisterPage({
 
                     <div className="analysis-timeline-card">
                       <ul className="analysis-step-list">
-                        <li className="analysis-step is-done">
+                        <li className={getStepClass(analysisProgress, 0, 4)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 의미 기반 임베딩 분석</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(analysisProgress, 0, 4)}]</span> 의미 기반 임베딩 분석</p>
                         </li>
-                        <li className="analysis-step is-done">
+                        <li className={getStepClass(analysisProgress, 1, 4)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 픽셀 정밀 비교</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(analysisProgress, 1, 4)}]</span> 픽셀 정밀 비교</p>
                         </li>
-                        <li className="analysis-step is-done">
+                        <li className={getStepClass(analysisProgress, 2, 4)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 기존 등록 콘텐츠 탐색</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(analysisProgress, 2, 4)}]</span> 기존 등록 콘텐츠 탐색</p>
                         </li>
-                        <li className="analysis-step is-running">
+                        <li className={getStepClass(analysisProgress, 3, 4)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[진행 중]</span> 최종 판정 생성</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(analysisProgress, 3, 4)}]</span> 최종 판정 생성</p>
                         </li>
                       </ul>
                       <p className="analysis-running-note">분석에는 수 초가 소요될 수 있습니다.</p>
@@ -248,17 +308,17 @@ export default function RegisterPage({
 
                     <div className="analysis-timeline-card">
                       <ul className="analysis-step-list">
-                        <li className="analysis-step is-done">
+                        <li className={getStepClass(reviewVoteProgress, 0, 3)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> AI 유사도 분석 완료</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(reviewVoteProgress, 0, 3)}]</span> AI 유사도 분석 완료</p>
                         </li>
-                        <li className="analysis-step is-done">
+                        <li className={getStepClass(reviewVoteProgress, 1, 3)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 블록체인 투표 생성</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(reviewVoteProgress, 1, 3)}]</span> 블록체인 투표 생성</p>
                         </li>
-                        <li className="analysis-step is-running">
+                        <li className={getStepClass(reviewVoteProgress, 2, 3)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[진행 중]</span> 커뮤니티 검증 시작</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(reviewVoteProgress, 2, 3)}]</span> 커뮤니티 검증 시작</p>
                         </li>
                       </ul>
                       <p className="analysis-running-note">완료되면 투표 현황 화면으로 자동 전환됩니다.</p>
@@ -284,17 +344,17 @@ export default function RegisterPage({
 
                     <div className="analysis-timeline-card">
                       <ul className="analysis-step-list">
-                        <li className="analysis-step is-done">
+                        <li className={getStepClass(watermarkProgress, 0, 3)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 워터마크 삽입 완료</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(watermarkProgress, 0, 3)}]</span> 워터마크 삽입 완료</p>
                         </li>
-                        <li className="analysis-step is-done">
+                        <li className={getStepClass(watermarkProgress, 1, 3)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 해시 생성</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(watermarkProgress, 1, 3)}]</span> 해시 생성</p>
                         </li>
-                        <li className="analysis-step is-running">
+                        <li className={getStepClass(watermarkProgress, 2, 3)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[진행 중]</span> 토큰 발행 준비</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(watermarkProgress, 2, 3)}]</span> 토큰 발행 준비</p>
                         </li>
                       </ul>
                       <p className="analysis-running-note">처리가 완료되면 결과 화면으로 자동 전환됩니다.</p>
@@ -320,17 +380,17 @@ export default function RegisterPage({
 
                     <div className="analysis-timeline-card">
                       <ul className="analysis-step-list">
-                        <li className="analysis-step is-done">
+                        <li className={getStepClass(mintProgress, 0, 3)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 메타데이터 구성</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(mintProgress, 0, 3)}]</span> 메타데이터 구성</p>
                         </li>
-                        <li className="analysis-step is-done">
+                        <li className={getStepClass(mintProgress, 1, 3)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 스마트컨트랙트 호출</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(mintProgress, 1, 3)}]</span> 스마트컨트랙트 호출</p>
                         </li>
-                        <li className="analysis-step is-running">
+                        <li className={getStepClass(mintProgress, 2, 3)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[진행 중]</span> 트랜잭션 확정 대기</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(mintProgress, 2, 3)}]</span> 트랜잭션 확정 대기</p>
                         </li>
                       </ul>
                       <p className="analysis-running-note">네트워크 상태에 따라 소요 시간이 달라질 수 있습니다.</p>
@@ -429,6 +489,10 @@ export default function RegisterPage({
                       </div>
                     ) : registerResult.tone === "allow" && analysisStage === "minted" ? (
                       <div className="mint-complete-layout">
+                        <span className="result-badge">MINTED</span>
+                        <h3 className="result-title">토큰 발행이 완료되었습니다</h3>
+                        <p className="result-subtitle">콘텐츠가 블록체인에 안전하게 기록되었습니다.</p>
+
                         <div className="mint-complete-grid">
                           <div className="mint-complete-card">
                             <h4>저작물 정보</h4>
@@ -438,11 +502,11 @@ export default function RegisterPage({
                             <div className="mint-file-meta">
                               <div className="mint-file-row">
                                 <span>파일명</span>
-                                <strong>{selectedFile.name}</strong>
+                                <strong>{mintedFileName}</strong>
                               </div>
                               <div className="mint-file-row">
                                 <span>등록 일시</span>
-                                <strong>{contentResult?.blockchain?.minted_at_display || "2026.03.23 01:49"}</strong>
+                                <strong>{mintedAtLabel}</strong>
                               </div>
                               <div className="mint-file-row">
                                 <span>워터마크 모델</span>
@@ -460,27 +524,27 @@ export default function RegisterPage({
                             <div className="mint-chain-meta">
                               <div className="mint-file-row">
                                 <span>네트워크명</span>
-                                <strong>{contentResult?.blockchain?.network_name || "Polygon"}</strong>
+                                <strong>{mintedNetwork}</strong>
                               </div>
                               <div className="mint-file-row">
                                 <span>Token ID</span>
-                                <strong>{contentResult?.blockchain?.token_id ? `#${contentResult.blockchain.token_id}` : "-"}</strong>
+                                <strong>{mintedTokenId}</strong>
                               </div>
                               <div className="mint-file-row">
                                 <span>Content Hash</span>
-                                <strong>{contentResult?.blockchain?.file_hash || "-"}</strong>
+                                <strong>{mintedContentHash}</strong>
                               </div>
                               <div className="mint-file-row">
                                 <span>Transaction Hash</span>
-                                <strong>{contentResult?.blockchain?.tx_hash || "-"}</strong>
+                                <strong>{mintedTxHash}</strong>
                               </div>
                               <div className="mint-file-row">
                                 <span>지갑 주소</span>
-                                <strong>{contentResult?.blockchain?.owner_address || contentResult?.blockchain?.recipient_address || "-"}</strong>
+                                <strong>{mintedWalletAddress}</strong>
                               </div>
                               <div className="mint-file-row">
                                 <span>발행 일시</span>
-                                <strong>{contentResult?.blockchain?.minted_at_display || "-"}</strong>
+                                <strong>{mintedAtLabel}</strong>
                               </div>
                             </div>
 
@@ -749,6 +813,59 @@ export default function RegisterPage({
             <p className="review-vote-modal-note">
               투표 결과는 데모 상태이며 실제 서비스에서는 블록체인에 기록됩니다.
             </p>
+          </div>
+        </div>
+      ) : null}
+
+      {reviewConsentModalOpen && registerResult?.tone === "review" && analysisStage === "review" ? (
+        <div className="modal-backdrop" role="presentation">
+          <div className="modal-shell review-consent-modal" role="dialog" aria-modal="true" aria-labelledby="review-consent-modal-title">
+            <button className="modal-close" type="button" onClick={onCloseReviewConsentModal}>
+              닫기
+            </button>
+
+            <div className="review-vote-modal-tag">REVIEW</div>
+            <h3 id="review-consent-modal-title" className="review-vote-modal-title">
+              투표 생성 확인
+            </h3>
+            <p className="review-consent-message">투표는 72시간 동안 진행됩니다.</p>
+
+            <div className="review-consent-fields">
+              <label className={`review-consent-checkbox ${!emailVerified ? "is-disabled" : ""}`}>
+                <input
+                  type="checkbox"
+                  checked={reviewConsentNotifyByEmail}
+                  onChange={onToggleReviewConsentNotify}
+                  disabled={!emailVerified}
+                />
+                <span>72시간 후 투표가 종료되면 메일을 받으시겠습니까</span>
+              </label>
+
+              {!emailVerified ? (
+                <p className="review-consent-help">이메일 인증을 진행하지 않으면 선택할 수 없습니다.</p>
+              ) : null}
+
+              <div className="review-consent-info">
+                <div className="review-consent-row">
+                  <span>이메일</span>
+                  <strong>{emailAddress}</strong>
+                </div>
+                <div className="review-consent-row">
+                  <span>종료시간</span>
+                  <strong>{reviewConsentEndAtLabel}</strong>
+                </div>
+              </div>
+
+              <button className="btn ghost review-consent-guide" type="button" onClick={onOpenReviewGuide}>
+                절차 자세히 보기
+              </button>
+            </div>
+
+            <div className="review-consent-actions">
+              <button className="btn btn-primary" type="button" onClick={onConfirmReviewConsent}>
+                투표 생성하기
+              </button>
+            </div>
           </div>
         </div>
       ) : null}

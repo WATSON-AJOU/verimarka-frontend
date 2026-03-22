@@ -738,12 +738,7 @@ main {
 
 .analysis-list li::before,
 .result-check-list li::before {
-  content: "✓";
-  position: absolute;
-  left: 0;
-  top: 0;
-  color: #2d6fbe;
-  font-weight: 900;
+  content: none;
 }
 
 .analysis-cta,
@@ -1326,6 +1321,84 @@ main {
   font-weight: 700;
 }
 
+.review-consent-modal {
+  width: min(760px, calc(100vw - 64px));
+  max-width: 760px;
+}
+
+.review-consent-message {
+  margin: 18px 0 0;
+  text-align: center;
+  color: #243558;
+  font-size: 1.3rem;
+  font-weight: 800;
+}
+
+.review-consent-fields {
+  margin-top: 28px;
+  display: grid;
+  gap: 14px;
+  justify-items: center;
+}
+
+.review-consent-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #243558;
+  font-size: 1.02rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.review-consent-checkbox input {
+  width: 18px;
+  height: 18px;
+}
+
+.review-consent-checkbox.is-disabled {
+  color: #8a96af;
+}
+
+.review-consent-help {
+  margin: -4px 0 0;
+  text-align: center;
+  color: #c3872e;
+  font-size: 0.96rem;
+  font-weight: 700;
+}
+
+.review-consent-info {
+  width: min(100%, 460px);
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.review-consent-row {
+  display: grid;
+  grid-template-columns: 96px 1fr;
+  gap: 12px;
+  align-items: center;
+  color: #5c6c8b;
+  font-size: 1rem;
+}
+
+.review-consent-row strong {
+  color: #243558;
+  font-size: 1.02rem;
+  font-weight: 800;
+}
+
+.review-consent-guide {
+  min-width: 180px;
+}
+
+.review-consent-actions {
+  margin-top: 28px;
+  display: grid;
+}
+
 .verify-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
@@ -1335,27 +1408,28 @@ main {
 
 .verify-dropzone {
   width: 100%;
-  min-height: 440px;
-  border: 3px dashed #c9d6ed;
-  border-radius: 28px;
-  background: linear-gradient(180deg, #fdfefe 0%, #f8fbff 100%);
+  margin-top: 16px;
+  min-height: 300px;
+  border: 2px dashed #c6cfde;
+  border-radius: 16px;
+  background: linear-gradient(180deg, #fafcff 0%, #f5f8fd 100%);
   display: grid;
   place-items: center;
   text-align: center;
-  padding: 24px;
+  padding: 12px;
   cursor: pointer;
 }
 
 .verify-dropzone-icon {
-  width: 118px;
-  height: 118px;
+  width: 70px;
+  height: 70px;
   border-radius: 999px;
   display: grid;
   place-items: center;
-  margin: 0 auto 26px;
-  background: linear-gradient(135deg, #e9effd, #dfe8fb);
-  color: #4466ab;
-  font-size: 3.1rem;
+  margin: 0 auto 12px;
+  background: #e8eef9;
+  color: #425985;
+  font-size: 1.6rem;
   font-weight: 700;
 }
 
@@ -1582,12 +1656,14 @@ main {
 .mint-complete-layout {
   display: grid;
   gap: 22px;
+  text-align: center;
 }
 
 .mint-complete-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+  text-align: left;
 }
 
 .mint-complete-card {
@@ -1774,11 +1850,25 @@ main {
 
 .history-log-main {
   width: 100%;
+  border: 0;
+  background: transparent;
   padding: 12px 18px;
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
   align-items: center;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+
+.history-log-item:hover .history-log-main {
+  background: #f7faff;
+}
+
+.history-log-item.is-expanded .history-log-main {
+  background: #f5f9ff;
+  box-shadow: inset 0 -1px 0 #e3ebf8;
 }
 
 .history-log-left {
@@ -1847,6 +1937,16 @@ main {
   background: #fff2df;
 }
 
+.history-state-badge.is-block {
+  color: #b33b4a;
+  background: #ffe5ea;
+}
+
+.history-state-badge.is-verify {
+  color: #2c6f96;
+  background: #e3f4ff;
+}
+
 .history-log-desc {
   margin: 4px 0 0;
   color: #677993;
@@ -1867,7 +1967,7 @@ main {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
-  background: #f9fbff;
+  background: #f5f9ff;
 }
 
 .history-expand-card {
@@ -2095,11 +2195,33 @@ main {
 }
 
 .wallet-actions .btn {
-  flex: 1 1 220px;
+  flex: 0 0 auto;
+  min-width: 220px;
 }
 
 .mypage-actions--double .btn {
   flex: 1 1 220px;
+}
+
+.wallet-actions {
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.wallet-disconnect-link {
+  margin-left: auto;
+  border: 0;
+  padding: 0;
+  color: #7a859d;
+  font-size: 0.84rem;
+  font-weight: 700;
+  background: transparent;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.wallet-disconnect-link:hover {
+  color: #55657f;
 }
 
 .token-status-row {
@@ -2409,6 +2531,13 @@ body.modal-open {
   font-weight: 700;
 }
 
+.fieldInputRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+}
+
 .fieldHelp {
   color: #6f7890;
   font-size: 0.8rem;
@@ -2512,6 +2641,17 @@ body.modal-open {
 .fieldInput:focus-visible {
   outline: none;
   border-color: #bac4d9;
+}
+
+.fieldActionButton {
+  min-width: 92px;
+  height: 56px;
+  border: 1px solid #c0c9eb;
+  border-radius: 12px;
+  background: #f8f9ff;
+  color: var(--brand-strong);
+  font-size: 0.88rem;
+  font-weight: 800;
 }
 
 .primaryButton {
@@ -2791,11 +2931,19 @@ body.modal-open {
   }
 
   .register-layout,
+  .verify-layout,
   .mypage-layout,
   .analysis-running-layout,
   .upload-result-layout,
   .analysis-result-layout,
   .result-reject-spotlight {
+    grid-template-columns: 1fr;
+  }
+
+  .verify-ready-grid,
+  .verify-result-layout,
+  .verify-result-layout-success,
+  .verify-metric-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2900,6 +3048,60 @@ body.modal-open {
   .upload-dropzone {
     min-height: 220px;
     padding: 10px;
+  }
+
+  .verify-shell {
+    padding: 12px;
+  }
+
+  .verify-dropzone {
+    min-height: 300px;
+    border-radius: 20px;
+    padding: 18px;
+  }
+
+  .verify-dropzone-icon {
+    width: 84px;
+    height: 84px;
+    margin-bottom: 18px;
+    font-size: 2.2rem;
+  }
+
+  .verify-dropzone strong {
+    font-size: 1.08rem;
+  }
+
+  .verify-dropzone span {
+    margin-top: 12px;
+    font-size: 0.88rem;
+  }
+
+  .verify-result-frame {
+    padding: 12px;
+  }
+
+  .verify-token-row,
+  .verify-ready-table div {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .verify-preview-card h4,
+  .verify-summary-card h4,
+  .verify-metric-card h4 {
+    font-size: 1.16rem;
+  }
+
+  .verify-placeholder-frame {
+    min-height: 180px;
+  }
+
+  .verify-metric-card {
+    padding: 14px 16px;
+  }
+
+  .verify-metric-value {
+    font-size: 1rem;
   }
 
   .upload-empty {
