@@ -2,6 +2,7 @@ interface MyPageProps {
   displayName: string;
   profileEmail: string;
   profilePhone: string;
+  lastLoginLabel: string;
   avatarInitial: string;
   emailVerified: boolean;
   phoneVerified: boolean;
@@ -16,6 +17,7 @@ export default function MyPage({
   displayName,
   profileEmail,
   profilePhone,
+  lastLoginLabel,
   avatarInitial,
   emailVerified,
   phoneVerified,
@@ -38,6 +40,7 @@ export default function MyPage({
           <h3>{displayName}</h3>
           <p>{profileEmail}</p>
           <p>{profilePhone}</p>
+          <p>최근 접속 {lastLoginLabel}</p>
           <button className="btn btn-secondary mypage-edit-btn" type="button" onClick={onOpenProfileEdit}>
             프로필 수정
           </button>
@@ -57,16 +60,6 @@ export default function MyPage({
           <article className="mypage-card">
             <div className="mypage-card-head">
               <h3>본인 인증</h3>
-              <span className={`mypage-chip ${phoneVerified ? "is-verified" : "is-pending"}`}>
-                {phoneVerified ? "인증 완료" : "인증 필요"}
-              </span>
-            </div>
-            <p>
-              {phoneVerified
-                ? "휴대폰 인증이 완료되었습니다. 이메일 인증은 선택적으로 진행할 수 있습니다."
-                : "서비스 이용 제한 해제를 위해 휴대폰 인증을 진행해주세요. 이메일 인증은 선택입니다."}
-            </p>
-            <div className="mypage-verify-status">
               <span className={`mypage-verify-item ${phoneVerified ? "is-done" : "is-pending"}`}>
                 {phoneVerified ? "휴대폰 인증 완료" : "휴대폰 인증 필요"}
               </span>
@@ -74,6 +67,11 @@ export default function MyPage({
                 {emailVerified ? "이메일 인증 완료" : "이메일 인증 선택"}
               </span>
             </div>
+            <p>
+              {phoneVerified
+                ? "휴대폰 인증이 완료되었습니다. 이메일 인증은 선택적으로 진행할 수 있습니다."
+                : "서비스 이용 제한 해제를 위해 휴대폰 인증을 진행해주세요. 이메일 인증은 선택입니다."}
+            </p>
             <div className="mypage-actions mypage-actions--double">
               <button
                 className={`btn btn-primary ${phoneVerified ? "is-static" : ""}`}
@@ -116,12 +114,12 @@ export default function MyPage({
           <article className="mypage-card">
             <div className="mypage-card-head">
               <h3>지갑 연결</h3>
-              <span className="mypage-chip">선택</span>
+              <span className="mypage-chip">필수</span>
             </div>
-            <p>검증 기록 토큰 확인을 위해 지갑을 연결할 수 있습니다.</p>
+            <p>등록 토큰 관리를 위해 지갑을 연결해야합니다.</p>
             <div className="mypage-actions wallet-actions">
-              <button className="btn btn-secondary" type="button">Web3Auth 연결</button>
-              <button className="btn btn-secondary" type="button">Privy 연결</button>
+              <button className="btn btn-primary" type="button">지갑 등록하기</button>
+              <button className="wallet-disconnect-link" type="button">지갑 해제하기</button>
             </div>
           </article>
         </div>
