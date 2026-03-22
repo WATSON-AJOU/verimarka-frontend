@@ -1,7 +1,7 @@
 export type TabName = "home" | "add" | "verify" | "history" | "mypage";
 export type ModalType = "none" | "loginChoice" | "emailLogin" | "signup";
 export type AnalysisResult = "allow" | "review" | "block";
-export type AnalysisStage = "idle" | "ready" | "running" | AnalysisResult;
+export type AnalysisStage = "idle" | "ready" | "running" | "watermarking" | "watermarked" | "minting" | "minted" | AnalysisResult;
 
 export interface ActivityItem {
   status: "ALLOW" | "REVIEW" | "BLOCK";
@@ -39,6 +39,7 @@ export interface RegisteredContentResponse {
   mime_type: string;
   file_size: number;
   file_url: string | null;
+  watermark_file_url: string | null;
   decision: "allow" | "review" | "block" | "";
   reason: string;
   next_action: "none" | "start_vote" | "";
@@ -58,10 +59,38 @@ export interface RegisteredContentResponse {
   }>;
   watermark: {
     requested?: boolean;
+    applied?: boolean;
+    output_url?: string | null;
+    output_key?: string | null;
+    payload_id?: string | null;
     model?: string | null;
+    model_version?: string | null;
     nbits?: number | null;
     scaling_w?: number | null;
     proportion_masked?: number | null;
+    details?: Record<string, unknown>;
+  };
+  blockchain: {
+    minted?: boolean;
+    network_name?: string;
+    chain_id?: number | null;
+    contract_address?: string;
+    recipient_address?: string;
+    owner_address?: string;
+    wm_id?: number | null;
+    token_id?: number | null;
+    status?: string;
+    verification_link?: string;
+    token_uri?: string;
+    file_hash?: string;
+    tx_hash?: string;
+    block_number?: number | null;
+    gas_used?: number | null;
+    minted_at?: string;
+    minted_at_display?: string;
+    model_name?: string;
+    model_version?: string;
+    document?: Record<string, unknown>;
   };
   timing_ms: {
     download?: number;

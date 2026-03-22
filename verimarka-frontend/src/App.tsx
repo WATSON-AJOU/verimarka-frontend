@@ -70,13 +70,16 @@ export default function App() {
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>("idle");
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisRequestPending, setAnalysisRequestPending] = useState(false);
+  const [watermarkProgress, setWatermarkProgress] = useState(0);
+  const [watermarkRequestPending, setWatermarkRequestPending] = useState(false);
+  const [mintProgress, setMintProgress] = useState(0);
+  const [mintRequestPending, setMintRequestPending] = useState(false);
   const [contentResult, setContentResult] = useState<RegisteredContentResponse | null>(null);
   const [historyFilter, setHistoryFilter] = useState<"all" | "allow" | "review">("all");
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
 
   const phoneVerified = Boolean(user?.phone_verified);
   const emailVerified = Boolean(user?.email_verified);
-  const identityVerified = phoneVerified && emailVerified;
   const displayName = useMemo(() => {
     if (!user) return "";
     return user.display_name || user.nickname || user.username || user.email.split("@")[0] || "회원";
@@ -127,6 +130,8 @@ export default function App() {
       setPreviewUrl("");
       setAnalysisStage("idle");
       setAnalysisProgress(0);
+      setWatermarkProgress(0);
+      setMintProgress(0);
       setContentResult(null);
       return;
     }
@@ -135,6 +140,8 @@ export default function App() {
     setPreviewUrl(objectUrl);
     setAnalysisStage("ready");
     setAnalysisProgress(0);
+    setWatermarkProgress(0);
+    setMintProgress(0);
 
     return () => URL.revokeObjectURL(objectUrl);
   }, [selectedFile]);
@@ -147,15 +154,35 @@ export default function App() {
     return () => window.clearInterval(intervalId);
   }, [analysisStage, analysisRequestPending]);
 
+  useEffect(() => {
+    if (analysisStage !== "watermarking" || !watermarkRequestPending) return;
+    const intervalId = window.setInterval(() => {
+      setWatermarkProgress((current) => Math.min(92, current + 4 + Math.random() * 7));
+    }, 220);
+    return () => window.clearInterval(intervalId);
+  }, [analysisStage, watermarkRequestPending]);
+
+  useEffect(() => {
+    if (analysisStage !== "minting" || !mintRequestPending) return;
+    const intervalId = window.setInterval(() => {
+      setMintProgress((current) => Math.min(92, current + 4 + Math.random() * 6));
+    }, 260);
+    return () => window.clearInterval(intervalId);
+  }, [analysisStage, mintRequestPending]);
+
   const filteredHistory = useMemo(() => {
     if (historyFilter === "all") return historyItems;
     return historyItems.filter((item) => item.type === historyFilter);
   }, [historyFilter]);
 
-  const registerResult =
+  const registerDecision =
     analysisStage === "allow" || analysisStage === "review" || analysisStage === "block"
-      ? resultConfig[analysisStage]
-      : null;
+      ? analysisStage
+      : contentResult?.decision === "allow" || contentResult?.decision === "review" || contentResult?.decision === "block"
+        ? contentResult.decision
+        : null;
+
+  const registerResult = registerDecision ? resultConfig[registerDecision] : null;
 
   function openToast(message: string, duration = 3000) {
     setToast({ open: true, message, duration });
@@ -329,6 +356,90 @@ export default function App() {
     }
   }
 
+  async function startWatermark() {
+    if (!contentResult) {
+      window.alert("먼저 등록 가능 여부 분석을 완료해주세요.");
+      return;
+    }
+
+    if (!phoneVerified) {
+      promptPhoneRequired("휴대폰 인증이 필요합니다.");
+      return;
+    }
+
+    if (contentResult.watermark?.applied && contentResult.watermark_file_url) {
+      window.open(contentResult.watermark_file_url, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    setAnalysisStage("watermarking");
+    setWatermarkProgress(12);
+    setWatermarkRequestPending(true);
+    openToast("워터마크 삽입을 요청했습니다.");
+
+    try {
+      const response = await apiRequest<RegisteredContentResponse>(
+        `/contents/${contentResult.public_id}/watermark/`,
+        {
+          method: "POST",
+          auth: true,
+        },
+      );
+      setContentResult(response);
+      setWatermarkProgress(100);
+      setAnalysisStage("watermarked");
+      openToast("워터마크 삽입이 완료되었습니다.");
+    } catch (error) {
+      setAnalysisStage("allow");
+      setWatermarkProgress(0);
+      window.alert(error instanceof Error ? error.message : "워터마크 삽입에 실패했습니다.");
+    } finally {
+      setWatermarkRequestPending(false);
+    }
+  }
+
+  async function startMint() {
+    if (!contentResult) {
+      window.alert("먼저 워터마크 삽입을 완료해주세요.");
+      return;
+    }
+
+    if (!phoneVerified) {
+      promptPhoneRequired("휴대폰 인증이 필요합니다.");
+      return;
+    }
+
+    if (contentResult.blockchain?.minted && contentResult.blockchain?.tx_hash) {
+      setAnalysisStage("minted");
+      return;
+    }
+
+    setAnalysisStage("minting");
+    setMintProgress(14);
+    setMintRequestPending(true);
+    openToast("NFT 토큰 발행을 요청했습니다.");
+
+    try {
+      const response = await apiRequest<RegisteredContentResponse>(
+        `/contents/${contentResult.public_id}/mint/`,
+        {
+          method: "POST",
+          auth: true,
+        },
+      );
+      setContentResult(response);
+      setMintProgress(100);
+      setAnalysisStage("minted");
+      openToast("NFT 토큰 발행이 완료되었습니다.");
+    } catch (error) {
+      setAnalysisStage("watermarked");
+      setMintProgress(0);
+      window.alert(error instanceof Error ? error.message : "NFT 토큰 발행에 실패했습니다.");
+    } finally {
+      setMintRequestPending(false);
+    }
+  }
+
   async function sendPhoneVerificationCode() {
     const normalizedPhone = phoneInput.replace(/\D/g, "");
     if (!/^01\d{8,9}$/.test(normalizedPhone)) {
@@ -469,6 +580,8 @@ export default function App() {
             onResetToReady={() => {
               setAnalysisStage("ready");
               setAnalysisProgress(0);
+              setWatermarkProgress(0);
+              setMintProgress(0);
             }}
             onSelectAnother={triggerFilePicker}
             onPrimaryAction={() => {
@@ -476,21 +589,48 @@ export default function App() {
                 triggerFilePicker();
                 return;
               }
-              if (!identityVerified) {
+              if (!phoneVerified) {
                 promptPhoneRequired("휴대폰 인증이 필요합니다.");
+                return;
+              }
+              if (registerResult?.tone === "allow") {
+                if (contentResult?.watermark?.applied) {
+                  void startMint();
+                  return;
+                }
+                void startWatermark();
                 return;
               }
               if (registerResult) openToast(registerResult.primaryAction);
             }}
+            onDownloadWatermarked={() => {
+              if (contentResult?.watermark_file_url) {
+                window.open(contentResult.watermark_file_url, "_blank", "noopener,noreferrer");
+                return;
+              }
+              openToast("워터마크 결과 파일이 아직 준비되지 않았습니다.");
+            }}
+            onMoveToHistory={() => setActiveTab("history")}
+            onCopyVerificationUrl={() => {
+              const verificationLink = contentResult?.blockchain?.verification_link;
+              if (!verificationLink) {
+                openToast("복사할 검증 URL이 아직 준비되지 않았습니다.");
+                return;
+              }
+              void navigator.clipboard.writeText(verificationLink);
+              openToast("검증 URL을 복사했습니다.");
+            }}
             uploadInputRef={uploadInputRef}
             formatFileSize={formatFileSize}
+            watermarkProgress={watermarkProgress}
+            mintProgress={mintProgress}
           />
         ) : null}
 
         {activeTab === "verify" ? (
           <VerifyPage
             onAttemptUpload={() => {
-              if (!identityVerified) {
+              if (!phoneVerified) {
                 promptPhoneRequired("휴대폰 인증이 필요합니다.");
                 return;
               }

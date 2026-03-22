@@ -1,11 +1,11 @@
 import grapeImage from "../../assets/verimarka.png";
-import type { RegisterResultConfig, RegisteredContentResponse, UploadHistoryItem } from "../../types/app";
+import type { AnalysisStage, RegisterResultConfig, RegisteredContentResponse, UploadHistoryItem } from "../../types/app";
 
 interface RegisterPageProps {
   isLoggedIn: boolean;
   selectedFile: File | null;
   previewUrl: string;
-  analysisStage: "idle" | "ready" | "running" | "allow" | "review" | "block";
+  analysisStage: AnalysisStage;
   analysisProgress: number;
   registerResult: RegisterResultConfig | null;
   contentResult: RegisteredContentResponse | null;
@@ -17,8 +17,13 @@ interface RegisterPageProps {
   onResetToReady: () => void;
   onSelectAnother: () => void;
   onPrimaryAction: () => void;
+  onDownloadWatermarked: () => void;
+  onMoveToHistory: () => void;
+  onCopyVerificationUrl: () => void;
   uploadInputRef: React.RefObject<HTMLInputElement | null>;
   formatFileSize: (bytes: number) => string;
+  watermarkProgress: number;
+  mintProgress: number;
 }
 
 export default function RegisterPage({
@@ -36,10 +41,16 @@ export default function RegisterPage({
   onResetToReady,
   onSelectAnother,
   onPrimaryAction,
+  onDownloadWatermarked,
+  onMoveToHistory,
+  onCopyVerificationUrl,
   uploadInputRef,
   formatFileSize,
+  watermarkProgress,
+  mintProgress,
 }: RegisterPageProps) {
   const candidatePreviewUrl = previewUrl || grapeImage;
+  const watermarkedPreviewUrl = contentResult?.watermark_file_url || previewUrl || grapeImage;
   const topCosineValue = contentResult?.top_cosine;
   const topCosineLabel =
     typeof topCosineValue === "number"
@@ -175,14 +186,86 @@ export default function RegisterPage({
                 </div>
               ) : null}
 
-              {registerResult ? (
+              {analysisStage === "watermarking" ? (
+                <div className="analysis-running-view">
+                  <h3 className="analysis-running-title">워터마크를 삽입하고 있습니다.</h3>
+                  <p className="analysis-running-subtitle">해시 생성과 워터마크 패턴 반영을 진행 중입니다.</p>
+
+                  <div className="analysis-running-layout">
+                    <div className="analysis-preview-card">
+                      <img src={previewUrl} alt={selectedFile.name} />
+                      <div className="analysis-progress-overlay">
+                        <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(watermarkProgress)) }}>
+                          <span>{Math.round(watermarkProgress)}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="analysis-timeline-card">
+                      <ul className="analysis-step-list">
+                        <li className="analysis-step is-done">
+                          <span className="analysis-step-dot" />
+                          <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 워터마크 삽입 요청 완료</p>
+                        </li>
+                        <li className="analysis-step is-running">
+                          <span className="analysis-step-dot" />
+                          <p className="analysis-step-title"><span className="analysis-step-state">[진행 중]</span> 해시 생성 및 워터마크 삽입</p>
+                        </li>
+                        <li className="analysis-step is-pending">
+                          <span className="analysis-step-dot" />
+                          <p className="analysis-step-title"><span className="analysis-step-state">[대기]</span> 결과 저장 및 전달 준비</p>
+                        </li>
+                      </ul>
+                      <p className="analysis-running-note">처리가 완료되면 결과 화면으로 자동 전환됩니다.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {analysisStage === "minting" ? (
+                <div className="analysis-running-view">
+                  <h3 className="analysis-running-title">NFT 토큰 발행을 진행하고 있습니다.</h3>
+                  <p className="analysis-running-subtitle">스마트컨트랙트 호출과 트랜잭션 확정을 진행 중입니다.</p>
+
+                  <div className="analysis-running-layout">
+                    <div className="analysis-preview-card">
+                      <img src={watermarkedPreviewUrl} alt={`${selectedFile.name} 워터마크 결과`} />
+                      <div className="analysis-progress-overlay">
+                        <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(mintProgress)) }}>
+                          <span>{Math.round(mintProgress)}%</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="analysis-timeline-card">
+                      <ul className="analysis-step-list">
+                        <li className="analysis-step is-done">
+                          <span className="analysis-step-dot" />
+                          <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 메타데이터 구성</p>
+                        </li>
+                        <li className="analysis-step is-running">
+                          <span className="analysis-step-dot" />
+                          <p className="analysis-step-title"><span className="analysis-step-state">[진행 중]</span> 스마트컨트랙트 호출</p>
+                        </li>
+                        <li className="analysis-step is-pending">
+                          <span className="analysis-step-dot" />
+                          <p className="analysis-step-title"><span className="analysis-step-state">[대기]</span> 트랜잭션 확정 대기</p>
+                        </li>
+                      </ul>
+                      <p className="analysis-running-note">네트워크 상태에 따라 소요 시간이 달라질 수 있습니다.</p>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
+              {registerResult && analysisStage !== "watermarking" && analysisStage !== "minting" ? (
                 <div className="analysis-result-view" data-result={registerResult.tone === "review" ? "pending" : registerResult.tone === "block" ? "reject" : "allow"}>
                   <div className="analysis-result-body">
                     <span className="result-badge">{registerResult.badge}</span>
                     <h3 className="result-title">{registerResult.title}</h3>
                     <p className="result-subtitle">{registerResult.subtitle}</p>
 
-                    {registerResult.tone === "allow" ? (
+                    {registerResult.tone === "allow" && analysisStage !== "watermarked" ? (
                       <div className="analysis-result-layout">
                         <div className="result-preview-card">
                           <div className="result-image-frame">
@@ -217,6 +300,121 @@ export default function RegisterPage({
                             </button>
                           </div>
                           <p className="result-note">{registerResult.note}</p>
+                        </div>
+                      </div>
+                    ) : registerResult.tone === "allow" && analysisStage === "watermarked" ? (
+                      <div className="watermark-complete-layout">
+                        <div className="watermark-compare-grid">
+                          <div className="watermark-compare-card">
+                            <div className="watermark-compare-head">
+                              <h4>원본 이미지</h4>
+                              <span className="watermark-compare-chip">Original</span>
+                            </div>
+                            <div className="watermark-compare-frame">
+                              <img src={previewUrl} alt={`${selectedFile.name} 원본`} />
+                            </div>
+                          </div>
+
+                          <div className="watermark-compare-card">
+                            <div className="watermark-compare-head">
+                              <h4>워터마크 삽입 결과</h4>
+                              <span className="watermark-compare-chip">Watermarked</span>
+                            </div>
+                            <div className="watermark-compare-frame">
+                              <img src={watermarkedPreviewUrl} alt={`${selectedFile.name} 워터마크`} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="watermark-file-summary">
+                          <strong>{selectedFile.name}</strong>
+                          <span>{formatFileSize(selectedFile.size)} · 2026.03.23 01:21</span>
+                        </div>
+
+                        <div className="watermark-complete-actions">
+                          <button className="btn btn-primary" type="button" onClick={onPrimaryAction}>
+                            NFT 토큰 발행하기
+                          </button>
+                          <button className="btn btn-primary" type="button" onClick={onDownloadWatermarked}>
+                            워터마크 이미지 다운로드
+                          </button>
+                          <button className="btn btn-secondary" type="button" onClick={onMoveToHistory}>
+                            분석 기록 보기
+                          </button>
+                          <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
+                            다른 이미지 업로드
+                          </button>
+                        </div>
+                      </div>
+                    ) : registerResult.tone === "allow" && analysisStage === "minted" ? (
+                      <div className="mint-complete-layout">
+                        <div className="mint-complete-grid">
+                          <div className="mint-complete-card">
+                            <h4>저작물 정보</h4>
+                            <div className="mint-complete-frame">
+                              <img src={watermarkedPreviewUrl} alt={`${selectedFile.name} 민팅 결과`} />
+                            </div>
+                            <div className="mint-file-meta">
+                              <div className="mint-file-row">
+                                <span>파일명</span>
+                                <strong>{selectedFile.name}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>등록 일시</span>
+                                <strong>{contentResult?.blockchain?.minted_at_display || "2026.03.23 01:49"}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>워터마크 모델</span>
+                                <strong>{contentResult?.blockchain?.model_name || "WAM (Watson AI Model)"}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>워터마크 버전</span>
+                                <strong>{contentResult?.blockchain?.model_version || "v2.1.0"}</strong>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mint-complete-card">
+                            <h4>블록체인 기록 데이터</h4>
+                            <div className="mint-chain-meta">
+                              <div className="mint-file-row">
+                                <span>네트워크명</span>
+                                <strong>{contentResult?.blockchain?.network_name || "Polygon"}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>Token ID</span>
+                                <strong>{contentResult?.blockchain?.token_id ? `#${contentResult.blockchain.token_id}` : "-"}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>Content Hash</span>
+                                <strong>{contentResult?.blockchain?.file_hash || "-"}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>Transaction Hash</span>
+                                <strong>{contentResult?.blockchain?.tx_hash || "-"}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>지갑 주소</span>
+                                <strong>{contentResult?.blockchain?.owner_address || contentResult?.blockchain?.recipient_address || "-"}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>발행 일시</span>
+                                <strong>{contentResult?.blockchain?.minted_at_display || "-"}</strong>
+                              </div>
+                            </div>
+
+                            <div className="mint-complete-actions">
+                              <button className="btn btn-primary" type="button" onClick={onCopyVerificationUrl}>
+                                URL 복사
+                              </button>
+                              <button className="btn btn-secondary" type="button" onClick={onMoveToHistory}>
+                                기록으로 돌아가기
+                              </button>
+                              <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
+                                다른 이미지 업로드
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ) : (

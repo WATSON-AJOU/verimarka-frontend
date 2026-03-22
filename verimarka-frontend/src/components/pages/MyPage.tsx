@@ -57,21 +57,21 @@ export default function MyPage({
           <article className="mypage-card">
             <div className="mypage-card-head">
               <h3>본인 인증</h3>
-              <span className={`mypage-chip ${phoneVerified && emailVerified ? "is-verified" : "is-pending"}`}>
-                {phoneVerified && emailVerified ? "인증 완료" : "인증 필요"}
+              <span className={`mypage-chip ${phoneVerified ? "is-verified" : "is-pending"}`}>
+                {phoneVerified ? "인증 완료" : "인증 필요"}
               </span>
             </div>
             <p>
-              {phoneVerified && emailVerified
-                ? "휴대폰과 이메일 인증이 모두 완료되었습니다."
-                : "서비스 이용을 위해 휴대폰과 이메일 인증을 진행해주세요."}
+              {phoneVerified
+                ? "휴대폰 인증이 완료되었습니다. 이메일 인증은 선택적으로 진행할 수 있습니다."
+                : "서비스 이용 제한 해제를 위해 휴대폰 인증을 진행해주세요. 이메일 인증은 선택입니다."}
             </p>
             <div className="mypage-verify-status">
               <span className={`mypage-verify-item ${phoneVerified ? "is-done" : "is-pending"}`}>
                 {phoneVerified ? "휴대폰 인증 완료" : "휴대폰 인증 필요"}
               </span>
               <span className={`mypage-verify-item ${emailVerified ? "is-done" : "is-pending"}`}>
-                {emailVerified ? "이메일 인증 완료" : "이메일 인증 필요"}
+                {emailVerified ? "이메일 인증 완료" : "이메일 인증 선택"}
               </span>
             </div>
             <div className="mypage-actions mypage-actions--double">
