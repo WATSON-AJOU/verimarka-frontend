@@ -15,7 +15,7 @@ import Footer from "./components/layout/Footer";
 import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
 import { historyItems, homeActivities, recentUploads, resultConfig, systemCards, tabs } from "./lib/mockData";
-import { apiRequest } from "./lib/api";
+import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest } from "./lib/api";
 import type { AnalysisStage, ModalType, RegisteredContentResponse, TabName } from "./types/app";
 
 function formatFileSize(bytes: number) {
@@ -76,6 +76,25 @@ export default function App() {
     const timerId = window.setTimeout(() => setIdentityTimer((current) => Math.max(0, current - 1)), 1000);
     return () => window.clearTimeout(timerId);
   }, [identityTimer]);
+
+  useEffect(() => {
+    function handleRefreshSuccess() {
+      openToast("세션이 갱신되었습니다.");
+    }
+
+    function handleRefreshFailure() {
+      setActiveTab("home");
+      openToast("세션이 만료되었습니다. 다시 로그인해주세요.");
+    }
+
+    window.addEventListener(AUTH_REFRESH_SUCCESS_EVENT, handleRefreshSuccess);
+    window.addEventListener(AUTH_REFRESH_FAILED_EVENT, handleRefreshFailure);
+
+    return () => {
+      window.removeEventListener(AUTH_REFRESH_SUCCESS_EVENT, handleRefreshSuccess);
+      window.removeEventListener(AUTH_REFRESH_FAILED_EVENT, handleRefreshFailure);
+    };
+  }, []);
 
   useEffect(() => {
     if (!selectedFile) {
