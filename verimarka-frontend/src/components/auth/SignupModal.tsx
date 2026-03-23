@@ -82,18 +82,53 @@ export default function SignupModal({
     return () => window.clearTimeout(timer);
   }, [open, username]);
 
+  async function checkNicknameAvailability(rawValue: string) {
+    const trimmed = rawValue.trim();
+
+    if (!trimmed) {
+      setNicknameStatus("idle");
+      setNicknameMessage("");
+      return false;
+    }
+
+    if (trimmed.length > 30) {
+      setNicknameStatus("duplicate");
+      setNicknameMessage("닉네임은 30자 이하로 입력해주세요.");
+      return false;
+    }
+
+    setNicknameStatus("checking");
+    setNicknameMessage("닉네임 확인 중입니다.");
+
+    try {
+      const response = await apiRequest<{ available: boolean; message: string }>(
+        `/accounts/nickname-availability/?nickname=${encodeURIComponent(trimmed)}`,
+      );
+      setNicknameStatus(response.available ? "available" : "duplicate");
+      setNicknameMessage(response.message);
+      return response.available;
+    } catch {
+      setNicknameStatus("idle");
+      setNicknameMessage("");
+      return false;
+    }
+  }
+
   if (!open) return null;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (nicknameStatus === "duplicate") {
-      setErrorMessage("이미 사용 중인 닉네임입니다.");
-      return;
+    if (nicknameStatus !== "available") {
+      const available = await checkNicknameAvailability(username);
+      if (!available) {
+        setErrorMessage("사용 가능한 닉네임인지 확인해주세요.");
+        return;
+      }
     }
 
-    if (nicknameStatus !== "available") {
-      setErrorMessage("사용 가능한 닉네임인지 확인해주세요.");
+    if (nicknameStatus === "duplicate") {
+      setErrorMessage("이미 사용 중인 닉네임입니다.");
       return;
     }
 
