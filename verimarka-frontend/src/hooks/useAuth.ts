@@ -8,6 +8,7 @@ export interface MeResponse {
   nickname: string;
   display_name: string;
   email: string;
+  email_verified: boolean;
   phone: string | null;
   phone_verified: boolean;
   auth_provider: string;
@@ -39,6 +40,7 @@ interface SignupPayload {
 
 interface UpdateProfilePayload {
   display_name?: string;
+  email?: string;
 }
 
 export function useAuth() {
@@ -106,6 +108,15 @@ export function useAuth() {
     return data;
   }
 
+  async function withdraw() {
+    await apiRequest<{ message: string }>("/accounts/withdraw/", {
+      method: "DELETE",
+      auth: true,
+    });
+    clearTokens();
+    setUser(null);
+  }
+
   return {
     user,
     loading,
@@ -113,6 +124,7 @@ export function useAuth() {
     login,
     signup,
     logout,
+    withdraw,
     refreshMe: fetchMe,
     updateProfile,
   };

@@ -4,6 +4,7 @@ import type {
   RegisterResultConfig,
   TabName,
   UploadHistoryItem,
+  VerifyHistoryItem,
 } from "../types/app";
 
 export const tabs: Array<{
@@ -13,9 +14,9 @@ export const tabs: Array<{
   requiresVerified?: boolean;
 }> = [
   { key: "home", label: "홈" },
-  { key: "add", label: "저작물 등록", requiresAuth: true, requiresVerified: true },
-  { key: "verify", label: "저작물 검증", requiresAuth: true, requiresVerified: true },
-  { key: "history", label: "분석 기록", requiresAuth: true, requiresVerified: true },
+  { key: "add", label: "저작물 등록", requiresAuth: true },
+  { key: "verify", label: "저작물 검증", requiresAuth: true },
+  { key: "history", label: "분석 기록", requiresAuth: true },
 ];
 
 export const systemCards = [
@@ -98,6 +99,27 @@ export const historyItems: HistoryItem[] = [
   },
 ];
 
+export const verifyHistoryItems: VerifyHistoryItem[] = [
+  {
+    id: "verify-1",
+    title: "검증_도시A.png",
+    description: "검증 성공 · Token #82401",
+    tone: "blue",
+  },
+  {
+    id: "verify-2",
+    title: "검증_캐릭터B.png",
+    description: "검증 실패 · 유사 후보 1건",
+    tone: "review",
+  },
+  {
+    id: "verify-3",
+    title: "검증_풍경C.jpg",
+    description: "검증 성공 · Token #82374",
+    tone: "green",
+  },
+];
+
 export const resultConfig: Record<"allow" | "review" | "block", RegisterResultConfig> = {
   allow: {
     badge: "ALLOW",
@@ -115,14 +137,14 @@ export const resultConfig: Record<"allow" | "review" | "block", RegisterResultCo
   review: {
     badge: "REVIEW",
     title: "보류 판정입니다.",
-    subtitle: "유사 후보가 감지되어 추가 검토가 필요합니다.",
+    subtitle: "유사 후보가 감지되어 커뮤니티 투표 생성이 필요합니다.",
     similarity: "74.2%",
-    note: "검토 큐로 전달되며 블록체인 투표 결과에 따라 최종 상태가 확정됩니다.",
+    note: "동의 시 블록체인 투표를 생성하고, 결과에 따라 최종 상태가 확정됩니다.",
     tone: "review",
     threshold: "0.7500",
     phashDistance: "8",
     delta: "-0.0079",
-    primaryAction: "수동 검토 요청하기",
+    primaryAction: "투표 생성 동의하기",
     metricLabel: "Cosine Similarity",
   },
   block: {
