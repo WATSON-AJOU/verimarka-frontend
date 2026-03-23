@@ -39,6 +39,8 @@ function getInitial(value: string) {
   return safeValue ? safeValue.slice(0, 1).toUpperCase() : "V";
 }
 
+const LOADING_RING_DURATION_MS = 5000;
+
 export default function App() {
   const { user, loading, isLoggedIn, login, signup, logout, withdraw, refreshMe, updateProfile } = useAuth();
   const [activeTab, setActiveTab] = useState<TabName>("home");
@@ -70,6 +72,16 @@ export default function App() {
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>("idle");
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisRequestPending, setAnalysisRequestPending] = useState(false);
+  const [reviewVoteProgress, setReviewVoteProgress] = useState(0);
+  const [reviewVoteRequestPending, setReviewVoteRequestPending] = useState(false);
+  const [reviewVoteModalOpen, setReviewVoteModalOpen] = useState(false);
+  const [reviewVoteDraft, setReviewVoteDraft] = useState<{
+    contentId: string;
+    upvotes: number;
+    downvotes: number;
+    participantCount: number;
+    votedChoice: "yes" | "no" | null;
+  } | null>(null);
   const [watermarkProgress, setWatermarkProgress] = useState(0);
   const [watermarkRequestPending, setWatermarkRequestPending] = useState(false);
   const [mintProgress, setMintProgress] = useState(0);
@@ -136,6 +148,9 @@ export default function App() {
       setPreviewUrl("");
       setAnalysisStage("idle");
       setAnalysisProgress(0);
+      setReviewVoteProgress(0);
+      setReviewVoteModalOpen(false);
+      setReviewVoteDraft(null);
       setWatermarkProgress(0);
       setMintProgress(0);
       setContentResult(null);
@@ -146,11 +161,39 @@ export default function App() {
     setPreviewUrl(objectUrl);
     setAnalysisStage("ready");
     setAnalysisProgress(0);
+    setReviewVoteProgress(0);
     setWatermarkProgress(0);
     setMintProgress(0);
 
     return () => URL.revokeObjectURL(objectUrl);
   }, [selectedFile]);
+
+  useEffect(() => {
+    if (!contentResult?.public_id || contentResult.decision !== "review") {
+      setReviewVoteModalOpen(false);
+      return;
+    }
+
+    setReviewVoteDraft((current) => {
+      if (current && current.contentId === contentResult.public_id) {
+        return current;
+      }
+
+      return {
+        contentId: contentResult.public_id,
+        upvotes: contentResult.blockchain?.vote?.upvotes ?? 0,
+        downvotes: contentResult.blockchain?.vote?.downvotes ?? 0,
+        participantCount: contentResult.blockchain?.vote?.participant_count ?? 0,
+        votedChoice: null,
+      };
+    });
+  }, [
+    contentResult?.public_id,
+    contentResult?.decision,
+    contentResult?.blockchain?.vote?.upvotes,
+    contentResult?.blockchain?.vote?.downvotes,
+    contentResult?.blockchain?.vote?.participant_count,
+  ]);
 
   useEffect(() => {
     if (!verifyFile) {
@@ -172,33 +215,66 @@ export default function App() {
 
   useEffect(() => {
     if (analysisStage !== "running" || !analysisRequestPending) return;
+    const startedAt = Date.now();
     const intervalId = window.setInterval(() => {
-      setAnalysisProgress((current) => Math.min(92, current + 3 + Math.random() * 6));
-    }, 180);
+      const elapsed = Date.now() - startedAt;
+      const next = Math.min(100, (elapsed / LOADING_RING_DURATION_MS) * 100);
+      setAnalysisProgress(next);
+    }, 50);
     return () => window.clearInterval(intervalId);
   }, [analysisStage, analysisRequestPending]);
 
   useEffect(() => {
-    if (analysisStage !== "watermarking" || !watermarkRequestPending) return;
+    if (analysisStage !== "reviewStarting" || !reviewVoteRequestPending) return;
+    const startedAt = Date.now();
     const intervalId = window.setInterval(() => {
-      setWatermarkProgress((current) => Math.min(92, current + 4 + Math.random() * 7));
-    }, 220);
+      const elapsed = Date.now() - startedAt;
+      const next = Math.min(100, (elapsed / LOADING_RING_DURATION_MS) * 100);
+      setReviewVoteProgress(next);
+    }, 50);
+    return () => window.clearInterval(intervalId);
+  }, [analysisStage, reviewVoteRequestPending]);
+
+  useEffect(() => {
+    if (analysisStage !== "watermarking" || !watermarkRequestPending) return;
+    const startedAt = Date.now();
+    const intervalId = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const next = Math.min(100, (elapsed / LOADING_RING_DURATION_MS) * 100);
+      setWatermarkProgress(next);
+    }, 50);
     return () => window.clearInterval(intervalId);
   }, [analysisStage, watermarkRequestPending]);
 
   useEffect(() => {
     if (analysisStage !== "minting" || !mintRequestPending) return;
+    const startedAt = Date.now();
     const intervalId = window.setInterval(() => {
-      setMintProgress((current) => Math.min(92, current + 4 + Math.random() * 6));
-    }, 260);
+      const elapsed = Date.now() - startedAt;
+      const next = Math.min(100, (elapsed / LOADING_RING_DURATION_MS) * 100);
+      setMintProgress(next);
+    }, 50);
     return () => window.clearInterval(intervalId);
   }, [analysisStage, mintRequestPending]);
 
   useEffect(() => {
-    if (!verifyRunning) return;
+    if (analysisStage !== "reviewLive" || !contentResult?.public_id) return;
+    const voteStatus = contentResult.blockchain?.vote?.status;
+    if (voteStatus && voteStatus !== "Pending") return;
     const intervalId = window.setInterval(() => {
-      setVerifyProgress((current) => Math.min(92, current + 4 + Math.random() * 5));
-    }, 220);
+      void refreshReviewVote(contentResult.public_id, { silent: true });
+    }, 30000);
+    return () => window.clearInterval(intervalId);
+  }, [analysisStage, contentResult?.public_id, contentResult?.blockchain?.vote?.status]);
+
+  useEffect(() => {
+    if (!verifyRunning) return;
+    const startedAt = Date.now();
+    const intervalId = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const next = Math.min(100, (elapsed / LOADING_RING_DURATION_MS) * 100);
+      setVerifyProgress(next);
+    }, 50);
     return () => window.clearInterval(intervalId);
   }, [verifyRunning]);
 
@@ -364,7 +440,7 @@ export default function App() {
     const formData = new FormData();
     formData.append("file", selectedFile);
 
-    setAnalysisProgress(8);
+    setAnalysisProgress(0);
     setAnalysisStage("running");
     setAnalysisRequestPending(true);
     setContentResult(null);
@@ -430,7 +506,7 @@ export default function App() {
     const formData = new FormData();
     formData.append("file", verifyFile);
 
-    setVerifyProgress(10);
+    setVerifyProgress(0);
     setVerifyRunning(true);
     setVerifyResult(null);
     openToast("저작물 검증을 요청했습니다.");
@@ -473,7 +549,7 @@ export default function App() {
     }
 
     setAnalysisStage("watermarking");
-    setWatermarkProgress(12);
+    setWatermarkProgress(0);
     setWatermarkRequestPending(true);
     openToast("워터마크 삽입을 요청했습니다.");
 
@@ -498,6 +574,83 @@ export default function App() {
     }
   }
 
+  async function startReviewVote() {
+    if (!contentResult) {
+      window.alert("먼저 REVIEW 판정 콘텐츠를 준비해주세요.");
+      return;
+    }
+
+    if (!phoneVerified) {
+      promptPhoneRequired("휴대폰 인증이 필요합니다.");
+      return;
+    }
+
+    setAnalysisStage("reviewStarting");
+    setReviewVoteProgress(0);
+    setReviewVoteRequestPending(true);
+    openToast("커뮤니티 검증 투표 생성을 요청했습니다.");
+
+    try {
+      const response = await apiRequest<RegisteredContentResponse>(
+        `/contents/${contentResult.public_id}/review-vote/start/`,
+        {
+          method: "POST",
+          auth: true,
+        },
+      );
+      setContentResult(response);
+      setReviewVoteProgress(100);
+
+      if (response.decision === "allow" || response.decision === "block") {
+        setAnalysisStage(response.decision);
+      } else {
+        setAnalysisStage("reviewLive");
+      }
+      openToast("커뮤니티 검증 투표가 시작되었습니다.");
+    } catch (error) {
+      setAnalysisStage("review");
+      setReviewVoteProgress(0);
+      window.alert(error instanceof Error ? error.message : "커뮤니티 검증 투표 생성에 실패했습니다.");
+    } finally {
+      setReviewVoteRequestPending(false);
+    }
+  }
+
+  async function refreshReviewVote(publicId?: string, options?: { silent?: boolean }) {
+    const targetPublicId = publicId || contentResult?.public_id;
+    if (!targetPublicId) return;
+
+    try {
+      const response = await apiRequest<RegisteredContentResponse>(`/contents/${targetPublicId}/review-vote/`, {
+        method: "GET",
+        auth: true,
+      });
+      setContentResult(response);
+
+      if (response.decision === "allow" || response.decision === "block") {
+        setReviewVoteModalOpen(false);
+        setAnalysisStage(response.decision);
+        if (!options?.silent) {
+          openToast(
+            response.decision === "allow"
+              ? "커뮤니티 검증이 승인되어 등록 가능 상태로 전환되었습니다."
+              : "커뮤니티 검증이 거절되어 등록 제한 상태로 전환되었습니다.",
+          );
+        }
+        return;
+      }
+
+      setAnalysisStage("reviewLive");
+      if (!options?.silent) {
+        openToast("커뮤니티 검증 현황을 새로고침했습니다.");
+      }
+    } catch (error) {
+      if (!options?.silent) {
+        window.alert(error instanceof Error ? error.message : "커뮤니티 검증 상태를 불러오지 못했습니다.");
+      }
+    }
+  }
+
   async function startMint() {
     if (!contentResult) {
       window.alert("먼저 워터마크 삽입을 완료해주세요.");
@@ -509,13 +662,17 @@ export default function App() {
       return;
     }
 
-    if (contentResult.blockchain?.minted && contentResult.blockchain?.tx_hash) {
+    if (
+      contentResult.blockchain?.mint_kind === "content" &&
+      contentResult.blockchain?.minted &&
+      contentResult.blockchain?.tx_hash
+    ) {
       setAnalysisStage("minted");
       return;
     }
 
     setAnalysisStage("minting");
-    setMintProgress(14);
+    setMintProgress(0);
     setMintRequestPending(true);
     openToast("NFT 토큰 발행을 요청했습니다.");
 
@@ -538,6 +695,37 @@ export default function App() {
     } finally {
       setMintRequestPending(false);
     }
+  }
+
+  function castReviewDemoVote(choice: "yes" | "no") {
+    if (!contentResult?.public_id) return;
+
+    setReviewVoteDraft((current) => {
+      const base = current && current.contentId === contentResult.public_id
+        ? current
+        : {
+            contentId: contentResult.public_id,
+            upvotes: contentResult.blockchain?.vote?.upvotes ?? 0,
+            downvotes: contentResult.blockchain?.vote?.downvotes ?? 0,
+            participantCount: contentResult.blockchain?.vote?.participant_count ?? 0,
+            votedChoice: null as "yes" | "no" | null,
+          };
+
+      if (base.votedChoice) {
+        return base;
+      }
+
+      return {
+        ...base,
+        upvotes: base.upvotes + (choice === "yes" ? 1 : 0),
+        downvotes: base.downvotes + (choice === "no" ? 1 : 0),
+        participantCount: base.participantCount + 1,
+        votedChoice: choice,
+      };
+    });
+
+    setReviewVoteModalOpen(false);
+    openToast("데모 투표에 참여했습니다. 실제 서비스에서는 블록체인에 기록됩니다.");
   }
 
   async function sendPhoneVerificationCode() {
@@ -680,6 +868,8 @@ export default function App() {
             onResetToReady={() => {
               setAnalysisStage("ready");
               setAnalysisProgress(0);
+              setReviewVoteProgress(0);
+              setReviewVoteModalOpen(false);
               setWatermarkProgress(0);
               setMintProgress(0);
             }}
@@ -699,6 +889,10 @@ export default function App() {
                   return;
                 }
                 void startWatermark();
+                return;
+              }
+              if (registerResult?.tone === "review") {
+                void startReviewVote();
                 return;
               }
               if (registerResult) openToast(registerResult.primaryAction);
@@ -722,8 +916,17 @@ export default function App() {
             }}
             uploadInputRef={uploadInputRef}
             formatFileSize={formatFileSize}
+            reviewVoteProgress={reviewVoteProgress}
             watermarkProgress={watermarkProgress}
             mintProgress={mintProgress}
+            reviewVoteDraft={reviewVoteDraft}
+            reviewVoteModalOpen={reviewVoteModalOpen}
+            onOpenReviewVoteModal={() => setReviewVoteModalOpen(true)}
+            onCloseReviewVoteModal={() => setReviewVoteModalOpen(false)}
+            onCastReviewDemoVote={castReviewDemoVote}
+            onRefreshReviewVote={() => {
+              void refreshReviewVote();
+            }}
           />
         ) : null}
 

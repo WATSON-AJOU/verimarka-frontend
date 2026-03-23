@@ -67,19 +67,19 @@ export default function VerifyPage({
 
               <div className="analysis-timeline-card">
                 <h3 className="analysis-running-title">검증을 진행하고 있습니다.</h3>
-                <p className="analysis-running-subtitle">유사도 분석 결과를 바탕으로 최종 검증 결과를 생성 중입니다.</p>
+                <p className="analysis-running-subtitle">검증 결과를 정리하고 있습니다.</p>
                 <ul className="analysis-step-list">
                   <li className="analysis-step is-done">
                     <span className="analysis-step-dot" />
-                    <p className="analysis-step-title"><span className="analysis-step-state">[실패]</span> 워터마크 검출 시도</p>
-                  </li>
-                  <li className="analysis-step is-pending">
-                    <span className="analysis-step-dot" />
-                    <p className="analysis-step-title"><span className="analysis-step-state">[건너뜀]</span> 토큰 연계 정보 확인 (검출 성공 시)</p>
+                    <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 워터마크 검출 시도</p>
                   </li>
                   <li className="analysis-step is-done">
                     <span className="analysis-step-dot" />
-                    <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 유사 이미지 탐색 (검출 실패 시)</p>
+                    <p className="analysis-step-title"><span className="analysis-step-state">[완료]</span> 토큰 연계 정보 확인 (검출 성공 시)</p>
+                  </li>
+                  <li className="analysis-step is-pending">
+                    <span className="analysis-step-dot" />
+                    <p className="analysis-step-title"><span className="analysis-step-state">[건너뜀]</span> 유사 이미지 탐색 (검출 실패 시)</p>
                   </li>
                   <li className="analysis-step is-running">
                     <span className="analysis-step-dot" />
@@ -91,122 +91,124 @@ export default function VerifyPage({
           </div>
         ) : verifyResult ? (
           <div className="verify-shell">
-            <div className="verify-result-head">
-              <span className={`result-badge ${verifyResult.outcome === "candidate" ? "is-failed" : ""}`}>{verifyResult.headline_badge}</span>
-              <h3 className="result-title">{verifyResult.headline_title}</h3>
-              <p className="result-subtitle">{verifyResult.headline_subtitle}</p>
-            </div>
+            <div className="analysis-result-view" data-result={verifyResult.outcome === "candidate" ? "reject" : "allow"}>
+              <div className="analysis-result-body verify-result-body">
+                <span className={`result-badge ${verifyResult.outcome === "candidate" ? "is-failed" : ""}`}>{verifyResult.headline_badge}</span>
+                <h3 className="result-title">{verifyResult.headline_title}</h3>
+                <p className="result-subtitle">{verifyResult.headline_subtitle}</p>
 
-            {verifyResult.outcome === "verified" ? (
-              <div className="verify-result-grid">
-                <div className="mint-complete-card">
-                  <h4>검증 이미지</h4>
-                  <div className="mint-complete-frame">
-                    <img src={uploadedPreview} alt={selectedFile.name} />
+                {verifyResult.outcome === "verified" ? (
+                  <div className="analysis-result-layout verify-result-layout verify-result-layout-success">
+                    <div className="result-preview-card verify-preview-card">
+                      <h4>검증 이미지</h4>
+                      <div className="verify-result-frame">
+                        <img src={uploadedPreview} alt={selectedFile.name} />
+                      </div>
+                    </div>
+                    <div className="result-summary-card verify-summary-card">
+                      <h4>연결된 토큰 정보</h4>
+                      <div className="verify-token-meta">
+                        <div className="verify-token-row">
+                          <span>검증자</span>
+                          <strong>{verifyResult.uploaded.verifier_name}</strong>
+                        </div>
+                        <div className="verify-token-row">
+                          <span>검증 시각</span>
+                          <strong>{verifyResult.uploaded.verified_at}</strong>
+                        </div>
+                        <div className="verify-token-row">
+                          <span>Token ID</span>
+                          <strong>{verifyResult.blockchain?.token_id ? `#${verifyResult.blockchain.token_id}` : "-"}</strong>
+                        </div>
+                        <div className="verify-token-row">
+                          <span>네트워크</span>
+                          <strong>{verifyResult.blockchain?.network_name || "-"}</strong>
+                        </div>
+                        <div className="verify-token-row">
+                          <span>Content Hash</span>
+                          <strong>{verifyResult.blockchain?.content_hash || "-"}</strong>
+                        </div>
+                        <div className="verify-token-row">
+                          <span>Transaction Hash</span>
+                          <strong>{verifyResult.blockchain?.transaction_hash || "-"}</strong>
+                        </div>
+                        <div className="verify-token-row">
+                          <span>체인 기록 시각</span>
+                          <strong>{verifyResult.blockchain?.minted_at || "-"}</strong>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-                <div className="mint-complete-card">
-                  <h4>연결된 토큰 정보</h4>
-                  <div className="mint-chain-meta">
-                    <div className="mint-file-row">
-                      <span>검증자</span>
-                      <strong>{verifyResult.uploaded.verifier_name}</strong>
+                ) : (
+                  <>
+                    <div className="analysis-result-layout verify-result-layout">
+                      <div className="result-preview-card verify-preview-card">
+                        <h4>업로드 이미지</h4>
+                        <div className="verify-result-frame">
+                          <img src={uploadedPreview} alt={selectedFile.name} />
+                        </div>
+                      </div>
+                      <div className="result-summary-card verify-summary-card">
+                        <h4>유사 이미지 후보</h4>
+                        <div className="verify-result-frame">
+                          {verifyResult.candidate?.preview_url ? (
+                            <img src={verifyResult.candidate.preview_url} alt={verifyResult.candidate.file_name || "유사 이미지 후보"} />
+                          ) : (
+                            <div className="verify-placeholder-frame">후보 이미지 없음</div>
+                          )}
+                        </div>
+                        <div className="verify-candidate-meta">
+                          <div className="verify-token-row">
+                            <span>파일명</span>
+                            <strong>{verifyResult.candidate?.file_name || "-"}</strong>
+                          </div>
+                          <div className="verify-token-row">
+                            <span>등록자</span>
+                            <strong>{verifyResult.candidate?.owner_name || "-"}</strong>
+                          </div>
+                          <div className="verify-token-row">
+                            <span>등록일</span>
+                            <strong>{verifyResult.candidate?.registered_at || "-"}</strong>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="mint-file-row">
-                      <span>검증 시각</span>
-                      <strong>{verifyResult.uploaded.verified_at}</strong>
+
+                    <div className="verify-metric-grid">
+                      <div className="verify-metric-card">
+                        <h4>워터마크 검출</h4>
+                        <div className="verify-metric-value">{verifyResult.detect.status_label || "실패"}</div>
+                      </div>
+                      <div className="verify-metric-card">
+                        <h4>유사도(코사인)</h4>
+                        <div className="verify-metric-value">
+                          {typeof verifyResult.candidate?.cosine === "number"
+                            ? `${verifyResult.candidate.cosine.toFixed(4)} (${(verifyResult.candidate.cosine * 100).toFixed(1)}%)`
+                            : "-"}
+                        </div>
+                      </div>
+                      <div className="verify-metric-card">
+                        <h4>pHash Distance</h4>
+                        <div className="verify-metric-value">
+                          {typeof verifyResult.candidate?.phash_dist === "number"
+                            ? `${verifyResult.candidate.phash_dist} / Threshold ${verifyResult.candidate.threshold ?? 8}`
+                            : "-"}
+                        </div>
+                      </div>
+                      <div className="verify-metric-card">
+                        <h4>최종 판단</h4>
+                        <div className="verify-metric-value">{verifyResult.candidate?.summary || "-"}</div>
+                      </div>
                     </div>
-                    <div className="mint-file-row">
-                      <span>Token ID</span>
-                      <strong>{verifyResult.blockchain?.token_id ? `#${verifyResult.blockchain.token_id}` : "-"}</strong>
-                    </div>
-                    <div className="mint-file-row">
-                      <span>네트워크</span>
-                      <strong>{verifyResult.blockchain?.network_name || "-"}</strong>
-                    </div>
-                    <div className="mint-file-row">
-                      <span>Content Hash</span>
-                      <strong>{verifyResult.blockchain?.content_hash || "-"}</strong>
-                    </div>
-                    <div className="mint-file-row">
-                      <span>Transaction Hash</span>
-                      <strong>{verifyResult.blockchain?.transaction_hash || "-"}</strong>
-                    </div>
-                    <div className="mint-file-row">
-                      <span>체인 기록 시각</span>
-                      <strong>{verifyResult.blockchain?.minted_at || "-"}</strong>
-                    </div>
-                  </div>
+                  </>
+                )}
+
+                <div className="verify-reset-actions">
+                  <button className="btn btn-primary" type="button" onClick={onResetVerify}>
+                    다른 이미지 검증
+                  </button>
                 </div>
               </div>
-            ) : (
-              <>
-                <div className="verify-result-grid">
-                  <div className="mint-complete-card">
-                    <h4>업로드 이미지</h4>
-                    <div className="mint-complete-frame">
-                      <img src={uploadedPreview} alt={selectedFile.name} />
-                    </div>
-                  </div>
-                  <div className="mint-complete-card">
-                    <h4>유사 이미지 후보</h4>
-                    <div className="mint-complete-frame">
-                      {verifyResult.candidate?.preview_url ? (
-                        <img src={verifyResult.candidate.preview_url} alt={verifyResult.candidate.file_name || "유사 이미지 후보"} />
-                      ) : (
-                        <div className="verify-placeholder-frame">후보 이미지 없음</div>
-                      )}
-                    </div>
-                    <div className="mint-file-meta">
-                      <div className="mint-file-row">
-                        <span>파일명</span>
-                        <strong>{verifyResult.candidate?.file_name || "-"}</strong>
-                      </div>
-                      <div className="mint-file-row">
-                        <span>등록자</span>
-                        <strong>{verifyResult.candidate?.owner_name || "-"}</strong>
-                      </div>
-                      <div className="mint-file-row">
-                        <span>등록일</span>
-                        <strong>{verifyResult.candidate?.registered_at || "-"}</strong>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="verify-metric-grid">
-                  <div className="mint-complete-card">
-                    <h4>워터마크 검출</h4>
-                    <div className="verify-metric-value">{verifyResult.detect.status_label || "실패"}</div>
-                  </div>
-                  <div className="mint-complete-card">
-                    <h4>유사도(코사인)</h4>
-                    <div className="verify-metric-value">
-                      {typeof verifyResult.candidate?.cosine === "number"
-                        ? `${verifyResult.candidate.cosine.toFixed(4)} (${(verifyResult.candidate.cosine * 100).toFixed(1)}%)`
-                        : "-"}
-                    </div>
-                  </div>
-                  <div className="mint-complete-card">
-                    <h4>pHash Distance</h4>
-                    <div className="verify-metric-value">
-                      {typeof verifyResult.candidate?.phash_dist === "number"
-                        ? `${verifyResult.candidate.phash_dist} / Threshold ${verifyResult.candidate.threshold ?? 8}`
-                        : "-"}
-                    </div>
-                  </div>
-                  <div className="mint-complete-card">
-                    <h4>최종 판단</h4>
-                    <div className="verify-metric-value">{verifyResult.candidate?.summary || "-"}</div>
-                  </div>
-                </div>
-              </>
-            )}
-
-            <div className="watermark-complete-actions verify-reset-actions">
-              <button className="btn btn-secondary" type="button" onClick={onResetVerify}>
-                다른 이미지 검증
-              </button>
             </div>
           </div>
         ) : (
@@ -228,7 +230,7 @@ export default function VerifyPage({
 
               <div className="analysis-card">
                 <h4>검증 시나리오</h4>
-                <p className="verify-scenario-copy">백엔드/AI 연결 전 화면 테스트를 위한 더미 모드입니다.</p>
+                <p className="verify-scenario-copy">워터마크 검출과 블록체인 연계 조회, 유사 이미지 탐색을 순차적으로 수행합니다.</p>
                 <div className="verify-scenario-panel">
                   <h5>검증 안내</h5>
                   <ul className="analysis-list">
@@ -250,7 +252,7 @@ export default function VerifyPage({
       </article>
 
       <aside className="register-history verify-history-panel">
-        <h3>최근 검증 기록</h3>
+        <h3>최근 등록된 사진</h3>
         <div className="history-scroll">
           {recentItems.map((item, index) => (
             <article key={item.id} className="history-item verify-history-item">

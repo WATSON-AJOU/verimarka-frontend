@@ -1,7 +1,17 @@
 export type TabName = "home" | "add" | "verify" | "history" | "mypage";
 export type ModalType = "none" | "loginChoice" | "emailLogin" | "signup";
 export type AnalysisResult = "allow" | "review" | "block";
-export type AnalysisStage = "idle" | "ready" | "running" | "watermarking" | "watermarked" | "minting" | "minted" | AnalysisResult;
+export type AnalysisStage =
+  | "idle"
+  | "ready"
+  | "running"
+  | "reviewStarting"
+  | "reviewLive"
+  | "watermarking"
+  | "watermarked"
+  | "minting"
+  | "minted"
+  | AnalysisResult;
 
 export interface ActivityItem {
   status: "ALLOW" | "REVIEW" | "BLOCK";
@@ -79,6 +89,7 @@ export interface RegisteredContentResponse {
   };
   blockchain: {
     minted?: boolean;
+    mint_kind?: "content" | "review_vote";
     network_name?: string;
     chain_id?: number | null;
     contract_address?: string;
@@ -98,6 +109,23 @@ export interface RegisteredContentResponse {
     model_name?: string;
     model_version?: string;
     document?: Record<string, unknown>;
+    vote?: {
+      active?: boolean;
+      vote_id?: string;
+      status?: string;
+      upvotes?: number;
+      downvotes?: number;
+      participant_count?: number;
+      end_time?: string | null;
+      end_time_display?: string | null;
+      started_at?: string | null;
+      started_at_display?: string | null;
+      finalized_at?: string | null;
+      finalized_at_display?: string | null;
+      similarity_percent?: number | null;
+      threshold?: number | null;
+      delta?: number | null;
+    };
   };
   timing_ms: {
     download?: number;

@@ -137,14 +137,14 @@ export const resultConfig: Record<"allow" | "review" | "block", RegisterResultCo
   review: {
     badge: "REVIEW",
     title: "보류 판정입니다.",
-    subtitle: "유사 후보가 감지되어 추가 검토가 필요합니다.",
+    subtitle: "유사 후보가 감지되어 커뮤니티 투표 생성이 필요합니다.",
     similarity: "74.2%",
-    note: "검토 큐로 전달되며 블록체인 투표 결과에 따라 최종 상태가 확정됩니다.",
+    note: "동의 시 블록체인 투표를 생성하고, 결과에 따라 최종 상태가 확정됩니다.",
     tone: "review",
     threshold: "0.7500",
     phashDistance: "8",
     delta: "-0.0079",
-    primaryAction: "수동 검토 요청하기",
+    primaryAction: "투표 생성 동의하기",
     metricLabel: "Cosine Similarity",
   },
   block: {
