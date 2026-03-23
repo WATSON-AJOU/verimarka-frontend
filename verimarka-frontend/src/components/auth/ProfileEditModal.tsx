@@ -5,7 +5,7 @@ interface ProfileEditModalProps {
   initialDisplayName: string;
   submitting: boolean;
   onClose: () => void;
-  onSubmit: (displayName: string) => Promise<void>;
+  onSubmit: (payload: { display_name: string }) => Promise<void>;
 }
 
 export default function ProfileEditModal({
@@ -42,7 +42,7 @@ export default function ProfileEditModal({
 
     setErrorMessage("");
     try {
-      await onSubmit(normalized);
+      await onSubmit({ display_name: normalized });
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : "프로필 수정에 실패했습니다.");
     }
