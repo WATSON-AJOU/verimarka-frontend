@@ -48,20 +48,6 @@ function formatLastLogin(value: string | null | undefined) {
   return `${year}.${month}.${day} ${hours}:${minutes}`;
 }
 
-function buildWatermarkedFileName(fileName: string) {
-  const trimmed = fileName.trim();
-  if (!trimmed) return "watermarked_VM";
-
-  const dotIndex = trimmed.lastIndexOf(".");
-  if (dotIndex <= 0 || dotIndex === trimmed.length - 1) {
-    return `${trimmed}_VM`;
-  }
-
-  const baseName = trimmed.slice(0, dotIndex);
-  const extension = trimmed.slice(dotIndex);
-  return `${baseName}_VM${extension}`;
-}
-
 function buildMockVerificationUrl(tokenId?: number | null) {
   return `https://verimarka.com/${tokenId ?? 82525}`;
 }
@@ -431,14 +417,8 @@ export default function App() {
     setToast((current) => ({ ...current, open: false }));
   }
 
-  function downloadFile(url: string, fileName: string) {
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = fileName;
-    link.rel = "noopener noreferrer";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  function openFileInNewTab(url: string) {
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   function promptPhoneRequired(message = "서비스 이용을 위해 마이페이지에서 휴대폰 인증을 완료해주세요.") {
@@ -1070,10 +1050,7 @@ export default function App() {
               if (contentResult?.watermark_file_url) {
                 const shouldDownload = window.confirm("워터마크 이미지를 저장하시겠습니까?");
                 if (!shouldDownload) return;
-                downloadFile(
-                  contentResult.watermark_file_url,
-                  buildWatermarkedFileName(selectedFile?.name || contentResult.original_filename),
-                );
+                openFileInNewTab(contentResult.watermark_file_url);
                 return;
               }
               openToast("워터마크 결과 파일이 아직 준비되지 않았습니다.");
