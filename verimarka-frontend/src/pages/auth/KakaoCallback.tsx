@@ -37,7 +37,7 @@ export default function KakaoCallback() {
 
       const redirect_uri = `${window.location.origin}/auth/kakao/callback`
 
-      const data = await apiRequest<OAuthLoginResponse>("/accounts/auth/oauth/kakao/", {
+      const data: OAuthLoginResponse = await apiRequest("/accounts/auth/oauth/kakao/", {
         method: "POST",
         body: { code, redirect_uri },
       })

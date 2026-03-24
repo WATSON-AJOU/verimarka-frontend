@@ -37,7 +37,7 @@ export default function GoogleCallback() {
 
       const redirect_uri = `${window.location.origin}/auth/google/callback`
 
-      const data = await apiRequest<OAuthLoginResponse>("/accounts/auth/oauth/google/", {
+      const data: OAuthLoginResponse = await apiRequest("/accounts/auth/oauth/google/", {
         method: "POST",
         body: { code, redirect_uri },
       })
