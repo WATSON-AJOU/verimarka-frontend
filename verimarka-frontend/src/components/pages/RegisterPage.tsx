@@ -244,7 +244,7 @@ export default function RegisterPage({
 
                   <div className="analysis-running-layout">
                     <div className="analysis-preview-card">
-                      <img src={candidatePreviewUrl} alt={selectedFile.name} />
+                      <img src={previewUrl} alt={selectedFile.name} />
                       <div className="analysis-progress-overlay">
                         <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(analysisProgress)) }}>
                           <span>{Math.round(analysisProgress)}%</span>
