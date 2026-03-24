@@ -49,7 +49,7 @@ export default function VerifyPage({
   onStartVerify,
   onResetVerify,
 }: VerifyPageProps) {
-  const uploadedPreview = previewUrl;
+  const uploadedPreview = previewUrl || null;
 
   return (
     <section className="verify-layout">
@@ -81,7 +81,7 @@ export default function VerifyPage({
           <div className="verify-shell">
             <div className="analysis-running-layout">
               <div className="analysis-preview-card">
-                <img src={uploadedPreview} alt={selectedFile.name} />
+                {uploadedPreview ? <img src={uploadedPreview} alt={selectedFile.name} /> : null}
                 <div className="analysis-progress-overlay">
                   <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(verifyProgress)) }}>
                     <span>{Math.round(verifyProgress)}%</span>
@@ -126,7 +126,7 @@ export default function VerifyPage({
                     <div className="result-preview-card verify-preview-card">
                       <h4>검증 이미지</h4>
                       <div className="verify-result-frame">
-                        <img src={uploadedPreview} alt={selectedFile.name} />
+                        {uploadedPreview ? <img src={uploadedPreview} alt={selectedFile.name} /> : null}
                       </div>
                     </div>
                     <div className="result-summary-card verify-summary-card">
@@ -169,7 +169,7 @@ export default function VerifyPage({
                       <div className="result-preview-card verify-preview-card">
                         <h4>업로드 이미지</h4>
                         <div className="verify-result-frame">
-                          <img src={uploadedPreview} alt={selectedFile.name} />
+                          {uploadedPreview ? <img src={uploadedPreview} alt={selectedFile.name} /> : null}
                         </div>
                       </div>
                       <div className="result-summary-card verify-summary-card">
@@ -240,7 +240,7 @@ export default function VerifyPage({
             <div className="verify-ready-grid">
               <div className="mint-complete-card">
                 <div className="mint-complete-frame">
-                  <img src={uploadedPreview} alt={selectedFile.name} />
+                  {uploadedPreview ? <img src={uploadedPreview} alt={selectedFile.name} /> : null}
                 </div>
                 <div className="verify-ready-meta">
                   <strong>{selectedFile.name}</strong>
