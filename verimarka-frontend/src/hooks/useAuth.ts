@@ -11,6 +11,7 @@ export interface MeResponse {
   email_verified: boolean;
   phone: string | null;
   phone_verified: boolean;
+  last_login_at: string | null;
   auth_provider: string;
   is_profile_completed: boolean;
   providers: string[];
