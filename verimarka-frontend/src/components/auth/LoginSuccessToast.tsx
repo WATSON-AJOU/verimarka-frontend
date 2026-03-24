@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 interface Props {
+  toastId: number;
   open: boolean;
   message?: string;
   duration?: number;
@@ -8,6 +9,7 @@ interface Props {
 }
 
 export default function LoginSuccessToast({
+  toastId,
   open,
   message = "로그인 완료했습니다.",
   duration = 3000,
@@ -37,7 +39,7 @@ export default function LoginSuccessToast({
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
-  }, [open, duration, onClose]);
+  }, [toastId, open, duration, onClose]);
 
   if (!open) return null;
 

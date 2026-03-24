@@ -97,6 +97,26 @@ export const historyItems: HistoryItem[] = [
     phash: "Distance 12 / Threshold 8",
     extra: "Polygon · Token #82374",
   },
+  {
+    id: "82355",
+    type: "block",
+    fileName: "캐릭터_원본B.png",
+    summary: "유사도 초과로 등록 차단",
+    timestamp: "2026.02.23 18:40",
+    cosine: "0.9631 (96.3%)",
+    phash: "Distance 3 / Threshold 8",
+    extra: "중복 가능성 높음",
+  },
+  {
+    id: "verify-82401",
+    type: "verify",
+    fileName: "검증_도시A.png",
+    summary: "워터마크 검증 성공 · Token #82401",
+    timestamp: "2026.02.22 10:05",
+    cosine: "-",
+    phash: "-",
+    extra: "Polygon · Verified",
+  },
 ];
 
 export const verifyHistoryItems: VerifyHistoryItem[] = [
