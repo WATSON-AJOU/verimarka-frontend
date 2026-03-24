@@ -1,4 +1,7 @@
 import { useEffect, useState } from "react";
+import { apiRequest } from "../../lib/api";
+
+const DISPLAY_NAME_REGEX = /^[A-Za-z0-9가-힣 ]+$/;
 
 interface ProfileEditModalProps {
   open: boolean;
@@ -17,14 +20,63 @@ export default function ProfileEditModal({
 }: ProfileEditModalProps) {
   const [displayName, setDisplayName] = useState(initialDisplayName);
   const [errorMessage, setErrorMessage] = useState("");
+  const [displayNameStatus, setDisplayNameStatus] = useState<"idle" | "checking" | "available" | "duplicate">("idle");
+  const [displayNameMessage, setDisplayNameMessage] = useState("");
 
   useEffect(() => {
     if (!open) return;
     setDisplayName(initialDisplayName);
     setErrorMessage("");
+    setDisplayNameStatus("idle");
+    setDisplayNameMessage("");
   }, [initialDisplayName, open]);
 
   if (!open) return null;
+
+  async function checkDisplayNameAvailability(rawValue: string) {
+    const normalized = rawValue.trim();
+
+    if (!normalized) {
+      setDisplayNameStatus("duplicate");
+      setDisplayNameMessage("표시명을 입력해주세요.");
+      return false;
+    }
+
+    if (normalized.length > 20) {
+      setDisplayNameStatus("duplicate");
+      setDisplayNameMessage("표시명은 20자 이하로 입력해주세요.");
+      return false;
+    }
+
+    if (!DISPLAY_NAME_REGEX.test(normalized)) {
+      setDisplayNameStatus("duplicate");
+      setDisplayNameMessage("표시명에는 특수문자를 포함할 수 없습니다.");
+      return false;
+    }
+
+    if (normalized === initialDisplayName.trim()) {
+      setDisplayNameStatus("available");
+      setDisplayNameMessage("현재 사용 중인 표시명입니다.");
+      return true;
+    }
+
+    setDisplayNameStatus("checking");
+    setDisplayNameMessage("표시명 확인 중입니다.");
+
+    try {
+      const response = await apiRequest<{ available: boolean; message: string }>(
+        `/accounts/display-name-availability/?display_name=${encodeURIComponent(normalized)}`,
+        { auth: true },
+      );
+      setDisplayNameStatus(response.available ? "available" : "duplicate");
+      setDisplayNameMessage(response.message);
+      return response.available;
+    } catch {
+      setDisplayNameStatus("idle");
+      setDisplayNameMessage("");
+      return false;
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -35,9 +87,22 @@ export default function ProfileEditModal({
       return;
     }
 
-    if (normalized.length > 50) {
-      setErrorMessage("표시명은 50자 이하로 입력해주세요.");
+    if (normalized.length > 20) {
+      setErrorMessage("표시명은 20자 이하로 입력해주세요.");
       return;
+    }
+
+    if (!DISPLAY_NAME_REGEX.test(normalized)) {
+      setErrorMessage("표시명에는 특수문자를 포함할 수 없습니다.");
+      return;
+    }
+
+    if (normalized !== initialDisplayName.trim() && displayNameStatus !== "available") {
+      const available = await checkDisplayNameAvailability(normalized);
+      if (!available) {
+        setErrorMessage("사용 가능한 표시명인지 중복 검사를 해주세요.");
+        return;
+      }
     }
 
     setErrorMessage("");
@@ -61,15 +126,37 @@ export default function ProfileEditModal({
         <form className="authForm" onSubmit={handleSubmit}>
           <label className="fieldLabel">
             표시명
-            <input
-              className="fieldInput"
-              type="text"
-              placeholder="표시명을 입력해주세요"
-              value={displayName}
-              onChange={(event) => setDisplayName(event.target.value)}
-              maxLength={50}
-              required
-            />
+            <div className="fieldInputRow">
+              <input
+                className="fieldInput"
+                type="text"
+                placeholder="표시명을 입력해주세요"
+                value={displayName}
+                onChange={(event) => {
+                  setDisplayName(event.target.value);
+                  setDisplayNameStatus("idle");
+                  setDisplayNameMessage("");
+                }}
+                maxLength={20}
+                required
+              />
+              <button
+                className="fieldActionButton"
+                type="button"
+                disabled={displayNameStatus === "checking"}
+                onClick={() => {
+                  void checkDisplayNameAvailability(displayName);
+                }}
+              >
+                {displayNameStatus === "checking" ? "확인 중" : "중복 검사"}
+              </button>
+            </div>
+            <span className="fieldHelp">표시명은 20자 이하이며 특수문자를 사용할 수 없습니다.</span>
+            {displayNameMessage ? (
+              <span className={`fieldHelp nicknameHelp nicknameHelp--${displayNameStatus}`}>
+                {displayNameMessage}
+              </span>
+            ) : null}
           </label>
 
           {errorMessage ? <p className="formError">{errorMessage}</p> : null}
