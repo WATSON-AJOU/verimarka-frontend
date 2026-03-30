@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAccount, useChainId, useConnect, useDisconnect, useSignMessage } from "wagmi";
 import "./App.css";
 import EmailLoginModal from "./components/auth/EmailLoginModal";
 import EmailVerificationModal from "./components/auth/EmailVerificationModal";
@@ -8,6 +10,7 @@ import PhoneVerificationModal from "./components/auth/PhoneVerificationModal";
 import PhoneRequiredModal from "./components/auth/PhoneRequiredModal";
 import ProfileEditModal from "./components/auth/ProfileEditModal";
 import SignupModal from "./components/auth/SignupModal";
+import WalletConnectModal from "./components/auth/WalletConnectModal";
 import WithdrawConfirmModal from "./components/auth/WithdrawConfirmModal";
 import HistoryPage from "./components/pages/HistoryPage";
 import HomePage from "./components/pages/HomePage";
@@ -17,10 +20,12 @@ import VerifyPage from "./components/pages/VerifyPage";
 import Footer from "./components/layout/Footer";
 import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
-import { historyItems, homeActivities, recentUploads, resultConfig, systemCards, tabs, verifyHistoryItems } from "./lib/mockData";
+import { historyItems, homeActivities, resultConfig, systemCards, tabs } from "./lib/mockData";
 import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest } from "./lib/api";
+import { sepolia, walletConnectEnabled } from "./lib/wallet";
 import { getAccessToken } from "./lib/token";
-import type { AnalysisStage, ModalType, RegisteredContentResponse, TabName, VerifyResultResponse } from "./types/app";
+import type { AnalysisJobStatusResponse, AnalysisStage, AsyncContentJobResponse, AsyncVerifyJobResponse, ModalType, RegisteredContentResponse, TabName, VerifyResultResponse, WalletSummaryResponse } from "./types/app";
+import type { HistoryItem } from "./types/app";
 
 function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -48,8 +53,70 @@ function formatLastLogin(value: string | null | undefined) {
   return `${year}.${month}.${day} ${hours}:${minutes}`;
 }
 
-function buildMockVerificationUrl(tokenId?: number | null) {
-  return `https://verimarka.com/${tokenId ?? 82525}`;
+function formatWalletAddress(value: string | null | undefined) {
+  if (!value) return null;
+  if (value.length <= 14) return value;
+  return `${value.slice(0, 6)}...${value.slice(-4)}`;
+}
+
+function getWalletNetworkLabel(chainId: number | null | undefined) {
+  if (chainId === sepolia.id) return "Sepolia";
+  if (!chainId) return "Sepolia";
+  return `Chain #${chainId}`;
+}
+
+function hasInjectedWalletProvider() {
+  if (typeof window === "undefined") return false;
+  return typeof (window as Window & { ethereum?: unknown }).ethereum !== "undefined";
+}
+
+function getWalletInstallMessage(connectorId?: string) {
+  if (connectorId === "rabby") {
+    return "Rabby 지갑이 설치되어 있지 않습니다. Rabby 확장 프로그램을 먼저 설치하세요.";
+  }
+
+  if (connectorId === "walletConnect") {
+    return "WalletConnect를 사용할 수 없습니다. Project ID 설정을 확인하세요.";
+  }
+
+  return "브라우저 지갑이 설치되어 있지 않습니다. MetaMask 같은 지갑을 먼저 설치하세요.";
+}
+
+const TAB_PATHS: Record<TabName, string> = {
+  home: "/",
+  add: "/register",
+  verify: "/verify",
+  history: "/history",
+  mypage: "/mypage",
+};
+
+function getTabFromPath(pathname: string): TabName {
+  if (pathname === "/register") return "add";
+  if (pathname === "/verify") return "verify";
+  if (pathname === "/history") return "history";
+  if (pathname === "/mypage") return "mypage";
+  return "home";
+}
+
+function buildHistoryEntryUrl(entryId: string) {
+  const url = new URL(window.location.href);
+  url.pathname = TAB_PATHS.history;
+  url.searchParams.set("entry", entryId);
+  return url.toString();
+}
+
+function buildWatermarkedFileName(fileName: string) {
+  const trimmed = fileName.trim();
+  if (!trimmed) return "watermarked_VM";
+
+  const dotIndex = trimmed.lastIndexOf(".");
+  if (dotIndex <= 0 || dotIndex === trimmed.length - 1) {
+    return `${trimmed}_VM`;
+  }
+
+  const baseName = trimmed.slice(0, dotIndex);
+  const extension = trimmed.slice(dotIndex);
+  return `${baseName}_VM${extension}`;
 }
 
 function formatReviewVoteEndAt(baseTime: number) {
@@ -72,8 +139,14 @@ const AUTO_LOGOUT_IDLE_MS = 30 * 60 * 1000;
 const POST_LOGOUT_TOAST_KEY = "verimarka:post-logout-toast";
 
 export default function App() {
+  const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading, isLoggedIn, login, signup, logout, withdraw, refreshMe, updateProfile } = useAuth();
-  const [activeTab, setActiveTab] = useState<TabName>("home");
+  const { address: connectedWalletAddress, connector: connectedConnector, isConnected } = useAccount();
+  const currentWalletChainId = useChainId();
+  const { connectAsync, connectors } = useConnect();
+  const { disconnectAsync } = useDisconnect();
+  const { signMessageAsync } = useSignMessage();
   const [modal, setModal] = useState<ModalType>("none");
   const [toast, setToast] = useState({
     id: 0,
@@ -103,6 +176,7 @@ export default function App() {
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>("idle");
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [analysisRequestPending, setAnalysisRequestPending] = useState(false);
+  const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
   const [reviewVoteProgress, setReviewVoteProgress] = useState(0);
   const [reviewVoteRequestPending, setReviewVoteRequestPending] = useState(false);
   const [reviewVoteModalOpen, setReviewVoteModalOpen] = useState(false);
@@ -118,6 +192,7 @@ export default function App() {
   } | null>(null);
   const [watermarkProgress, setWatermarkProgress] = useState(0);
   const [watermarkRequestPending, setWatermarkRequestPending] = useState(false);
+  const [watermarkJobId, setWatermarkJobId] = useState<string | null>(null);
   const [mintProgress, setMintProgress] = useState(0);
   const [mintRequestPending, setMintRequestPending] = useState(false);
   const [contentResult, setContentResult] = useState<RegisteredContentResponse | null>(null);
@@ -125,14 +200,34 @@ export default function App() {
   const [verifyPreviewUrl, setVerifyPreviewUrl] = useState("");
   const [verifyProgress, setVerifyProgress] = useState(0);
   const [verifyRunning, setVerifyRunning] = useState(false);
+  const [verifyJobId, setVerifyJobId] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerifyResultResponse | null>(null);
   const [historyFilter, setHistoryFilter] = useState<"all" | "allow" | "block" | "review" | "verify">("all");
+  const [historyEntries, setHistoryEntries] = useState<HistoryItem[]>(historyItems);
+  const [ongoingVoteUploads, setOngoingVoteUploads] = useState<import("./types/app").UploadHistoryItem[]>([]);
+  const [ongoingVoteVerifyItems, setOngoingVoteVerifyItems] = useState<import("./types/app").VerifyHistoryItem[]>([]);
+  const [walletConnecting, setWalletConnecting] = useState(false);
+  const [walletDisconnecting, setWalletDisconnecting] = useState(false);
+  const [walletConnectModalOpen, setWalletConnectModalOpen] = useState(false);
+  const [walletSummary, setWalletSummary] = useState<WalletSummaryResponse>({
+    connected: false,
+    address: null,
+    chain_id: null,
+    wallet_type: "",
+    network_name: "Sepolia",
+    nft_count: 0,
+    vote_minimum: 3,
+    vote_eligible: false,
+  });
+  const [walletSummaryLoading, setWalletSummaryLoading] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const verifyInputRef = useRef<HTMLInputElement | null>(null);
   const inactivityTimeoutRef = useRef<number | null>(null);
 
   const phoneVerified = Boolean(user?.phone_verified);
   const emailVerified = Boolean(user?.email_verified);
+  const activeTab = useMemo(() => getTabFromPath(location.pathname), [location.pathname]);
+  const historyEntryFromUrl = useMemo(() => new URLSearchParams(location.search).get("entry"), [location.search]);
   const displayName = useMemo(() => {
     if (!user) return "";
     return user.display_name || user.nickname || user.username || user.email.split("@")[0] || "회원";
@@ -142,6 +237,63 @@ export default function App() {
   const lastLoginLabel = formatLastLogin(user?.last_login_at);
   const avatarInitial = getInitial(displayName);
   const hasAuthSession = isLoggedIn || Boolean(getAccessToken());
+  const linkedWalletAddress = formatWalletAddress(user?.wallet_address);
+  const walletNetworkLabel = getWalletNetworkLabel(user?.wallet_chain_id);
+  const walletTypeLabel = user?.wallet_type || connectedConnector?.name || "Injected Wallet";
+  const walletRequired = !user?.wallet_address;
+
+  function navigateToTab(nextTab: TabName, options?: { replace?: boolean; search?: string }) {
+    navigate(
+      {
+        pathname: TAB_PATHS[nextTab],
+        search: options?.search ?? "",
+      },
+      { replace: options?.replace ?? false },
+    );
+  }
+
+  async function refreshWalletSummary(options?: { silent?: boolean }) {
+    if (!hasAuthSession) {
+      setWalletSummary({
+        connected: false,
+        address: null,
+        chain_id: null,
+        wallet_type: "",
+        network_name: "Sepolia",
+        nft_count: 0,
+        vote_minimum: 3,
+        vote_eligible: false,
+      });
+      return;
+    }
+
+    if (!options?.silent) {
+      setWalletSummaryLoading(true);
+    }
+
+    try {
+      const response = await apiRequest<WalletSummaryResponse>("/wallets/summary/", {
+        method: "GET",
+        auth: true,
+      });
+      setWalletSummary(response);
+    } catch {
+      setWalletSummary({
+        connected: false,
+        address: null,
+        chain_id: null,
+        wallet_type: "",
+        network_name: "Sepolia",
+        nft_count: 0,
+        vote_minimum: 3,
+        vote_eligible: false,
+      });
+    } finally {
+      if (!options?.silent) {
+        setWalletSummaryLoading(false);
+      }
+    }
+  }
 
   useEffect(() => {
     if (!phoneTimer) return;
@@ -170,12 +322,24 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const legacyTab = params.get("tab");
+    if (!hasAuthSession || legacyTab !== "history" || location.pathname !== "/") return;
+
+    const entry = params.get("entry");
+    navigateToTab("history", {
+      replace: true,
+      search: entry ? `?entry=${encodeURIComponent(entry)}` : "",
+    });
+  }, [hasAuthSession, location.pathname, location.search]);
+
+  useEffect(() => {
     function handleRefreshSuccess() {
       openToast("세션이 갱신되었습니다.");
     }
 
     function handleRefreshFailure() {
-      setActiveTab("home");
+      navigateToTab("home", { replace: true });
       openToast("세션이 만료되었습니다. 다시 로그인해주세요.");
     }
 
@@ -204,7 +368,7 @@ export default function App() {
 
       inactivityTimeoutRef.current = window.setTimeout(() => {
         logout();
-        setActiveTab("home");
+        navigateToTab("home", { replace: true });
         setModal("none");
         setSelectedFile(null);
         setVerifyFile(null);
@@ -245,6 +409,7 @@ export default function App() {
       setPreviewUrl("");
       setAnalysisStage("idle");
       setAnalysisProgress(0);
+      setAnalysisJobId(null);
       setReviewVoteProgress(0);
       setReviewVoteModalOpen(false);
       setReviewVoteDraft(null);
@@ -297,6 +462,7 @@ export default function App() {
       setVerifyPreviewUrl("");
       setVerifyProgress(0);
       setVerifyRunning(false);
+      setVerifyJobId(null);
       setVerifyResult(null);
       return;
     }
@@ -309,6 +475,228 @@ export default function App() {
 
     return () => URL.revokeObjectURL(objectUrl);
   }, [verifyFile]);
+
+  useEffect(() => {
+    if (!hasAuthSession || (activeTab !== "add" && activeTab !== "verify")) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response = await apiRequest<Array<{
+          id: string;
+          title: string;
+          owner: string;
+          date: string;
+          description: string;
+          preview_url?: string | null;
+        }>>("/contents/ongoing-votes/", {
+          method: "GET",
+          auth: true,
+        });
+
+        if (cancelled) return;
+
+        setOngoingVoteUploads(
+          response.map((item, index) => ({
+            id: item.id,
+            title: item.title,
+            date: item.date,
+            owner: item.owner,
+            tone: index % 3 === 0 ? "sunrise" : index % 3 === 1 ? "blue" : "green",
+            previewUrl: item.preview_url ?? null,
+          })),
+        );
+        setOngoingVoteVerifyItems(
+          response.map((item, index) => ({
+            id: item.id,
+            title: item.title,
+            description: item.description,
+            tone: index % 3 === 0 ? "blue" : index % 3 === 1 ? "review" : "green",
+            previewUrl: item.preview_url ?? null,
+          })),
+        );
+      } catch {
+        if (cancelled) return;
+        setOngoingVoteUploads([]);
+        setOngoingVoteVerifyItems([]);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, hasAuthSession]);
+
+  useEffect(() => {
+    if (!hasAuthSession) {
+      setWalletSummary({
+        connected: false,
+        address: null,
+        chain_id: null,
+        wallet_type: "",
+        network_name: "Sepolia",
+        nft_count: 0,
+        vote_minimum: 3,
+        vote_eligible: false,
+      });
+      return;
+    }
+
+    void refreshWalletSummary();
+  }, [hasAuthSession, user?.wallet_address]);
+
+  useEffect(() => {
+    if (analysisStage !== "running" || !analysisJobId) return;
+
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const response = await apiRequest<AnalysisJobStatusResponse>(`/analysis/jobs/${analysisJobId}/`, {
+          method: "GET",
+          auth: true,
+        });
+        if (cancelled) return;
+
+        if (response.status === "success" && response.content) {
+          const resolvedContent = response.content;
+          const decision =
+            resolvedContent.decision === "allow" || resolvedContent.decision === "review" || resolvedContent.decision === "block"
+              ? resolvedContent.decision
+              : "block";
+
+          setContentResult(resolvedContent);
+          setAnalysisProgress(100);
+          setAnalysisStage(decision);
+          setAnalysisRequestPending(false);
+          setAnalysisJobId(null);
+          openToast(
+            decision === "allow"
+              ? "분석이 완료되었습니다. 등록 가능한 콘텐츠입니다."
+              : decision === "review"
+                ? "분석이 완료되었습니다. 보류 판정이 생성되었습니다."
+                : "분석이 완료되었습니다. 등록 제한 판정이 생성되었습니다.",
+          );
+          return;
+        }
+
+        if (response.status === "failure") {
+          setAnalysisStage("ready");
+          setAnalysisProgress(0);
+          setAnalysisRequestPending(false);
+          setAnalysisJobId(null);
+          window.alert(response.error_message || "등록 가능 여부 확인에 실패했습니다.");
+        }
+      } catch {
+        if (cancelled) return;
+      }
+    };
+
+    void poll();
+    const intervalId = window.setInterval(() => {
+      void poll();
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [analysisStage, analysisJobId]);
+
+  useEffect(() => {
+    if (analysisStage !== "watermarking" || !watermarkJobId) return;
+
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const response = await apiRequest<AnalysisJobStatusResponse>(`/analysis/jobs/${watermarkJobId}/`, {
+          method: "GET",
+          auth: true,
+        });
+        if (cancelled) return;
+
+        if (response.status === "success" && response.content) {
+          setContentResult(response.content);
+          setWatermarkProgress(100);
+          setAnalysisStage("watermarked");
+          setWatermarkRequestPending(false);
+          setWatermarkJobId(null);
+          openToast("워터마크 삽입이 완료되었습니다.");
+          return;
+        }
+
+        if (response.status === "failure") {
+          setAnalysisStage("allow");
+          setWatermarkProgress(0);
+          setWatermarkRequestPending(false);
+          setWatermarkJobId(null);
+          window.alert(response.error_message || "워터마크 삽입에 실패했습니다.");
+        }
+      } catch {
+        if (cancelled) return;
+      }
+    };
+
+    void poll();
+    const intervalId = window.setInterval(() => {
+      void poll();
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [analysisStage, watermarkJobId]);
+
+  useEffect(() => {
+    if (!verifyRunning || !verifyJobId) return;
+
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const response = await apiRequest<AnalysisJobStatusResponse>(`/analysis/jobs/${verifyJobId}/`, {
+          method: "GET",
+          auth: true,
+        });
+        if (cancelled) return;
+
+        if (response.status === "success" && response.result) {
+          setVerifyResult(response.result);
+          setVerifyProgress(100);
+          setVerifyRunning(false);
+          setVerifyJobId(null);
+          openToast(
+            response.result.outcome === "verified"
+              ? "워터마크 검증이 완료되었습니다."
+              : "유사 이미지 후보 탐색이 완료되었습니다.",
+          );
+          return;
+        }
+
+        if (response.status === "failure") {
+          setVerifyProgress(0);
+          setVerifyRunning(false);
+          setVerifyJobId(null);
+          window.alert(response.error_message || "저작물 검증에 실패했습니다.");
+        }
+      } catch {
+        if (cancelled) return;
+      }
+    };
+
+    void poll();
+    const intervalId = window.setInterval(() => {
+      void poll();
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [verifyRunning, verifyJobId]);
 
   useEffect(() => {
     if (analysisStage !== "running" || !analysisRequestPending) return;
@@ -390,10 +778,59 @@ export default function App() {
     return () => window.clearInterval(intervalId);
   }, [verifyRunning]);
 
+  useEffect(() => {
+    if (activeTab !== "history" || !hasAuthSession) return;
+
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response = await apiRequest<Array<{
+          id: string;
+          type: "allow" | "review" | "block" | "verify";
+          file_name: string;
+          summary: string;
+          timestamp: string;
+          cosine: string;
+          phash: string;
+          extra: string;
+          preview_url?: string | null;
+        }>>("/logs/history/", {
+          method: "GET",
+          auth: true,
+        });
+
+        if (cancelled) return;
+
+        setHistoryEntries(
+          response.map((item) => ({
+            id: item.id,
+            type: item.type,
+            fileName: item.file_name,
+            summary: item.summary,
+            timestamp: item.timestamp,
+            cosine: item.cosine,
+            phash: item.phash,
+            extra: item.extra,
+            previewUrl: item.preview_url ?? null,
+          })),
+        );
+      } catch {
+        if (!cancelled) {
+          setHistoryEntries(historyItems);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, hasAuthSession, historyEntryFromUrl]);
+
   const filteredHistory = useMemo(() => {
-    if (historyFilter === "all") return historyItems;
-    return historyItems.filter((item) => item.type === historyFilter);
-  }, [historyFilter]);
+    if (historyFilter === "all") return historyEntries;
+    return historyEntries.filter((item) => item.type === historyFilter);
+  }, [historyEntries, historyFilter]);
 
   const registerDecision =
     analysisStage === "allow" || analysisStage === "review" || analysisStage === "block"
@@ -417,12 +854,23 @@ export default function App() {
     setToast((current) => ({ ...current, open: false }));
   }
 
-  function openFileInNewTab(url: string) {
-    window.open(url, "_blank", "noopener,noreferrer");
+  function downloadFile(url: string, fileName: string) {
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.rel = "noopener";
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
   }
 
   function promptPhoneRequired(message = "서비스 이용을 위해 마이페이지에서 휴대폰 인증을 완료해주세요.") {
     setPhoneRequiredModalOpen(true);
+    openToast(message);
+  }
+
+  function promptWalletRequired(message = "지갑 연결 후 이용 가능합니다.") {
+    navigateToTab("mypage");
     openToast(message);
   }
 
@@ -434,14 +882,14 @@ export default function App() {
 
   async function handleSignup(
     email: string,
-    username: string,
+    nickname: string,
     password: string,
     termsAgreed: boolean,
     privacyAgreed: boolean,
   ) {
     await signup({
       email,
-      username,
+      nickname,
       password,
       terms_agreed: termsAgreed,
       privacy_agreed: privacyAgreed,
@@ -452,7 +900,7 @@ export default function App() {
 
   function handleLogout() {
     logout();
-    setActiveTab("home");
+    navigateToTab("home", { replace: true });
     setSelectedFile(null);
     setPhoneVerificationModalOpen(false);
     setEmailVerificationModalOpen(false);
@@ -478,7 +926,7 @@ export default function App() {
     try {
       await withdraw();
       setWithdrawOpen(false);
-      setActiveTab("home");
+      navigateToTab("home", { replace: true });
       setSelectedFile(null);
       setPhoneVerificationModalOpen(false);
       setEmailVerificationModalOpen(false);
@@ -497,6 +945,124 @@ export default function App() {
     }
   }
 
+  async function connectWalletWithConnector(connectorId?: string) {
+    if (!hasAuthSession) {
+      setModal("loginChoice");
+      openToast("로그인 후 지갑을 연결할 수 있습니다.");
+      return;
+    }
+
+    setWalletConnecting(true);
+
+    try {
+      let walletAddress = connectedWalletAddress;
+      let walletType = connectedConnector?.name || "Injected Wallet";
+      let walletChainId = currentWalletChainId ?? sepolia.id;
+      const requiresNewConnection =
+        !walletAddress || !isConnected || (connectorId && connectedConnector?.id !== connectorId);
+
+      if (requiresNewConnection) {
+        if (connectorId === "walletConnect" && !walletConnectEnabled) {
+          throw new Error(getWalletInstallMessage("walletConnect"));
+        }
+
+        if (connectorId !== "walletConnect" && !hasInjectedWalletProvider()) {
+          throw new Error(getWalletInstallMessage(connectorId));
+        }
+
+        const targetConnector =
+          connectors.find((item) => item.id === connectorId) ??
+          connectors.find((item) => item.id === "metaMask") ??
+          connectors[0];
+        if (!targetConnector) {
+          throw new Error("사용 가능한 지갑 연결 방식을 찾을 수 없습니다.");
+        }
+
+        const result = await connectAsync({ connector: targetConnector });
+        walletAddress = result.accounts[0];
+        walletType = targetConnector.name;
+        walletChainId = result.chainId ?? sepolia.id;
+      }
+
+      if (!walletAddress) {
+        throw new Error("지갑 주소를 확인할 수 없습니다.");
+      }
+
+      const challenge = await apiRequest<{
+        address: string;
+        message: string;
+        nonce: string;
+        expires_at: string;
+      }>("/wallets/connect/challenge/", {
+        method: "POST",
+        auth: true,
+        body: { address: walletAddress },
+      });
+
+      const signature = await signMessageAsync({ message: challenge.message });
+
+      await apiRequest("/wallets/connect/verify/", {
+        method: "POST",
+        auth: true,
+        body: {
+          address: walletAddress,
+          signature,
+          chain_id: walletChainId,
+          wallet_type: walletType,
+        },
+      });
+
+      setWalletConnectModalOpen(false);
+      await refreshMe();
+      await refreshWalletSummary({ silent: true });
+      openToast("지갑이 연결되었습니다.");
+    } catch (error) {
+      let message = error instanceof Error ? error.message : "지갑 연결 중 오류가 발생했습니다.";
+      if (message.includes("Provider not found")) {
+        message = getWalletInstallMessage(connectorId);
+      }
+      openToast(message);
+    } finally {
+      setWalletConnecting(false);
+    }
+  }
+
+  function handleConnectWallet() {
+    if (!hasAuthSession) {
+      setModal("loginChoice");
+      openToast("로그인 후 지갑을 연결할 수 있습니다.");
+      return;
+    }
+
+    setWalletConnectModalOpen(true);
+  }
+
+  async function handleDisconnectWallet() {
+    if (!hasAuthSession) return;
+
+    setWalletDisconnecting(true);
+
+    try {
+      await apiRequest<{ message: string }>("/wallets/me/", {
+        method: "DELETE",
+        auth: true,
+      });
+
+      if (isConnected) {
+        await disconnectAsync();
+      }
+
+      await refreshMe();
+      await refreshWalletSummary({ silent: true });
+      openToast("지갑 연결이 해제되었습니다.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "지갑 연결 해제 중 오류가 발생했습니다.";
+      openToast(message);
+    } finally {
+      setWalletDisconnecting(false);
+    }
+  }
+
   function moveToTab(nextTab: TabName) {
     const tabConfig = tabs.find((tab) => tab.key === nextTab);
     if (tabConfig?.requiresAuth && !hasAuthSession) {
@@ -509,7 +1075,7 @@ export default function App() {
       openToast("로그인 후 마이페이지를 이용할 수 있습니다.");
       return;
     }
-    setActiveTab(nextTab);
+    navigateToTab(nextTab);
   }
 
   function handlePickFile(event: React.ChangeEvent<HTMLInputElement>) {
@@ -534,6 +1100,14 @@ export default function App() {
       openToast("로그인 후 업로드할 수 있습니다.");
       return;
     }
+    if (!phoneVerified) {
+      promptPhoneRequired("휴대폰 인증이 필요합니다.");
+      return;
+    }
+    if (walletRequired) {
+      promptWalletRequired("지갑 연결 후 저작물 등록을 이용할 수 있습니다.");
+      return;
+    }
     uploadInputRef.current?.click();
   }
 
@@ -547,12 +1121,24 @@ export default function App() {
       promptPhoneRequired("휴대폰 인증이 필요합니다.");
       return;
     }
+    if (walletRequired) {
+      promptWalletRequired("지갑 연결 후 저작물 검증을 이용할 수 있습니다.");
+      return;
+    }
     verifyInputRef.current?.click();
   }
 
   async function startAnalysis() {
     if (!selectedFile) {
       window.alert("먼저 업로드할 이미지를 선택해주세요.");
+      return;
+    }
+    if (!phoneVerified) {
+      promptPhoneRequired("휴대폰 인증이 필요합니다.");
+      return;
+    }
+    if (walletRequired) {
+      promptWalletRequired("지갑 연결 후 저작물 등록을 이용할 수 있습니다.");
       return;
     }
 
@@ -562,37 +1148,23 @@ export default function App() {
     setAnalysisProgress(0);
     setAnalysisStage("running");
     setAnalysisRequestPending(true);
+    setAnalysisJobId(null);
     setContentResult(null);
     openToast("등록 가능 여부 분석을 요청했습니다.");
 
     try {
-      const response = await apiRequest<RegisteredContentResponse>("/contents/register/", {
+      const response = await apiRequest<AsyncContentJobResponse>("/contents/register/", {
         method: "POST",
         auth: true,
         body: formData,
       });
-
-      const decision =
-        response.decision === "allow" || response.decision === "review" || response.decision === "block"
-          ? response.decision
-          : "block";
-
-      setContentResult(response);
-      setAnalysisProgress(100);
-      setAnalysisStage(decision);
-      openToast(
-        decision === "allow"
-          ? "분석이 완료되었습니다. 등록 가능한 콘텐츠입니다."
-          : decision === "review"
-            ? "분석이 완료되었습니다. 보류 판정이 생성되었습니다."
-            : "분석이 완료되었습니다. 등록 제한 판정이 생성되었습니다.",
-      );
+      setAnalysisJobId(response.job_id);
+      setContentResult(response.content ?? null);
     } catch (error) {
       setAnalysisStage("ready");
       setAnalysisProgress(0);
-      window.alert(error instanceof Error ? error.message : "등록 가능 여부 확인에 실패했습니다.");
-    } finally {
       setAnalysisRequestPending(false);
+      window.alert(error instanceof Error ? error.message : "등록 가능 여부 확인에 실패했습니다.");
     }
   }
 
@@ -621,33 +1193,31 @@ export default function App() {
       promptPhoneRequired("휴대폰 인증이 필요합니다.");
       return;
     }
+    if (walletRequired) {
+      promptWalletRequired("지갑 연결 후 저작물 검증을 이용할 수 있습니다.");
+      return;
+    }
 
     const formData = new FormData();
     formData.append("file", verifyFile);
 
     setVerifyProgress(0);
     setVerifyRunning(true);
+    setVerifyJobId(null);
     setVerifyResult(null);
     openToast("저작물 검증을 요청했습니다.");
 
     try {
-      const response = await apiRequest<VerifyResultResponse>("/contents/verify/", {
+      const response = await apiRequest<AsyncVerifyJobResponse>("/contents/verify/", {
         method: "POST",
         auth: true,
         body: formData,
       });
-      setVerifyResult(response);
-      setVerifyProgress(100);
-      openToast(
-        response.outcome === "verified"
-          ? "워터마크 검증이 완료되었습니다."
-          : "유사 이미지 후보 탐색이 완료되었습니다.",
-      );
+      setVerifyJobId(response.job_id);
     } catch (error) {
       setVerifyProgress(0);
-      window.alert(error instanceof Error ? error.message : "저작물 검증에 실패했습니다.");
-    } finally {
       setVerifyRunning(false);
+      window.alert(error instanceof Error ? error.message : "저작물 검증에 실패했습니다.");
     }
   }
 
@@ -661,6 +1231,10 @@ export default function App() {
       promptPhoneRequired("휴대폰 인증이 필요합니다.");
       return;
     }
+    if (walletRequired) {
+      promptWalletRequired("지갑 연결 후 서비스를 이용할 수 있습니다.");
+      return;
+    }
 
     if (contentResult.watermark?.applied && contentResult.watermark_file_url) {
       window.open(contentResult.watermark_file_url, "_blank", "noopener,noreferrer");
@@ -670,26 +1244,24 @@ export default function App() {
     setAnalysisStage("watermarking");
     setWatermarkProgress(0);
     setWatermarkRequestPending(true);
+    setWatermarkJobId(null);
     openToast("워터마크 삽입을 요청했습니다.");
 
     try {
-      const response = await apiRequest<RegisteredContentResponse>(
+      const response = await apiRequest<AsyncContentJobResponse>(
         `/contents/${contentResult.public_id}/watermark/`,
         {
           method: "POST",
           auth: true,
         },
       );
-      setContentResult(response);
-      setWatermarkProgress(100);
-      setAnalysisStage("watermarked");
-      openToast("워터마크 삽입이 완료되었습니다.");
+      setWatermarkJobId(response.job_id);
+      setContentResult(response.content ?? contentResult);
     } catch (error) {
       setAnalysisStage("allow");
       setWatermarkProgress(0);
-      window.alert(error instanceof Error ? error.message : "워터마크 삽입에 실패했습니다.");
-    } finally {
       setWatermarkRequestPending(false);
+      window.alert(error instanceof Error ? error.message : "워터마크 삽입에 실패했습니다.");
     }
   }
 
@@ -701,6 +1273,10 @@ export default function App() {
 
     if (!phoneVerified) {
       promptPhoneRequired("휴대폰 인증이 필요합니다.");
+      return;
+    }
+    if (walletRequired) {
+      promptWalletRequired("지갑 연결 후 서비스를 이용할 수 있습니다.");
       return;
     }
 
@@ -780,6 +1356,10 @@ export default function App() {
       promptPhoneRequired("휴대폰 인증이 필요합니다.");
       return;
     }
+    if (walletRequired) {
+      promptWalletRequired("지갑 연결 후 서비스를 이용할 수 있습니다.");
+      return;
+    }
 
     if (
       contentResult.blockchain?.mint_kind === "content" &&
@@ -806,6 +1386,7 @@ export default function App() {
       setContentResult(response);
       setMintProgress(100);
       setAnalysisStage("minted");
+      await refreshWalletSummary({ silent: true });
       openToast("NFT 토큰 발행이 완료되었습니다.");
     } catch (error) {
       setAnalysisStage("watermarked");
@@ -976,18 +1557,19 @@ export default function App() {
             analysisProgress={analysisProgress}
             registerResult={registerResult}
             contentResult={contentResult}
-            recentUploads={recentUploads}
+            recentUploads={ongoingVoteUploads}
             onPickFile={handlePickFile}
             onTriggerPicker={triggerFilePicker}
             onStartAnalysis={startAnalysis}
             onResetToHome={() => {
               setSelectedFile(null);
-              setActiveTab("home");
+              navigateToTab("home");
             }}
             onResetToReady={() => {
               setAnalysisStage("ready");
               setAnalysisProgress(0);
               setAnalysisRequestPending(false);
+              setAnalysisJobId(null);
               setReviewVoteProgress(0);
               setReviewVoteRequestPending(false);
               setReviewConsentModalOpen(false);
@@ -997,6 +1579,7 @@ export default function App() {
               setReviewVoteDraft(null);
               setWatermarkProgress(0);
               setWatermarkRequestPending(false);
+              setWatermarkJobId(null);
               setMintProgress(0);
               setMintRequestPending(false);
               setContentResult(null);
@@ -1007,6 +1590,7 @@ export default function App() {
               setAnalysisStage("idle");
               setAnalysisProgress(0);
               setAnalysisRequestPending(false);
+              setAnalysisJobId(null);
               setReviewVoteProgress(0);
               setReviewVoteRequestPending(false);
               setReviewConsentModalOpen(false);
@@ -1016,6 +1600,7 @@ export default function App() {
               setReviewVoteDraft(null);
               setWatermarkProgress(0);
               setWatermarkRequestPending(false);
+              setWatermarkJobId(null);
               setMintProgress(0);
               setMintRequestPending(false);
               setContentResult(null);
@@ -1050,18 +1635,19 @@ export default function App() {
               if (contentResult?.watermark_file_url) {
                 const shouldDownload = window.confirm("워터마크 이미지를 저장하시겠습니까?");
                 if (!shouldDownload) return;
-                openFileInNewTab(contentResult.watermark_file_url);
+                downloadFile(
+                  contentResult.watermark_file_url,
+                  buildWatermarkedFileName(selectedFile?.name || contentResult.original_filename || "watermarked.jpg"),
+                );
                 return;
               }
               openToast("워터마크 결과 파일이 아직 준비되지 않았습니다.");
             }}
-            onMoveToHistory={() => setActiveTab("history")}
+            onMoveToHistory={() => navigateToTab("history")}
             onCopyVerificationUrl={() => {
-              const verificationLink =
-                contentResult?.blockchain?.verification_link ||
-                buildMockVerificationUrl(contentResult?.blockchain?.token_id);
-              void navigator.clipboard.writeText(verificationLink);
-              openToast("검증 URL을 복사했습니다.");
+              const historyLink = buildHistoryEntryUrl(contentResult?.public_id || "");
+              void navigator.clipboard.writeText(historyLink);
+              openToast("현재 기록 링크를 복사했습니다.");
             }}
             uploadInputRef={uploadInputRef}
             formatFileSize={formatFileSize}
@@ -1101,7 +1687,7 @@ export default function App() {
             verifyProgress={verifyProgress}
             verifyRunning={verifyRunning}
             verifyResult={verifyResult}
-            recentItems={verifyHistoryItems}
+            recentItems={ongoingVoteVerifyItems}
             uploadInputRef={verifyInputRef}
             formatFileSize={formatFileSize}
             onPickFile={handlePickVerifyFile}
@@ -1112,13 +1698,19 @@ export default function App() {
               setVerifyPreviewUrl("");
               setVerifyProgress(0);
               setVerifyRunning(false);
+              setVerifyJobId(null);
               setVerifyResult(null);
             }}
           />
         ) : null}
 
         {activeTab === "history" ? (
-          <HistoryPage items={filteredHistory} historyFilter={historyFilter} onFilterChange={setHistoryFilter} />
+          <HistoryPage
+            items={filteredHistory}
+            historyFilter={historyFilter}
+            onFilterChange={setHistoryFilter}
+            initialExpandedId={historyEntryFromUrl}
+          />
         ) : null}
 
         {activeTab === "mypage" ? (
@@ -1130,11 +1722,22 @@ export default function App() {
             avatarInitial={avatarInitial}
             emailVerified={emailVerified}
             phoneVerified={phoneVerified}
+            walletAddress={linkedWalletAddress}
+            walletNetworkLabel={walletNetworkLabel}
+            walletTypeLabel={walletTypeLabel}
+            nftCount={walletSummary.nft_count}
+            voteMinimum={walletSummary.vote_minimum}
+            voteEligible={walletSummary.vote_eligible}
+            walletSummaryLoading={walletSummaryLoading}
+            walletConnecting={walletConnecting}
+            walletDisconnecting={walletDisconnecting}
             onOpenProfileEdit={() => setProfileEditOpen(true)}
             onOpenPhoneIdentity={() => setPhoneVerificationModalOpen(true)}
             onOpenEmailIdentity={() => setEmailVerificationModalOpen(true)}
             onLogout={handleLogout}
             onOpenWithdraw={() => setWithdrawOpen(true)}
+            onConnectWallet={handleConnectWallet}
+            onDisconnectWallet={handleDisconnectWallet}
           />
         ) : null}
       </main>
@@ -1162,6 +1765,17 @@ export default function App() {
         onLogin={() => setModal("emailLogin")}
       />
 
+      <WalletConnectModal
+        open={walletConnectModalOpen}
+        connectors={connectors.filter((connector) => connector.id === "metaMask" || connector.id === "rabby" || connector.id === "walletConnect")}
+        walletConnectEnabled={walletConnectEnabled}
+        connecting={walletConnecting}
+        onClose={() => setWalletConnectModalOpen(false)}
+        onSelectConnector={(connector) => {
+          void connectWalletWithConnector(connector.id);
+        }}
+      />
+
       <PhoneVerificationModal
         open={phoneVerificationModalOpen}
         phone={phoneInput}
@@ -1182,7 +1796,7 @@ export default function App() {
         onClose={() => setPhoneRequiredModalOpen(false)}
         onMoveToMyPage={() => {
           setPhoneRequiredModalOpen(false);
-          setActiveTab("mypage");
+          navigateToTab("mypage");
         }}
       />
 

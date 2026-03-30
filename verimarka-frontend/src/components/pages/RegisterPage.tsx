@@ -871,11 +871,14 @@ export default function RegisterPage({
       ) : null}
 
       <aside className="register-history">
-        <h3>최근 등록된 사진</h3>
+        <h3>진행 중인 투표</h3>
         <div className="history-scroll">
           {recentUploads.map((item, index) => (
             <article key={item.id} className="history-item">
-              <div className={`history-thumb ${index % 3 === 0 ? "history-thumb-landscape" : index % 3 === 1 ? "history-thumb-city" : "history-thumb-character"}`} />
+              <div
+                className={`history-thumb ${item.previewUrl ? "" : index % 3 === 0 ? "history-thumb-landscape" : index % 3 === 1 ? "history-thumb-city" : "history-thumb-character"}`}
+                style={item.previewUrl ? { backgroundImage: `url(${item.previewUrl})` } : undefined}
+              />
               <div className="history-meta">
                 <p>{item.title}</p>
                 <span>등록일자: {item.date} · 등록자: {item.owner}</span>
