@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getAccessToken } from "../../lib/token";
+import { authenticatedFetch } from "../../lib/api";
 import type { HistoryItem } from "../../types/app";
 
 interface HistoryPageProps {
@@ -55,24 +55,13 @@ export default function HistoryPage({
     }
   }
 
-  function buildDownloadHeaders(url: string) {
-    if (isCrossOriginUrl(url)) return undefined;
-    const accessToken = getAccessToken();
-    if (!accessToken) return undefined;
-    return {
-      Authorization: `Bearer ${accessToken}`,
-    };
-  }
-
   async function downloadFile(url: string, fileName: string) {
     if (isCrossOriginUrl(url)) {
       triggerDirectDownload(url, fileName);
       return;
     }
 
-    const response = await fetch(url, {
-      headers: buildDownloadHeaders(url),
-    });
+    const response = await authenticatedFetch(url);
     if (!response.ok) {
       throw new Error("다운로드 파일을 불러오지 못했습니다.");
     }
