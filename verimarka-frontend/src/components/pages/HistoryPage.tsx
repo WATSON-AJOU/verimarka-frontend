@@ -37,30 +37,7 @@ export default function HistoryPage({
     return `${baseName}_VM${extension}`;
   }
 
-  function triggerDirectDownload(url: string, fileName: string) {
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = fileName;
-    anchor.rel = "noopener";
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-  }
-
-  function isCrossOriginUrl(url: string) {
-    try {
-      return new URL(url, window.location.origin).origin !== window.location.origin;
-    } catch {
-      return false;
-    }
-  }
-
   async function downloadFile(url: string, fileName: string) {
-    if (isCrossOriginUrl(url)) {
-      triggerDirectDownload(url, fileName);
-      return;
-    }
-
     const response = await authenticatedFetch(url);
     if (!response.ok) {
       throw new Error("다운로드 파일을 불러오지 못했습니다.");
