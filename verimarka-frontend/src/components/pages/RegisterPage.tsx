@@ -35,6 +35,20 @@ function buildWatermarkedFileName(fileName: string) {
   return `${baseName}_VM${extension}`;
 }
 
+function formatDisplayDateTime(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}.${month}.${day} ${hours}:${minutes}`;
+}
+
 interface RegisterPageProps {
   isLoggedIn: boolean;
   selectedFile: File | null;
@@ -44,6 +58,7 @@ interface RegisterPageProps {
   registerResult: RegisterResultConfig | null;
   contentResult: RegisteredContentResponse | null;
   recentUploads: UploadHistoryItem[];
+  onOpenOngoingVote: (id: string) => void;
   onPickFile: (event: React.ChangeEvent<HTMLInputElement>) => void;
   onTriggerPicker: () => void;
   onStartAnalysis: () => void;
@@ -74,7 +89,6 @@ interface RegisterPageProps {
   mintProgress: number;
   onCloseReviewConsentModal: () => void;
   onToggleReviewConsentNotify: () => void;
-  onOpenReviewGuide: () => void;
   onConfirmReviewConsent: () => void;
   onOpenReviewVoteModal: () => void;
   onCloseReviewVoteModal: () => void;
@@ -90,6 +104,7 @@ export default function RegisterPage({
   registerResult,
   contentResult,
   recentUploads,
+  onOpenOngoingVote,
   onPickFile,
   onTriggerPicker,
   onStartAnalysis,
@@ -114,37 +129,33 @@ export default function RegisterPage({
   mintProgress,
   onCloseReviewConsentModal,
   onToggleReviewConsentNotify,
-  onOpenReviewGuide,
   onConfirmReviewConsent,
   onOpenReviewVoteModal,
   onCloseReviewVoteModal,
   onCastReviewDemoVote,
   onRefreshReviewVote,
 }: RegisterPageProps) {
+  const selectedFileName = selectedFile?.name || contentResult?.original_filename || "-";
+  const selectedFileSize = selectedFile?.size ?? contentResult?.file_size ?? 0;
+  const uploadTimestampLabel = formatDisplayDateTime(selectedFile?.lastModified);
   const candidatePreviewUrl = contentResult?.top_match?.preview_url || grapeImage;
   const watermarkedPreviewUrl = contentResult?.watermark_file_url || previewUrl || grapeImage;
-  const mintedFileName = buildWatermarkedFileName(selectedFile?.name || contentResult?.original_filename || "apple.jpg");
-  const mintedNetwork = contentResult?.blockchain?.network_name || "Sepolia";
-  const mintedTokenId = contentResult?.blockchain?.token_id ? `#${contentResult.blockchain.token_id}` : "#82525";
-  const mintedContentHash = contentResult?.blockchain?.file_hash || "0xbda0f453...5479";
-  const mintedTxHash = contentResult?.blockchain?.tx_hash || "0x0a2536...60e7";
+  const mintedFileName = buildWatermarkedFileName(selectedFile?.name || contentResult?.original_filename || "watermarked_VM");
+  const mintedNetwork = contentResult?.blockchain?.network_name || "-";
+  const mintedTokenId = contentResult?.blockchain?.token_id ? `#${contentResult.blockchain.token_id}` : "-";
+  const mintedContentHash = contentResult?.blockchain?.file_hash || "-";
+  const mintedTxHash = contentResult?.blockchain?.tx_hash || "-";
   const mintedWalletAddress =
-    contentResult?.blockchain?.owner_address || contentResult?.blockchain?.recipient_address || "0x4f5b...7bf0";
-  const mintedAtLabel = contentResult?.blockchain?.minted_at_display || "2026.03.24 10:14 UTC";
+    contentResult?.blockchain?.owner_address || contentResult?.blockchain?.recipient_address || "-";
+  const mintedAtLabel = contentResult?.blockchain?.minted_at_display || "-";
   const topCosineValue = contentResult?.top_cosine;
-  const topCosineLabel =
-    typeof topCosineValue === "number"
-      ? topCosineValue.toFixed(4)
-      : analysisStage === "review"
-        ? "0.7421"
-        : "0.9628";
-  const topCosinePercent =
-    typeof topCosineValue === "number" ? `${(topCosineValue * 100).toFixed(1)}%` : registerResult?.similarity;
+  const topCosineLabel = typeof topCosineValue === "number" ? topCosineValue.toFixed(4) : "-";
+  const topCosinePercent = typeof topCosineValue === "number" ? `${(topCosineValue * 100).toFixed(1)}%` : "-";
   const topPhashLabel =
     typeof contentResult?.top_phash_dist === "number"
       ? String(contentResult.top_phash_dist)
-      : registerResult?.phashDistance ?? "8";
-  const candidateLabel = contentResult?.top_match?.db_file || "concept_scene.jpg";
+      : "-";
+  const candidateLabel = contentResult?.top_match?.db_file || "유사 후보 정보 없음";
   const reviewVote = contentResult?.blockchain?.vote;
   const reviewThresholdLabel =
     typeof reviewVote?.threshold === "number" ? reviewVote.threshold.toFixed(4) : registerResult?.threshold ?? "0.7500";
@@ -204,11 +215,11 @@ export default function RegisterPage({
                         다시 선택
                       </button>
                       <div className="upload-image-frame">
-                        <img src={previewUrl} alt={selectedFile.name} />
+                        <img src={previewUrl} alt={selectedFileName} />
                       </div>
                       <div className="upload-file-info">
-                        <strong>{selectedFile.name}</strong>
-                        <span>{formatFileSize(selectedFile.size)} · 2026.03.15 23:29</span>
+                        <strong>{selectedFileName}</strong>
+                        <span>{formatFileSize(selectedFileSize)} · {uploadTimestampLabel}</span>
                       </div>
                     </div>
 
@@ -407,40 +418,70 @@ export default function RegisterPage({
                     <p className="result-subtitle">{registerResult.subtitle}</p>
 
                     {registerResult.tone === "allow" && analysisStage !== "watermarked" ? (
-                      <div className="analysis-result-layout">
-                        <div className="result-preview-card">
-                          <div className="result-image-frame">
-                            <img src={previewUrl} alt={selectedFile.name} />
-                          </div>
-                          <div className="result-file-row">
-                            <div>
-                              <strong>{selectedFile.name}</strong>
-                              <p>{formatFileSize(selectedFile.size)} · 2026.03.15 23:29</p>
-                            </div>
-                            <div className="result-similarity-box">
-                              <span className="similarity-label">{registerResult.metricLabel}</span>
-                              <strong>{typeof topCosineValue === "number" ? topCosineValue.toFixed(4) : "0.1243"}</strong>
-                              <p>{topCosinePercent || registerResult.similarity}</p>
-                            </div>
-                          </div>
-                        </div>
+                      <div className="mint-complete-layout allow-ready-layout">
+                        <span className="result-badge">ALLOW</span>
+                        <h3 className="result-title">AI 분석이 완료되었습니다.</h3>
+                        <p className="result-subtitle">유사한 콘텐츠가 발견되지 않아 워터마크 삽입 단계로 진행할 수 있습니다.</p>
 
-                        <div className="result-summary-card">
-                          <h4>AI 분석 결과</h4>
-                          <ul className="result-check-list">
-                            <li>의미 기반 임베딩 비교 완료</li>
-                            <li>픽셀 정밀 비교 완료</li>
-                            <li>DB 후보 탐색 결과 없음</li>
-                          </ul>
-                          <div className="result-summary-actions">
-                            <button className="btn btn-primary result-primary-btn" type="button" onClick={onPrimaryAction}>
-                              {registerResult.primaryAction}
-                            </button>
-                            <button className="btn btn-secondary result-secondary-btn" type="button" onClick={onResetToReady}>
-                              업로드 화면으로 돌아가기
-                            </button>
+                        <div className="mint-complete-grid">
+                          <div className="mint-complete-card">
+                            <h4>업로드 이미지</h4>
+                            <div className="mint-complete-frame">
+                              <img src={previewUrl} alt={selectedFileName} />
+                            </div>
+                            <div className="mint-file-meta">
+                              <div className="mint-file-row">
+                                <span>파일명</span>
+                                <strong>{selectedFileName}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>업로드 일시</span>
+                                <strong>{uploadTimestampLabel}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>파일 크기</span>
+                                <strong>{formatFileSize(selectedFileSize)}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>다음 단계</span>
+                                <strong>워터마크 삽입 및 토큰 발행 준비</strong>
+                              </div>
+                            </div>
                           </div>
-                          <p className="result-note">{registerResult.note}</p>
+
+                          <div className="mint-complete-card">
+                            <h4>AI 분석 결과</h4>
+                            <div className="mint-chain-meta">
+                              <div className="mint-file-row">
+                                <span>의미 기반 유사도</span>
+                                <strong>{typeof topCosineValue === "number" ? `${topCosineValue.toFixed(4)} (${topCosinePercent})` : "-"}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>pHash 비교</span>
+                                <strong>{topPhashLabel === "-" ? "-" : `Distance ${topPhashLabel} / Threshold 8`}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>판정 결과</span>
+                                <strong>유사한 콘텐츠가 발견되지 않았습니다.</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>안내</span>
+                                <strong>이제 워터마크 이미지를 생성한 뒤 토큰 발행을 진행할 수 있습니다.</strong>
+                              </div>
+                            </div>
+
+                            <div className="mint-complete-actions">
+                              <button className="btn btn-primary" type="button" onClick={onPrimaryAction}>
+                                워터마크 삽입 진행하기
+                              </button>
+                              <button className="btn btn-secondary" type="button" onClick={onMoveToHistory}>
+                                분석 기록 보기
+                              </button>
+                              <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
+                                다른 이미지 업로드
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     ) : registerResult.tone === "allow" && analysisStage === "watermarked" ? (
@@ -452,7 +493,7 @@ export default function RegisterPage({
                               <span className="watermark-compare-chip">Original</span>
                             </div>
                             <div className="watermark-compare-frame">
-                              <img src={previewUrl} alt={`${selectedFile.name} 원본`} />
+                              <img src={previewUrl} alt={`${selectedFileName} 원본`} />
                             </div>
                           </div>
 
@@ -462,14 +503,14 @@ export default function RegisterPage({
                               <span className="watermark-compare-chip">Watermarked</span>
                             </div>
                             <div className="watermark-compare-frame">
-                              <img src={watermarkedPreviewUrl} alt={`${selectedFile.name} 워터마크`} />
+                              <img src={watermarkedPreviewUrl} alt={`${selectedFileName} 워터마크`} />
                             </div>
                           </div>
                         </div>
 
                         <div className="watermark-file-summary">
-                          <strong>{selectedFile.name}</strong>
-                          <span>{formatFileSize(selectedFile.size)} · 2026.03.23 01:21</span>
+                          <strong>{selectedFileName}</strong>
+                          <span>{formatFileSize(selectedFileSize)} · {uploadTimestampLabel}</span>
                         </div>
 
                         <div className="watermark-complete-actions">
@@ -497,7 +538,7 @@ export default function RegisterPage({
                           <div className="mint-complete-card">
                             <h4>저작물 정보</h4>
                             <div className="mint-complete-frame">
-                              <img src={watermarkedPreviewUrl} alt={`${selectedFile.name} 민팅 결과`} />
+                              <img src={watermarkedPreviewUrl} alt={`${selectedFileName} 민팅 결과`} />
                             </div>
                             <div className="mint-file-meta">
                               <div className="mint-file-row">
@@ -599,11 +640,11 @@ export default function RegisterPage({
                         <div className="review-live-stat-grid">
                           <div className="review-live-stat-card">
                             <span>투표 ID</span>
-                            <strong>{reviewVote?.vote_id || "VOTE-82926"}</strong>
+                            <strong>{reviewVote?.vote_id || "-"}</strong>
                           </div>
                           <div className="review-live-stat-card">
                             <span>마감 예정</span>
-                            <strong>{reviewVote?.end_time_display || "2026.03.26 02:35"}</strong>
+                            <strong>{reviewVote?.end_time_display || "-"}</strong>
                           </div>
                           <div className="review-live-stat-card">
                             <span>참여 인원</span>
@@ -770,11 +811,11 @@ export default function RegisterPage({
             <div className="review-live-stat-grid review-vote-modal-stat-grid">
               <div className="review-live-stat-card">
                 <span>투표 ID</span>
-                <strong>{reviewVote?.vote_id || "VOTE-82926"}</strong>
+                <strong>{reviewVote?.vote_id || "-"}</strong>
               </div>
               <div className="review-live-stat-card">
                 <span>마감 예정</span>
-                <strong>{reviewVote?.end_time_display || "2026.03.26 02:35"}</strong>
+                <strong>{reviewVote?.end_time_display || "-"}</strong>
               </div>
               <div className="review-live-stat-card">
                 <span>참여 인원</span>
@@ -856,9 +897,7 @@ export default function RegisterPage({
                 </div>
               </div>
 
-              <button className="btn ghost review-consent-guide" type="button" onClick={onOpenReviewGuide}>
-                절차 자세히 보기
-              </button>
+              <p className="review-consent-help">투표 생성 후 72시간 동안 커뮤니티 검증이 진행되며, 종료 뒤 상태가 자동 반영됩니다.</p>
             </div>
 
             <div className="review-consent-actions">
@@ -874,7 +913,12 @@ export default function RegisterPage({
         <h3>진행 중인 투표</h3>
         <div className="history-scroll">
           {recentUploads.map((item, index) => (
-            <article key={item.id} className="history-item">
+            <button
+              key={item.id}
+              type="button"
+              className="history-item history-item-button"
+              onClick={() => onOpenOngoingVote(item.id)}
+            >
               <div
                 className={`history-thumb ${item.previewUrl ? "" : index % 3 === 0 ? "history-thumb-landscape" : index % 3 === 1 ? "history-thumb-city" : "history-thumb-character"}`}
                 style={item.previewUrl ? { backgroundImage: `url(${item.previewUrl})` } : undefined}
@@ -883,7 +927,7 @@ export default function RegisterPage({
                 <p>{item.title}</p>
                 <span>등록일자: {item.date} · 등록자: {item.owner}</span>
               </div>
-            </article>
+            </button>
           ))}
         </div>
       </aside>
