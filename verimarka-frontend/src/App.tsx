@@ -954,7 +954,6 @@ export default function App() {
     anchor.href = url;
     anchor.download = fileName;
     anchor.rel = "noopener";
-    anchor.target = "_blank";
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
@@ -968,13 +967,24 @@ export default function App() {
     }
   }
 
+  function buildDownloadHeaders(url: string) {
+    if (isCrossOriginUrl(url)) return undefined;
+    const accessToken = getAccessToken();
+    if (!accessToken) return undefined;
+    return {
+      Authorization: `Bearer ${accessToken}`,
+    };
+  }
+
   async function downloadFile(url: string, fileName: string) {
     if (isCrossOriginUrl(url)) {
       triggerDirectDownload(url, fileName);
       return;
     }
 
-    const response = await fetch(url);
+    const response = await fetch(url, {
+      headers: buildDownloadHeaders(url),
+    });
     if (!response.ok) {
       throw new Error("다운로드 파일을 불러오지 못했습니다.");
     }
@@ -1015,7 +1025,9 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        headers: buildDownloadHeaders(url),
+      });
       if (!response.ok) {
         throw new Error("다운로드 파일을 불러오지 못했습니다.");
       }
@@ -1931,12 +1943,15 @@ export default function App() {
               if (registerResult) openToast(registerResult.primaryAction);
             }}
             onDownloadWatermarked={() => {
-              const watermarkFileUrl = contentResult?.watermark_file_url;
-              if (watermarkFileUrl) {
+              const currentContent = contentResult;
+              const watermarkDownloadUrl = currentContent?.public_id
+                ? `/api/contents/${currentContent.public_id}/watermark-download/`
+                : null;
+              if (watermarkDownloadUrl) {
                 void (async () => {
                   await saveFileWithPicker(
-                    watermarkFileUrl,
-                    buildWatermarkedFileName(selectedFile?.name || contentResult.original_filename || "watermarked.jpg"),
+                    watermarkDownloadUrl,
+                    buildWatermarkedFileName(selectedFile?.name || currentContent?.original_filename || "watermarked.jpg"),
                   );
                   openToast("이미지 다운로드에 성공했습니다.");
                 })();
