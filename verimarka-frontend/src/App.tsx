@@ -949,7 +949,31 @@ export default function App() {
     setToast((current) => ({ ...current, open: false }));
   }
 
+  function triggerDirectDownload(url: string, fileName: string) {
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.rel = "noopener";
+    anchor.target = "_blank";
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+  }
+
+  function isCrossOriginUrl(url: string) {
+    try {
+      return new URL(url, window.location.origin).origin !== window.location.origin;
+    } catch {
+      return false;
+    }
+  }
+
   async function downloadFile(url: string, fileName: string) {
+    if (isCrossOriginUrl(url)) {
+      triggerDirectDownload(url, fileName);
+      return;
+    }
+
     const response = await fetch(url);
     if (!response.ok) {
       throw new Error("다운로드 파일을 불러오지 못했습니다.");
@@ -985,7 +1009,7 @@ export default function App() {
       }
     ).showSaveFilePicker;
 
-    if (!picker) {
+    if (!picker || isCrossOriginUrl(url)) {
       await downloadFile(url, fileName);
       return;
     }
