@@ -14,9 +14,43 @@ export default function HistoryPage({
   onFilterChange,
   initialExpandedId,
 }: HistoryPageProps) {
+  function parseCosinePercent(value: string) {
+    const matched = value.match(/\(([\d.]+)%\)/);
+    if (matched) return `${matched[1]}%`;
+    const numeric = Number(value);
+    if (!Number.isNaN(numeric)) return `${(numeric * 100).toFixed(1)}%`;
+    return "99.6%";
+  }
+
+  function truncateHash(value: string) {
+    if (!value || value === "-") return "-";
+    if (value.length <= 14) return value;
+    return `${value.slice(0, 6)}...${value.slice(-4)}`;
+  }
+
   function extractTokenId(summary: string) {
     const matched = summary.match(/#(\d+)/);
     return matched ? `#${matched[1]}` : "-";
+  }
+
+  function extractTxHash(extra: string) {
+    const matched = extra.match(/0x[a-fA-F0-9]{10,}/);
+    return matched ? truncateHash(matched[0]) : "-";
+  }
+
+  function extractRawTxHash(extra: string) {
+    const matched = extra.match(/0x[a-fA-F0-9]{10,}/);
+    return matched ? matched[0] : "";
+  }
+
+  function extractNetwork(extra: string) {
+    const matched = extra.match(/^([^·]+)(?:·|$)/);
+    return matched?.[1]?.trim() || "Sepolia";
+  }
+
+  function buildAllowDecisionText(item: HistoryItem) {
+    if (item.extra && item.extra !== "-") return item.extra;
+    return "중복 후보 없음";
   }
 
   function parseReviewMeta(extra: string) {
@@ -36,12 +70,334 @@ export default function HistoryPage({
   }
 
   const [expandedId, setExpandedId] = useState<string | null>(initialExpandedId ?? null);
+  const [allowDetailId, setAllowDetailId] = useState<string | null>(null);
+  const [reviewDetailId, setReviewDetailId] = useState<string | null>(null);
+  const [blockDetailId, setBlockDetailId] = useState<string | null>(null);
 
   useEffect(() => {
     if (initialExpandedId && items.some((item) => item.id === initialExpandedId)) {
       setExpandedId(initialExpandedId);
     }
   }, [initialExpandedId, items]);
+
+  const allowDetailItem =
+    allowDetailId && items.find((item) => item.id === allowDetailId && item.type === "allow")
+      ? items.find((item) => item.id === allowDetailId && item.type === "allow") ?? null
+      : null;
+  const reviewDetailItem =
+    reviewDetailId && items.find((item) => item.id === reviewDetailId && item.type === "review")
+      ? items.find((item) => item.id === reviewDetailId && item.type === "review") ?? null
+      : null;
+  const blockDetailItem =
+    blockDetailId && items.find((item) => item.id === blockDetailId && item.type === "block")
+      ? items.find((item) => item.id === blockDetailId && item.type === "block") ?? null
+      : null;
+
+  async function handleCopyBlockchainUrl(item: HistoryItem) {
+    const rawTxHash = extractRawTxHash(item.extra);
+    const networkName = extractNetwork(item.extra).toLowerCase();
+    const baseUrl =
+      networkName.includes("polygon")
+        ? "https://polygonscan.com/tx/"
+        : networkName.includes("sepolia")
+          ? "https://sepolia.etherscan.io/tx/"
+          : "https://sepolia.etherscan.io/tx/";
+    const targetUrl = rawTxHash ? `${baseUrl}${rawTxHash}` : `${window.location.origin}/history?entry=${item.id}`;
+    await navigator.clipboard.writeText(targetUrl);
+  }
+
+  if (allowDetailItem) {
+    return (
+      <section className="history-shell">
+        <div className="history-allow-detail-view">
+          <div className="history-allow-detail-card">
+            <span className="history-allow-detail-badge">ALLOW</span>
+            <h2>토큰 발행 상세 정보</h2>
+            <p>블록체인에 안전하게 저장된 자산 보호 기록입니다.</p>
+
+            <div className="history-allow-detail-grid">
+              <section className="history-allow-panel">
+                <h3>저작물 정보</h3>
+                <div className="history-allow-artwork-frame">
+                  <div
+                    className={`history-allow-artwork-image ${!allowDetailItem.previewUrl ? "is-placeholder" : ""}`}
+                    style={
+                      allowDetailItem.previewUrl
+                        ? {
+                            backgroundImage: `url(${allowDetailItem.previewUrl})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }
+                        : undefined
+                    }
+                  />
+                </div>
+                <dl className="history-allow-meta">
+                  <div>
+                    <dt>파일명</dt>
+                    <dd>{allowDetailItem.fileName}</dd>
+                  </div>
+                  <div>
+                    <dt>등록 일시</dt>
+                    <dd>{allowDetailItem.timestamp}</dd>
+                  </div>
+                  <div>
+                    <dt>워터마크 모델</dt>
+                    <dd>WAM (Watson AI Model)</dd>
+                  </div>
+                  <div>
+                    <dt>워터마크 버전</dt>
+                    <dd>v2.1.0</dd>
+                  </div>
+                  <div>
+                    <dt>검증 상태</dt>
+                    <dd>성공 ({parseCosinePercent(allowDetailItem.cosine)} 일치)</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section className="history-allow-panel">
+                <h3>블록체인 기록 데이터</h3>
+                <dl className="history-allow-chain-meta">
+                  <div>
+                    <dt>네트워크</dt>
+                    <dd>{extractNetwork(allowDetailItem.extra)}</dd>
+                  </div>
+                  <div>
+                    <dt>Token ID</dt>
+                    <dd>{extractTokenId(allowDetailItem.summary)}</dd>
+                  </div>
+                  <div>
+                    <dt>Content Hash</dt>
+                    <dd>-</dd>
+                  </div>
+                  <div>
+                    <dt>Tx Hash</dt>
+                    <dd>{extractTxHash(allowDetailItem.extra)}</dd>
+                  </div>
+                  <div>
+                    <dt>발행 시각</dt>
+                    <dd>{allowDetailItem.timestamp} UTC</dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+
+            <div className="history-allow-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => void handleCopyBlockchainUrl(allowDetailItem)}
+              >
+                블록체인 URL 복사
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setAllowDetailId(null)}
+              >
+                기록으로 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (reviewDetailItem) {
+    const reviewMeta = parseReviewMeta(reviewDetailItem.extra);
+
+    return (
+      <section className="history-shell">
+        <div className="history-allow-detail-view">
+          <div className="history-allow-detail-card">
+            <span className="history-review-detail-badge">REVIEW</span>
+            <h2>보류 검토 상세 정보</h2>
+            <p>경계 유사도 케이스로 수동 검토 및 투표가 진행 중입니다.</p>
+
+            <div className="history-allow-detail-grid">
+              <section className="history-allow-panel">
+                <h3>검토 대상 정보</h3>
+                <div className="history-allow-artwork-frame">
+                  <div
+                    className={`history-allow-artwork-image ${!reviewDetailItem.previewUrl ? "is-placeholder review-placeholder" : ""}`}
+                    style={
+                      reviewDetailItem.previewUrl
+                        ? {
+                            backgroundImage: `url(${reviewDetailItem.previewUrl})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }
+                        : undefined
+                    }
+                  />
+                </div>
+                <dl className="history-allow-meta">
+                  <div>
+                    <dt>파일명</dt>
+                    <dd>{reviewDetailItem.fileName}</dd>
+                  </div>
+                  <div>
+                    <dt>접수 일시</dt>
+                    <dd>{reviewDetailItem.timestamp}:00</dd>
+                  </div>
+                  <div>
+                    <dt>의미 유사도</dt>
+                    <dd>{reviewDetailItem.cosine}</dd>
+                  </div>
+                  <div>
+                    <dt>pHash 비교</dt>
+                    <dd>{reviewDetailItem.phash}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section className="history-allow-panel">
+                <h3>투표/검토 진행 현황</h3>
+                <dl className="history-allow-chain-meta">
+                  <div>
+                    <dt>현재 상태</dt>
+                    <dd>{reviewDetailItem.summary}</dd>
+                  </div>
+                  <div>
+                    <dt>마감 예정</dt>
+                    <dd>{reviewMeta.deadline}</dd>
+                  </div>
+                  <div>
+                    <dt>투표 현황</dt>
+                    <dd>
+                      찬성 {reviewMeta.yesVotes} · 반대 {reviewMeta.noVotes}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>참여 인원</dt>
+                    <dd>참여자 {reviewMeta.total}명</dd>
+                  </div>
+                  <div>
+                    <dt>진행률</dt>
+                    <dd>{reviewMeta.yesRate}%</dd>
+                  </div>
+                </dl>
+                <div className="history-vote-progress history-vote-progress--detail">
+                  <div className="history-vote-bar">
+                    <div
+                      className="history-vote-fill"
+                      style={{ width: `${reviewMeta.yesRate}%` }}
+                    />
+                  </div>
+                </div>
+              </section>
+            </div>
+
+            <div className="history-allow-actions">
+              <button type="button" className="btn btn-primary">
+                투표 참여하기
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setReviewDetailId(null)}
+              >
+                기록으로 돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (blockDetailItem) {
+    return (
+      <section className="history-shell">
+        <div className="history-allow-detail-view">
+          <div className="history-allow-detail-card">
+            <span className="history-block-detail-badge">BLOCK</span>
+            <h2>차단 상세 정보</h2>
+            <p>중복 가능성이 높아 등록이 차단된 기록입니다.</p>
+
+            <div className="history-allow-detail-grid">
+              <section className="history-allow-panel">
+                <h3>차단 대상 정보</h3>
+                <div className="history-allow-artwork-frame">
+                  <div
+                    className={`history-allow-artwork-image ${!blockDetailItem.previewUrl ? "is-placeholder block-placeholder" : ""}`}
+                    style={
+                      blockDetailItem.previewUrl
+                        ? {
+                            backgroundImage: `url(${blockDetailItem.previewUrl})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }
+                        : undefined
+                    }
+                  />
+                </div>
+                <dl className="history-allow-meta">
+                  <div>
+                    <dt>파일명</dt>
+                    <dd>{blockDetailItem.fileName}</dd>
+                  </div>
+                  <div>
+                    <dt>접수 일시</dt>
+                    <dd>{blockDetailItem.timestamp}:00</dd>
+                  </div>
+                  <div>
+                    <dt>의미 유사도</dt>
+                    <dd>{blockDetailItem.cosine}</dd>
+                  </div>
+                  <div>
+                    <dt>pHash 비교</dt>
+                    <dd>{blockDetailItem.phash}</dd>
+                  </div>
+                </dl>
+              </section>
+
+              <section className="history-allow-panel">
+                <h3>차단 상태</h3>
+                <dl className="history-allow-chain-meta">
+                  <div>
+                    <dt>판정 결과</dt>
+                    <dd>{blockDetailItem.summary}</dd>
+                  </div>
+                  <div>
+                    <dt>차단 사유</dt>
+                    <dd>{blockDetailItem.extra}</dd>
+                  </div>
+                  <div>
+                    <dt>등록 상태</dt>
+                    <dd>유사도 초과로 등록 차단</dd>
+                  </div>
+                  <div>
+                    <dt>기록 시각</dt>
+                    <dd>{blockDetailItem.timestamp}</dd>
+                  </div>
+                </dl>
+              </section>
+            </div>
+
+            <div className="history-allow-actions">
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => setBlockDetailId(null)}
+              >
+                기록으로 돌아가기
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setBlockDetailId(null)}
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="history-shell">
@@ -122,40 +478,55 @@ export default function HistoryPage({
                 <div className="history-log-expand">
                   <div className="history-expand-card history-expand-card--result">
                     <h4>{item.type === "verify" ? "검증 결과" : "AI 분석 결과"}</h4>
-                    <div className="history-detail-stat-list">
-                      <div className="history-detail-stat">
-                        <span>의미 기반 유사도</span>
-                        <strong>{item.cosine}</strong>
+                    {item.type === "allow" ? (
+                      <div className="history-detail-line-list">
+                        <p>
+                          <strong>의미 기반 유사도:</strong> {item.cosine}
+                        </p>
+                        <p>
+                          <strong>pHash 비교:</strong> {item.phash}
+                        </p>
+                        <p>
+                          <strong>판정:</strong> {buildAllowDecisionText(item)}
+                        </p>
                       </div>
-                      <div className="history-detail-stat">
-                        <span>pHash 비교</span>
-                        <strong>{item.phash}</strong>
+                    ) : (
+                      <div className="history-detail-stat-list">
+                        <div className="history-detail-stat">
+                          <span>의미 기반 유사도</span>
+                          <strong>{item.cosine}</strong>
+                        </div>
+                        <div className="history-detail-stat">
+                          <span>pHash 비교</span>
+                          <strong>{item.phash}</strong>
+                        </div>
+                        <div className="history-detail-stat">
+                          <span>{item.type === "verify" ? "검증 메모" : "판정 메모"}</span>
+                          <strong>{item.extra}</strong>
+                        </div>
                       </div>
-                      <div className="history-detail-stat">
-                        <span>{item.type === "verify" ? "검증 메모" : "판정 메모"}</span>
-                        <strong>{item.extra}</strong>
-                      </div>
-                    </div>
+                    )}
                   </div>
                   <div className="history-expand-card history-expand-card--status">
                     {item.type === "allow" ? (
                       <>
                         <h4>블록체인 기록</h4>
-                        <div className="history-detail-stat-list">
-                          <div className="history-detail-stat">
-                            <span>등록 상태</span>
-                            <strong>{item.summary}</strong>
-                          </div>
-                          <div className="history-detail-stat">
-                            <span>Token ID</span>
-                            <strong>{extractTokenId(item.summary)}</strong>
-                          </div>
-                          <div className="history-detail-stat">
-                            <span>기록 시각</span>
-                            <strong>{item.timestamp}</strong>
-                          </div>
+                        <div className="history-detail-line-list history-detail-line-list--blockchain">
+                          <p>
+                            <strong>Token ID:</strong> {extractTokenId(item.summary)}
+                          </p>
+                          <p>
+                            <strong>Content Hash:</strong> -
+                          </p>
+                          <p>
+                            <strong>Transaction:</strong> {extractTxHash(item.extra)}
+                          </p>
                         </div>
-                        <button type="button" className="btn btn-primary history-detail-btn">
+                        <button
+                          type="button"
+                          className="btn btn-primary history-detail-btn"
+                          onClick={() => setAllowDetailId(item.id)}
+                        >
                           토큰 발행 상세 보기
                         </button>
                       </>
@@ -193,7 +564,11 @@ export default function HistoryPage({
                             />
                           </div>
                         </div>
-                        <button type="button" className="btn btn-primary history-detail-btn">
+                        <button
+                          type="button"
+                          className="btn btn-primary history-detail-btn"
+                          onClick={() => setReviewDetailId(item.id)}
+                        >
                           투표 상세 보기
                         </button>
                       </>
@@ -202,39 +577,40 @@ export default function HistoryPage({
                     {item.type === "block" ? (
                       <>
                         <h4>차단 상태</h4>
-                        <div className="history-detail-stat-list">
-                          <div className="history-detail-stat">
-                            <span>판정 결과</span>
-                            <strong>{item.summary}</strong>
-                          </div>
-                          <div className="history-detail-stat">
-                            <span>차단 사유</span>
-                            <strong>{item.extra}</strong>
-                          </div>
-                          <div className="history-detail-stat">
-                            <span>기록 시각</span>
-                            <strong>{item.timestamp}</strong>
-                          </div>
+                        <div className="history-detail-line-list">
+                          <p>
+                            <strong>판정 결과:</strong> {item.summary}
+                          </p>
+                          <p>
+                            <strong>차단 사유:</strong> {item.extra}
+                          </p>
+                          <p>
+                            <strong>기록 시각:</strong> {item.timestamp}
+                          </p>
                         </div>
+                        <button
+                          type="button"
+                          className="btn btn-primary history-detail-btn"
+                          onClick={() => setBlockDetailId(item.id)}
+                        >
+                          차단 상세 보기
+                        </button>
                       </>
                     ) : null}
 
                     {item.type === "verify" ? (
                       <>
                         <h4>검증 상태</h4>
-                        <div className="history-detail-stat-list">
-                          <div className="history-detail-stat">
-                            <span>검증 결과</span>
-                            <strong>{item.summary}</strong>
-                          </div>
-                          <div className="history-detail-stat">
-                            <span>참고 정보</span>
-                            <strong>{item.extra}</strong>
-                          </div>
-                          <div className="history-detail-stat">
-                            <span>검증 시각</span>
-                            <strong>{item.timestamp}</strong>
-                          </div>
+                        <div className="history-detail-line-list">
+                          <p>
+                            <strong>검증 결과:</strong> {item.summary}
+                          </p>
+                          <p>
+                            <strong>참고 정보:</strong> {item.extra}
+                          </p>
+                          <p>
+                            <strong>검증 시각:</strong> {item.timestamp}
+                          </p>
                         </div>
                       </>
                     ) : null}
