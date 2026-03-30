@@ -20,6 +20,20 @@ function getStepState(progress: number, index: number, total: number) {
   return "대기";
 }
 
+function formatDisplayDateTime(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === "") return "-";
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}.${month}.${day} ${hours}:${minutes}`;
+}
+
 interface VerifyPageProps {
   selectedFile: File | null;
   previewUrl: string;
@@ -27,6 +41,7 @@ interface VerifyPageProps {
   verifyRunning: boolean;
   verifyResult: VerifyResultResponse | null;
   recentItems: VerifyHistoryItem[];
+  onOpenOngoingVote: (id: string) => void;
   uploadInputRef: React.RefObject<HTMLInputElement | null>;
   formatFileSize: (bytes: number) => string;
   onPickFile: (event: React.ChangeEvent<HTMLInputElement>) => void;
@@ -42,6 +57,7 @@ export default function VerifyPage({
   verifyRunning,
   verifyResult,
   recentItems,
+  onOpenOngoingVote,
   uploadInputRef,
   formatFileSize,
   onPickFile,
@@ -50,6 +66,7 @@ export default function VerifyPage({
   onResetVerify,
 }: VerifyPageProps) {
   const uploadedPreview = previewUrl || null;
+  const selectedFileTimestampLabel = formatDisplayDateTime(selectedFile?.lastModified);
 
   return (
     <section className="verify-layout">
@@ -247,7 +264,7 @@ export default function VerifyPage({
                   <span>{formatFileSize(selectedFile.size)} · 준비 완료</span>
                   <div className="verify-ready-table">
                     <div><span>검증자</span><strong>게스트</strong></div>
-                    <div><span>검증 시각</span><strong>2026.03.23 01:54</strong></div>
+                    <div><span>검증 시각</span><strong>{selectedFileTimestampLabel}</strong></div>
                   </div>
                 </div>
               </div>
@@ -279,7 +296,12 @@ export default function VerifyPage({
         <h3>진행 중인 투표</h3>
         <div className="history-scroll">
           {recentItems.map((item, index) => (
-            <article key={item.id} className="history-item verify-history-item">
+            <button
+              key={item.id}
+              type="button"
+              className="history-item history-item-button verify-history-item"
+              onClick={() => onOpenOngoingVote(item.id)}
+            >
               <div
                 className={`history-thumb ${item.previewUrl ? "" : index % 3 === 0 ? "history-thumb-city" : index % 3 === 1 ? "history-thumb-review" : "history-thumb-green"}`}
                 style={item.previewUrl ? { backgroundImage: `url(${item.previewUrl})` } : undefined}
@@ -288,7 +310,7 @@ export default function VerifyPage({
                 <p>{item.title}</p>
                 <span>{item.description}</span>
               </div>
-            </article>
+            </button>
           ))}
         </div>
       </aside>
