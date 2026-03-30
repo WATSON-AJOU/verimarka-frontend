@@ -75,6 +75,10 @@ function getWalletInstallMessage(connectorId?: string) {
     return "Rabby 지갑이 설치되어 있지 않습니다. Rabby 확장 프로그램을 먼저 설치하세요.";
   }
 
+  if (connectorId === "trustWallet") {
+    return "Trust Wallet 지갑이 설치되어 있지 않습니다. Trust Wallet 확장 프로그램을 먼저 설치하세요.";
+  }
+
   if (connectorId === "walletConnect") {
     return "WalletConnect를 사용할 수 없습니다. Project ID 설정을 확인하세요.";
   }
@@ -117,6 +121,14 @@ function buildWatermarkedFileName(fileName: string) {
   const baseName = trimmed.slice(0, dotIndex);
   const extension = trimmed.slice(dotIndex);
   return `${baseName}_VM${extension}`;
+}
+
+function getMimeTypeFromFileName(fileName: string) {
+  const lower = fileName.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".webp")) return "image/webp";
+  return "application/octet-stream";
 }
 
 function formatReviewVoteEndAt(baseTime: number) {
@@ -207,6 +219,7 @@ export default function App() {
   const [ongoingVoteUploads, setOngoingVoteUploads] = useState<import("./types/app").UploadHistoryItem[]>([]);
   const [ongoingVoteVerifyItems, setOngoingVoteVerifyItems] = useState<import("./types/app").VerifyHistoryItem[]>([]);
   const [walletConnecting, setWalletConnecting] = useState(false);
+  const [walletConnectingLabel, setWalletConnectingLabel] = useState("");
   const [walletDisconnecting, setWalletDisconnecting] = useState(false);
   const [walletConnectModalOpen, setWalletConnectModalOpen] = useState(false);
   const [walletSummary, setWalletSummary] = useState<WalletSummaryResponse>({
@@ -864,6 +877,58 @@ export default function App() {
     document.body.removeChild(anchor);
   }
 
+  async function saveFileWithPicker(url: string, fileName: string) {
+    const picker = (
+      window as Window & {
+        showSaveFilePicker?: (options?: {
+          suggestedName?: string;
+          types?: Array<{
+            description?: string;
+            accept: Record<string, string[]>;
+          }>;
+        }) => Promise<{
+          createWritable: () => Promise<{
+            write: (data: Blob) => Promise<void>;
+            close: () => Promise<void>;
+          }>;
+        }>;
+      }
+    ).showSaveFilePicker;
+
+    if (!picker) {
+      downloadFile(url, fileName);
+      return;
+    }
+
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error("다운로드 파일을 불러오지 못했습니다.");
+      }
+
+      const blob = await response.blob();
+      const handle = await picker({
+        suggestedName: fileName,
+        types: [
+          {
+            description: "Image file",
+            accept: {
+              [blob.type || getMimeTypeFromFileName(fileName)]: [`.${fileName.split(".").pop() || "jpg"}`],
+            },
+          },
+        ],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return;
+      }
+      downloadFile(url, fileName);
+    }
+  }
+
   function promptPhoneRequired(message = "서비스 이용을 위해 마이페이지에서 휴대폰 인증을 완료해주세요.") {
     setPhoneRequiredModalOpen(true);
     openToast(message);
@@ -946,6 +1011,11 @@ export default function App() {
   }
 
   async function connectWalletWithConnector(connectorId?: string) {
+    if (walletConnecting) {
+      openToast("이미 지갑 연결 요청이 진행 중입니다. MetaMask 승인창을 먼저 확인하세요.");
+      return;
+    }
+
     if (!hasAuthSession) {
       setModal("loginChoice");
       openToast("로그인 후 지갑을 연결할 수 있습니다.");
@@ -953,6 +1023,7 @@ export default function App() {
     }
 
     setWalletConnecting(true);
+    setWalletConnectingLabel("지갑 승인창을 확인하고 연결 요청을 완료하세요.");
 
     try {
       let walletAddress = connectedWalletAddress;
@@ -982,6 +1053,7 @@ export default function App() {
         walletAddress = result.accounts[0];
         walletType = targetConnector.name;
         walletChainId = result.chainId ?? sepolia.id;
+        setWalletConnectingLabel("지갑 연결이 확인되었습니다. 지갑에서 서명 요청을 승인하세요.");
       }
 
       if (!walletAddress) {
@@ -1021,9 +1093,17 @@ export default function App() {
       if (message.includes("Provider not found")) {
         message = getWalletInstallMessage(connectorId);
       }
+      if (
+        message.includes("wallet_requestPermissions") ||
+        message.includes("already pending") ||
+        message.includes("-32002")
+      ) {
+        message = "이미 MetaMask 승인창이 열려 있습니다. MetaMask 확장 창을 먼저 처리한 뒤 다시 시도하세요.";
+      }
       openToast(message);
     } finally {
       setWalletConnecting(false);
+      setWalletConnectingLabel("");
     }
   }
 
@@ -1633,9 +1713,7 @@ export default function App() {
             }}
             onDownloadWatermarked={() => {
               if (contentResult?.watermark_file_url) {
-                const shouldDownload = window.confirm("워터마크 이미지를 저장하시겠습니까?");
-                if (!shouldDownload) return;
-                downloadFile(
+                void saveFileWithPicker(
                   contentResult.watermark_file_url,
                   buildWatermarkedFileName(selectedFile?.name || contentResult.original_filename || "watermarked.jpg"),
                 );
@@ -1767,9 +1845,16 @@ export default function App() {
 
       <WalletConnectModal
         open={walletConnectModalOpen}
-        connectors={connectors.filter((connector) => connector.id === "metaMask" || connector.id === "rabby" || connector.id === "walletConnect")}
+        connectors={connectors.filter(
+          (connector) =>
+            connector.id === "metaMask" ||
+            connector.id === "rabby" ||
+            connector.id === "trustWallet" ||
+            connector.id === "walletConnect",
+        )}
         walletConnectEnabled={walletConnectEnabled}
         connecting={walletConnecting}
+        connectingLabel={walletConnectingLabel}
         onClose={() => setWalletConnectModalOpen(false)}
         onSelectConnector={(connector) => {
           void connectWalletWithConnector(connector.id);

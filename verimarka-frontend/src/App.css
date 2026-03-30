@@ -1844,6 +1844,165 @@ main {
   overflow-y: auto;
 }
 
+.history-allow-detail-view {
+  padding: 26px 18px;
+}
+
+.history-allow-detail-card {
+  border: 1px solid #d5e1f2;
+  border-radius: 28px;
+  background: #fff;
+  padding: 24px 22px 22px;
+  box-shadow: 0 14px 30px rgba(33, 58, 106, 0.06);
+  text-align: center;
+}
+
+.history-allow-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 76px;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 999px;
+  background: #dff0ff;
+  color: #1f5cae;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.history-review-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 92px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #fff2df;
+  color: #9e620f;
+  font-size: 0.98rem;
+  font-weight: 900;
+}
+
+.history-block-detail-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 88px;
+  height: 36px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: #ffe5ea;
+  color: #b33b4a;
+  font-size: 0.98rem;
+  font-weight: 900;
+}
+
+.history-allow-detail-card h2 {
+  margin: 16px 0 0;
+  color: #172847;
+  font-size: 2.6rem;
+  letter-spacing: -0.04em;
+}
+
+.history-allow-detail-card > p {
+  margin: 12px 0 0;
+  color: #6c7d99;
+  font-size: 1.03rem;
+  font-weight: 700;
+}
+
+.history-allow-detail-grid {
+  margin-top: 24px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  text-align: left;
+}
+
+.history-allow-panel {
+  border: 1px solid #cfddf2;
+  border-radius: 24px;
+  background: #fff;
+  padding: 18px 18px 20px;
+  box-shadow: 0 10px 24px rgba(33, 58, 106, 0.05);
+}
+
+.history-allow-panel h3 {
+  margin: 0;
+  color: #1a2d4f;
+  font-size: 1.72rem;
+  letter-spacing: -0.03em;
+}
+
+.history-allow-artwork-frame {
+  margin-top: 16px;
+  border: 1px solid #d5e1f2;
+  border-radius: 18px;
+  padding: 14px;
+  background: #fbfdff;
+}
+
+.history-allow-artwork-image {
+  aspect-ratio: 1.18 / 1;
+  width: 100%;
+  border-radius: 14px;
+  border: 1px solid #d6e0f1;
+  background: linear-gradient(130deg, #96d6ef, #4e95df 52%, #6eca89);
+}
+
+.history-allow-artwork-image.is-placeholder {
+  background: linear-gradient(130deg, #96d6ef, #4e95df 52%, #6eca89);
+}
+
+.history-allow-artwork-image.is-placeholder.review-placeholder {
+  background: linear-gradient(130deg, #f8d4a1, #d4def4 55%, #e0ba8f);
+}
+
+.history-allow-artwork-image.is-placeholder.block-placeholder {
+  background: linear-gradient(130deg, #f4f7fc, #dfe7f7 55%, #eef3fb);
+}
+
+.history-allow-meta,
+.history-allow-chain-meta {
+  margin: 18px 0 0;
+  display: grid;
+  gap: 12px;
+}
+
+.history-allow-meta div,
+.history-allow-chain-meta div {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.history-allow-meta dt,
+.history-allow-chain-meta dt {
+  color: #7384a3;
+  font-size: 0.98rem;
+  font-weight: 900;
+}
+
+.history-allow-meta dd,
+.history-allow-chain-meta dd {
+  margin: 0;
+  color: #273b61;
+  font-size: 1.02rem;
+  font-weight: 900;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.history-allow-actions {
+  margin-top: 20px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
 .history-log-item {
   border-top: 1px solid #edf2fa;
 }
@@ -2014,10 +2173,42 @@ main {
   margin-top: 18px;
 }
 
+.history-detail-line-list {
+  margin-top: 18px;
+  display: grid;
+  gap: 14px;
+}
+
+.history-detail-line-list p {
+  margin: 0;
+  color: #30466f;
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
+.history-detail-line-list p strong {
+  color: #22375f;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.history-detail-line-list--blockchain {
+  gap: 18px;
+}
+
+.history-detail-line-list--blockchain p {
+  font-size: 1.08rem;
+}
+
 .history-vote-progress {
   margin-top: 12px;
   display: grid;
   gap: 8px;
+}
+
+.history-vote-progress--detail {
+  margin-top: 18px;
 }
 
 .history-vote-progress span {
@@ -2037,6 +2228,20 @@ main {
   height: 100%;
   border-radius: inherit;
   background: linear-gradient(90deg, #dd9b2a 0%, #f0c85e 100%);
+}
+
+@media (max-width: 1040px) {
+  .history-allow-detail-grid,
+  .history-allow-actions,
+  .history-log-expand {
+    grid-template-columns: 1fr;
+  }
+
+  .history-allow-meta div,
+  .history-allow-chain-meta div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
 }
 
 .mypage-shell {
