@@ -15,6 +15,9 @@ export interface MeResponse {
   auth_provider: string;
   is_profile_completed: boolean;
   providers: string[];
+  wallet_address: string | null;
+  wallet_chain_id: number | null;
+  wallet_type: string;
 }
 
 interface AuthTokens {
@@ -33,7 +36,7 @@ interface SignupResponse extends AuthTokens {
 
 interface SignupPayload {
   email: string;
-  username: string;
+  nickname: string;
   password: string;
   terms_agreed: boolean;
   privacy_agreed: boolean;

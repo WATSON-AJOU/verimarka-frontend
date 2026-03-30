@@ -27,6 +27,7 @@ export interface UploadHistoryItem {
   date: string;
   owner: string;
   tone: string;
+  previewUrl?: string | null;
 }
 
 export interface VerifyHistoryItem {
@@ -34,6 +35,7 @@ export interface VerifyHistoryItem {
   title: string;
   description: string;
   tone: string;
+  previewUrl?: string | null;
 }
 
 export interface HistoryItem {
@@ -45,6 +47,7 @@ export interface HistoryItem {
   cosine: string;
   phash: string;
   extra: string;
+  previewUrl?: string | null;
 }
 
 export interface RegisteredContentResponse {
@@ -199,4 +202,40 @@ export interface VerifyResultResponse {
     threshold?: number | null;
     summary?: string | null;
   };
+}
+
+export interface WalletSummaryResponse {
+  connected: boolean;
+  address: string | null;
+  chain_id: number | null;
+  wallet_type: string;
+  network_name: string;
+  nft_count: number;
+  vote_minimum: number;
+  vote_eligible: boolean;
+}
+
+export interface AsyncContentJobResponse {
+  job_id: string;
+  status: "queued" | "running" | "success" | "failure";
+  content?: RegisteredContentResponse | null;
+}
+
+export interface AsyncVerifyJobResponse {
+  job_id: string;
+  status: "queued" | "running" | "success" | "failure";
+}
+
+export interface AnalysisJobStatusResponse {
+  job_id: string;
+  job_type: "register" | "verify" | "watermark";
+  status: "queued" | "running" | "success" | "failure";
+  content?: RegisteredContentResponse | null;
+  result?: VerifyResultResponse | null;
+  error_code?: string | null;
+  error_message?: string | null;
+  retryable: boolean;
+  created_at: string;
+  started_at?: string | null;
+  completed_at?: string | null;
 }
