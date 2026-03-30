@@ -14,11 +14,16 @@ export type AnalysisStage =
   | AnalysisResult;
 
 export interface ActivityItem {
-  status: "ALLOW" | "REVIEW" | "BLOCK";
+  id?: string;
+  type?: "allow" | "review" | "block" | "verify";
+  status: "ALLOW" | "REVIEW" | "BLOCK" | "VERIFY";
   title: string;
   description: string;
+  extra?: string;
   progress?: number;
   tone: string;
+  previewUrl?: string | null;
+  blockchain?: HistoryItem["blockchain"];
 }
 
 export interface UploadHistoryItem {
@@ -48,6 +53,39 @@ export interface HistoryItem {
   phash: string;
   extra: string;
   previewUrl?: string | null;
+  downloadUrl?: string | null;
+  blockchain?: {
+    network_name?: string | null;
+    chain_id?: number | null;
+    contract_address?: string | null;
+    token_id?: number | null;
+    file_hash?: string | null;
+    content_hash?: string | null;
+    tx_hash?: string | null;
+    transaction_hash?: string | null;
+    owner_address?: string | null;
+    recipient_address?: string | null;
+    status?: string | null;
+    minted_at?: string | null;
+    minted_at_display?: string | null;
+    vote?: {
+      active?: boolean;
+      vote_id?: string;
+      status?: string;
+      upvotes?: number;
+      downvotes?: number;
+      participant_count?: number;
+      end_time?: string | null;
+      end_time_display?: string | null;
+      started_at?: string | null;
+      started_at_display?: string | null;
+      finalized_at?: string | null;
+      finalized_at_display?: string | null;
+      similarity_percent?: number | null;
+      threshold?: number | null;
+      delta?: number | null;
+    } | null;
+  } | null;
 }
 
 export interface RegisteredContentResponse {

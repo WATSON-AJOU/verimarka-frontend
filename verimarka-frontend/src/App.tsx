@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useAccount, useChainId, useConnect, useDisconnect, useSignMessage } from "wagmi";
+import { useAccount, useChainId, useConnect, useDisconnect, usePublicClient, useSignMessage, useSwitchChain, useWalletClient } from "wagmi";
+import { estimateContractGas, waitForTransactionReceipt, writeContract } from "viem/actions";
 import "./App.css";
 import EmailLoginModal from "./components/auth/EmailLoginModal";
 import EmailVerificationModal from "./components/auth/EmailVerificationModal";
@@ -20,11 +21,12 @@ import VerifyPage from "./components/pages/VerifyPage";
 import Footer from "./components/layout/Footer";
 import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
-import { historyItems, homeActivities, resultConfig, systemCards, tabs } from "./lib/mockData";
+import { resultConfig, systemCards, tabs } from "./lib/mockData";
 import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest } from "./lib/api";
+import { watsonNftAbi } from "./lib/watsonNftAbi";
 import { sepolia, walletConnectEnabled } from "./lib/wallet";
 import { getAccessToken } from "./lib/token";
-import type { AnalysisJobStatusResponse, AnalysisStage, AsyncContentJobResponse, AsyncVerifyJobResponse, ModalType, RegisteredContentResponse, TabName, VerifyResultResponse, WalletSummaryResponse } from "./types/app";
+import type { ActivityItem, AnalysisJobStatusResponse, AnalysisStage, AsyncContentJobResponse, AsyncVerifyJobResponse, ModalType, RegisteredContentResponse, TabName, VerifyResultResponse, WalletSummaryResponse } from "./types/app";
 import type { HistoryItem } from "./types/app";
 
 function formatFileSize(bytes: number) {
@@ -145,7 +147,7 @@ function getInitial(value: string) {
   return safeValue ? safeValue.slice(0, 1).toUpperCase() : "V";
 }
 
-const LOADING_RING_DURATION_MS = 5000;
+const LOADING_RING_DURATION_MS = 15000;
 const LOADING_RING_MAX_PENDING_PROGRESS = 99;
 const AUTO_LOGOUT_IDLE_MS = 30 * 60 * 1000;
 const POST_LOGOUT_TOAST_KEY = "verimarka:post-logout-toast";
@@ -159,6 +161,9 @@ export default function App() {
   const { connectAsync, connectors } = useConnect();
   const { disconnectAsync } = useDisconnect();
   const { signMessageAsync } = useSignMessage();
+  const { data: walletClient } = useWalletClient();
+  const publicClient = usePublicClient();
+  const { switchChainAsync } = useSwitchChain();
   const [modal, setModal] = useState<ModalType>("none");
   const [toast, setToast] = useState({
     id: 0,
@@ -215,13 +220,15 @@ export default function App() {
   const [verifyJobId, setVerifyJobId] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerifyResultResponse | null>(null);
   const [historyFilter, setHistoryFilter] = useState<"all" | "allow" | "block" | "review" | "verify">("all");
-  const [historyEntries, setHistoryEntries] = useState<HistoryItem[]>(historyItems);
+  const [historyEntries, setHistoryEntries] = useState<HistoryItem[]>([]);
+  const [recentActivities, setRecentActivities] = useState<ActivityItem[]>([]);
   const [ongoingVoteUploads, setOngoingVoteUploads] = useState<import("./types/app").UploadHistoryItem[]>([]);
   const [ongoingVoteVerifyItems, setOngoingVoteVerifyItems] = useState<import("./types/app").VerifyHistoryItem[]>([]);
   const [walletConnecting, setWalletConnecting] = useState(false);
   const [walletConnectingLabel, setWalletConnectingLabel] = useState("");
   const [walletDisconnecting, setWalletDisconnecting] = useState(false);
   const [walletConnectModalOpen, setWalletConnectModalOpen] = useState(false);
+  const [historyVoteSubmitting, setHistoryVoteSubmitting] = useState(false);
   const [walletSummary, setWalletSummary] = useState<WalletSummaryResponse>({
     connected: false,
     address: null,
@@ -241,6 +248,11 @@ export default function App() {
   const emailVerified = Boolean(user?.email_verified);
   const activeTab = useMemo(() => getTabFromPath(location.pathname), [location.pathname]);
   const historyEntryFromUrl = useMemo(() => new URLSearchParams(location.search).get("entry"), [location.search]);
+  const historyDetailTypeFromUrl = useMemo(() => {
+    const value = new URLSearchParams(location.search).get("detail");
+    if (value === "allow" || value === "review" || value === "block") return value;
+    return null;
+  }, [location.search]);
   const displayName = useMemo(() => {
     if (!user) return "";
     return user.display_name || user.nickname || user.username || user.email.split("@")[0] || "회원";
@@ -263,6 +275,10 @@ export default function App() {
       },
       { replace: options?.replace ?? false },
     );
+  }
+
+  function openOngoingVoteHistory(entryId: string) {
+    navigateToTab("history", { search: `?entry=${encodeURIComponent(entryId)}&detail=review` });
   }
 
   async function refreshWalletSummary(options?: { silent?: boolean }) {
@@ -792,45 +808,111 @@ export default function App() {
   }, [verifyRunning]);
 
   useEffect(() => {
+    let cancelled = false;
+
+    void (async () => {
+      try {
+        const response = await apiRequest<Array<{
+          id?: string;
+          type?: "allow" | "review" | "block" | "verify";
+          status: "ALLOW" | "REVIEW" | "BLOCK" | "VERIFY";
+          title: string;
+          description: string;
+          extra?: string;
+          progress?: number | null;
+          tone: string;
+          preview_url?: string | null;
+          blockchain?: HistoryItem["blockchain"] | null;
+        }>>("/logs/recent/", {
+          method: "GET",
+        });
+
+        if (cancelled) return;
+
+        setRecentActivities(
+          response.map((item) => ({
+            id: item.id,
+            type: item.type,
+            status: item.status,
+            title: item.title,
+            description: item.description,
+            extra: item.extra,
+            progress: typeof item.progress === "number" ? item.progress : undefined,
+            tone: item.tone,
+            previewUrl: item.preview_url ?? null,
+            blockchain: item.blockchain ?? null,
+          })),
+        );
+      } catch {
+        if (!cancelled) {
+          setRecentActivities([]);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function loadHistoryEntries(options?: { silent?: boolean }) {
+    if (!hasAuthSession) {
+      setHistoryEntries([]);
+      return;
+    }
+
+    try {
+      const response = await apiRequest<Array<{
+        id: string;
+        type: "allow" | "review" | "block" | "verify";
+        file_name: string;
+        summary: string;
+        timestamp: string;
+        cosine: string;
+        phash: string;
+        extra: string;
+        preview_url?: string | null;
+        download_url?: string | null;
+        blockchain?: HistoryItem["blockchain"];
+      }>>("/logs/history/", {
+        method: "GET",
+        auth: true,
+      });
+
+      setHistoryEntries(
+        response.map((item) => ({
+          id: item.id,
+          type: item.type,
+          fileName: item.file_name,
+          summary: item.summary,
+          timestamp: item.timestamp,
+          cosine: item.cosine,
+          phash: item.phash,
+          extra: item.extra,
+          previewUrl: item.preview_url ?? null,
+          downloadUrl: item.download_url ?? null,
+          blockchain: item.blockchain ?? null,
+        })),
+      );
+    } catch {
+      if (!options?.silent) {
+        setHistoryEntries([]);
+      }
+    }
+  }
+
+  useEffect(() => {
     if (activeTab !== "history" || !hasAuthSession) return;
 
     let cancelled = false;
 
     void (async () => {
       try {
-        const response = await apiRequest<Array<{
-          id: string;
-          type: "allow" | "review" | "block" | "verify";
-          file_name: string;
-          summary: string;
-          timestamp: string;
-          cosine: string;
-          phash: string;
-          extra: string;
-          preview_url?: string | null;
-        }>>("/logs/history/", {
-          method: "GET",
-          auth: true,
-        });
-
+        await loadHistoryEntries({ silent: true });
         if (cancelled) return;
-
-        setHistoryEntries(
-          response.map((item) => ({
-            id: item.id,
-            type: item.type,
-            fileName: item.file_name,
-            summary: item.summary,
-            timestamp: item.timestamp,
-            cosine: item.cosine,
-            phash: item.phash,
-            extra: item.extra,
-            previewUrl: item.preview_url ?? null,
-          })),
-        );
       } catch {
         if (!cancelled) {
-          setHistoryEntries(historyItems);
+          setHistoryEntries([]);
         }
       }
     })();
@@ -867,14 +949,22 @@ export default function App() {
     setToast((current) => ({ ...current, open: false }));
   }
 
-  function downloadFile(url: string, fileName: string) {
+  async function downloadFile(url: string, fileName: string) {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("다운로드 파일을 불러오지 못했습니다.");
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
-    anchor.href = url;
+    anchor.href = objectUrl;
     anchor.download = fileName;
     anchor.rel = "noopener";
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   }
 
   async function saveFileWithPicker(url: string, fileName: string) {
@@ -896,7 +986,7 @@ export default function App() {
     ).showSaveFilePicker;
 
     if (!picker) {
-      downloadFile(url, fileName);
+      await downloadFile(url, fileName);
       return;
     }
 
@@ -925,7 +1015,7 @@ export default function App() {
       if (error instanceof DOMException && error.name === "AbortError") {
         return;
       }
-      downloadFile(url, fileName);
+      await downloadFile(url, fileName);
     }
   }
 
@@ -1317,7 +1407,7 @@ export default function App() {
     }
 
     if (contentResult.watermark?.applied && contentResult.watermark_file_url) {
-      window.open(contentResult.watermark_file_url, "_blank", "noopener,noreferrer");
+      setAnalysisStage("watermarked");
       return;
     }
 
@@ -1508,6 +1598,104 @@ export default function App() {
     openToast("데모 투표에 참여했습니다. 실제 서비스에서는 블록체인에 기록됩니다.");
   }
 
+  async function castHistoryReviewVote(item: HistoryItem, choice: "yes" | "no") {
+    if (historyVoteSubmitting) {
+      openToast("이미 투표 요청을 처리 중입니다.");
+      return;
+    }
+
+    if (!hasAuthSession) {
+      setModal("loginChoice");
+      openToast("로그인 후 투표할 수 있습니다.");
+      return;
+    }
+
+    if (walletRequired) {
+      promptWalletRequired("지갑 연결 후 투표할 수 있습니다.");
+      return;
+    }
+
+    if (!walletSummary.vote_eligible) {
+      openToast(`투표 참여는 최소 ${walletSummary.vote_minimum} NFT 보유 후 가능합니다.`);
+      return;
+    }
+
+    if (!connectedWalletAddress || !isConnected) {
+      setWalletConnectModalOpen(true);
+      openToast("투표하려면 연결된 지갑이 필요합니다.");
+      return;
+    }
+
+    if (!user?.wallet_address || user.wallet_address.toLowerCase() !== connectedWalletAddress.toLowerCase()) {
+      openToast("서비스에 연동된 지갑과 현재 연결된 지갑이 다릅니다. 같은 지갑으로 다시 연결하세요.");
+      return;
+    }
+
+    const tokenId = item.blockchain?.token_id;
+    const contractAddress = item.blockchain?.contract_address;
+    const chainId = item.blockchain?.chain_id ?? sepolia.id;
+
+    if (tokenId === null || tokenId === undefined || !contractAddress) {
+      openToast("투표 대상의 블록체인 정보가 부족합니다. 새로고침 후 다시 시도하세요.");
+      return;
+    }
+
+    if (!walletClient || !publicClient) {
+      openToast("지갑 클라이언트를 확인할 수 없습니다. 다시 연결 후 시도하세요.");
+      return;
+    }
+
+    setHistoryVoteSubmitting(true);
+
+    try {
+      if (currentWalletChainId !== chainId) {
+        await switchChainAsync({ chainId });
+      }
+
+      const estimatedGas = await estimateContractGas(publicClient, {
+        address: contractAddress as `0x${string}`,
+        abi: watsonNftAbi,
+        functionName: "voteForDocument",
+        args: [BigInt(tokenId), choice === "yes"],
+        account: connectedWalletAddress as `0x${string}`,
+      });
+
+      const hash = await writeContract(walletClient, {
+        address: contractAddress as `0x${string}`,
+        abi: watsonNftAbi,
+        functionName: "voteForDocument",
+        args: [BigInt(tokenId), choice === "yes"],
+        account: connectedWalletAddress as `0x${string}`,
+        gas: (estimatedGas * 12n) / 10n,
+      });
+
+      await waitForTransactionReceipt(publicClient, { hash });
+
+      await apiRequest<RegisteredContentResponse>(`/contents/${item.id}/review-vote/`, {
+        method: "GET",
+        auth: true,
+      });
+      await loadHistoryEntries({ silent: true });
+      openToast(choice === "yes" ? "찬성 투표가 기록되었습니다." : "반대 투표가 기록되었습니다.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "투표 참여 중 오류가 발생했습니다.";
+      const normalizedMessage =
+        message.includes("gas limit too high")
+          ? "지갑이 과도한 가스 한도를 설정해 투표에 실패했습니다. 다시 시도해주세요."
+          : message.includes("Already voted")
+            ? "이미 이 투표에 참여했습니다."
+            : message.includes("Voting time ended")
+              ? "투표가 종료되어 더 이상 참여할 수 없습니다."
+              : message.includes("Voting not active")
+                ? "현재 진행 중인 투표가 아닙니다."
+                : message;
+      openToast(normalizedMessage);
+      throw error;
+    } finally {
+      setHistoryVoteSubmitting(false);
+    }
+  }
+
   async function sendPhoneVerificationCode() {
     const normalizedPhone = phoneInput.replace(/\D/g, "");
     if (!/^01\d{8,9}$/.test(normalizedPhone)) {
@@ -1625,7 +1813,13 @@ export default function App() {
 
       <main>
         {activeTab === "home" ? (
-          <HomePage systemCards={systemCards} activities={homeActivities} onMoveTab={moveToTab} />
+          <HomePage
+            systemCards={systemCards}
+            activities={recentActivities}
+            onMoveTab={moveToTab}
+            onCastReviewVote={castHistoryReviewVote}
+            reviewVoteSubmitting={historyVoteSubmitting}
+          />
         ) : null}
 
         {activeTab === "add" ? (
@@ -1638,6 +1832,7 @@ export default function App() {
             registerResult={registerResult}
             contentResult={contentResult}
             recentUploads={ongoingVoteUploads}
+            onOpenOngoingVote={openOngoingVoteHistory}
             onPickFile={handlePickFile}
             onTriggerPicker={triggerFilePicker}
             onStartAnalysis={startAnalysis}
@@ -1712,11 +1907,15 @@ export default function App() {
               if (registerResult) openToast(registerResult.primaryAction);
             }}
             onDownloadWatermarked={() => {
-              if (contentResult?.watermark_file_url) {
-                void saveFileWithPicker(
-                  contentResult.watermark_file_url,
-                  buildWatermarkedFileName(selectedFile?.name || contentResult.original_filename || "watermarked.jpg"),
-                );
+              const watermarkFileUrl = contentResult?.watermark_file_url;
+              if (watermarkFileUrl) {
+                void (async () => {
+                  await saveFileWithPicker(
+                    watermarkFileUrl,
+                    buildWatermarkedFileName(selectedFile?.name || contentResult.original_filename || "watermarked.jpg"),
+                  );
+                  openToast("이미지 다운로드에 성공했습니다.");
+                })();
                 return;
               }
               openToast("워터마크 결과 파일이 아직 준비되지 않았습니다.");
@@ -1725,7 +1924,7 @@ export default function App() {
             onCopyVerificationUrl={() => {
               const historyLink = buildHistoryEntryUrl(contentResult?.public_id || "");
               void navigator.clipboard.writeText(historyLink);
-              openToast("현재 기록 링크를 복사했습니다.");
+              openToast("URL 복사가 완료되었습니다.");
             }}
             uploadInputRef={uploadInputRef}
             formatFileSize={formatFileSize}
@@ -1744,7 +1943,6 @@ export default function App() {
               if (!emailVerified) return;
               setReviewConsentNotifyByEmail((current) => !current);
             }}
-            onOpenReviewGuide={() => openToast("절차 자세히 보기 기능은 준비 중입니다.")}
             onConfirmReviewConsent={() => {
               setReviewConsentModalOpen(false);
               void startReviewVote();
@@ -1766,6 +1964,7 @@ export default function App() {
             verifyRunning={verifyRunning}
             verifyResult={verifyResult}
             recentItems={ongoingVoteVerifyItems}
+            onOpenOngoingVote={openOngoingVoteHistory}
             uploadInputRef={verifyInputRef}
             formatFileSize={formatFileSize}
             onPickFile={handlePickVerifyFile}
@@ -1787,7 +1986,11 @@ export default function App() {
             items={filteredHistory}
             historyFilter={historyFilter}
             onFilterChange={setHistoryFilter}
+            onOpenToast={openToast}
+            onCastReviewVote={castHistoryReviewVote}
+            reviewVoteSubmitting={historyVoteSubmitting}
             initialExpandedId={historyEntryFromUrl}
+            initialDetailType={historyDetailTypeFromUrl}
           />
         ) : null}
 

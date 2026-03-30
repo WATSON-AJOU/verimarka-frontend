@@ -5,15 +5,60 @@ interface HistoryPageProps {
   items: HistoryItem[];
   historyFilter: "all" | "allow" | "block" | "review" | "verify";
   onFilterChange: (filter: "all" | "allow" | "block" | "review" | "verify") => void;
+  onOpenToast: (message: string, duration?: number) => void;
+  onCastReviewVote: (item: HistoryItem, choice: "yes" | "no") => Promise<void>;
+  reviewVoteSubmitting?: boolean;
   initialExpandedId?: string | null;
+  initialDetailType?: "allow" | "review" | "block" | null;
 }
 
 export default function HistoryPage({
   items,
   historyFilter,
   onFilterChange,
+  onOpenToast,
+  onCastReviewVote,
+  reviewVoteSubmitting = false,
   initialExpandedId,
+  initialDetailType,
 }: HistoryPageProps) {
+  function buildWatermarkedFileName(fileName: string) {
+    const trimmed = fileName.trim();
+    if (!trimmed) return "watermarked_VM";
+
+    const dotIndex = trimmed.lastIndexOf(".");
+    if (dotIndex <= 0 || dotIndex === trimmed.length - 1) {
+      return `${trimmed}_VM`;
+    }
+
+    const baseName = trimmed.slice(0, dotIndex);
+    const extension = trimmed.slice(dotIndex);
+    return `${baseName}_VM${extension}`;
+  }
+
+  async function downloadFile(url: string, fileName: string) {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error("다운로드 파일을 불러오지 못했습니다.");
+    }
+
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = objectUrl;
+    anchor.download = fileName;
+    anchor.rel = "noopener";
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+  }
+
+  async function handleDownloadWatermarkedImage(item: HistoryItem) {
+    if (!item.downloadUrl) return;
+    await downloadFile(item.downloadUrl, buildWatermarkedFileName(item.fileName));
+  }
+
   function parseCosinePercent(value: string) {
     const matched = value.match(/\(([\d.]+)%\)/);
     if (matched) return `${matched[1]}%`;
@@ -33,11 +78,6 @@ export default function HistoryPage({
     return matched ? `#${matched[1]}` : "-";
   }
 
-  function extractTxHash(extra: string) {
-    const matched = extra.match(/0x[a-fA-F0-9]{10,}/);
-    return matched ? truncateHash(matched[0]) : "-";
-  }
-
   function extractRawTxHash(extra: string) {
     const matched = extra.match(/0x[a-fA-F0-9]{10,}/);
     return matched ? matched[0] : "";
@@ -46,6 +86,32 @@ export default function HistoryPage({
   function extractNetwork(extra: string) {
     const matched = extra.match(/^([^·]+)(?:·|$)/);
     return matched?.[1]?.trim() || "Sepolia";
+  }
+
+  function getHistoryNetwork(item: HistoryItem) {
+    return item.blockchain?.network_name || extractNetwork(item.extra);
+  }
+
+  function getHistoryTokenId(item: HistoryItem) {
+    const tokenId = item.blockchain?.token_id;
+    if (typeof tokenId === "number" || typeof tokenId === "string") return `#${tokenId}`;
+    return extractTokenId(item.summary);
+  }
+
+  function getHistoryContentHash(item: HistoryItem) {
+    return item.blockchain?.file_hash || item.blockchain?.content_hash || "-";
+  }
+
+  function getHistoryTxHash(item: HistoryItem) {
+    return item.blockchain?.tx_hash || item.blockchain?.transaction_hash || extractRawTxHash(item.extra) || "-";
+  }
+
+  function getHistoryTxHashShort(item: HistoryItem) {
+    return truncateHash(getHistoryTxHash(item));
+  }
+
+  function getHistoryMintedAt(item: HistoryItem) {
+    return item.blockchain?.minted_at_display || item.blockchain?.minted_at || `${item.timestamp} UTC`;
   }
 
   function buildAllowDecisionText(item: HistoryItem) {
@@ -69,10 +135,32 @@ export default function HistoryPage({
     };
   }
 
+  function isVoteClosed(item: HistoryItem) {
+    const vote = item.blockchain?.vote;
+    const status = (vote?.status || "").trim();
+    if (status && status !== "Pending") return true;
+
+    const endTimeRaw = vote?.end_time;
+    if (!endTimeRaw) return false;
+
+    const endTime = new Date(endTimeRaw);
+    if (Number.isNaN(endTime.getTime())) return false;
+    return endTime.getTime() <= Date.now();
+  }
+
+  function getVoteSimilarity(item: HistoryItem) {
+    const similarity = item.blockchain?.vote?.similarity_percent;
+    if (typeof similarity === "number") {
+      return `${similarity.toFixed(1)}%`;
+    }
+    return parseCosinePercent(item.cosine);
+  }
+
   const [expandedId, setExpandedId] = useState<string | null>(initialExpandedId ?? null);
   const [allowDetailId, setAllowDetailId] = useState<string | null>(null);
   const [reviewDetailId, setReviewDetailId] = useState<string | null>(null);
   const [blockDetailId, setBlockDetailId] = useState<string | null>(null);
+  const [reviewVoteModalOpen, setReviewVoteModalOpen] = useState(false);
 
   useEffect(() => {
     if (initialExpandedId && items.some((item) => item.id === initialExpandedId)) {
@@ -80,30 +168,43 @@ export default function HistoryPage({
     }
   }, [initialExpandedId, items]);
 
-  const allowDetailItem =
-    allowDetailId && items.find((item) => item.id === allowDetailId && item.type === "allow")
-      ? items.find((item) => item.id === allowDetailId && item.type === "allow") ?? null
-      : null;
-  const reviewDetailItem =
-    reviewDetailId && items.find((item) => item.id === reviewDetailId && item.type === "review")
-      ? items.find((item) => item.id === reviewDetailId && item.type === "review") ?? null
-      : null;
-  const blockDetailItem =
-    blockDetailId && items.find((item) => item.id === blockDetailId && item.type === "block")
-      ? items.find((item) => item.id === blockDetailId && item.type === "block") ?? null
-      : null;
+  useEffect(() => {
+    if (!initialExpandedId || !initialDetailType) return;
+    if (!items.some((item) => item.id === initialExpandedId && item.type === initialDetailType)) return;
+
+    if (initialDetailType === "allow") setAllowDetailId(initialExpandedId);
+    if (initialDetailType === "review") setReviewDetailId(initialExpandedId);
+    if (initialDetailType === "block") setBlockDetailId(initialExpandedId);
+  }, [initialExpandedId, initialDetailType, items]);
+
+  const allowDetailItem = allowDetailId
+    ? (items.find((item) => item.id === allowDetailId && item.type === "allow") ?? null)
+    : null;
+  const reviewDetailItem = reviewDetailId
+    ? (items.find((item) => item.id === reviewDetailId && item.type === "review") ?? null)
+    : null;
+  const blockDetailItem = blockDetailId
+    ? (items.find((item) => item.id === blockDetailId && item.type === "block") ?? null)
+    : null;
+
+  useEffect(() => {
+    if (!reviewDetailItem) {
+      setReviewVoteModalOpen(false);
+    }
+  }, [reviewDetailItem]);
 
   async function handleCopyBlockchainUrl(item: HistoryItem) {
-    const rawTxHash = extractRawTxHash(item.extra);
-    const networkName = extractNetwork(item.extra).toLowerCase();
+    const rawTxHash = getHistoryTxHash(item);
+    const networkName = getHistoryNetwork(item).toLowerCase();
     const baseUrl =
       networkName.includes("polygon")
         ? "https://polygonscan.com/tx/"
         : networkName.includes("sepolia")
           ? "https://sepolia.etherscan.io/tx/"
           : "https://sepolia.etherscan.io/tx/";
-    const targetUrl = rawTxHash ? `${baseUrl}${rawTxHash}` : `${window.location.origin}/history?entry=${item.id}`;
+    const targetUrl = rawTxHash && rawTxHash !== "-" ? `${baseUrl}${rawTxHash}` : `${window.location.origin}/history?entry=${item.id}`;
     await navigator.clipboard.writeText(targetUrl);
+    onOpenToast("URL 복사가 완료되었습니다.");
   }
 
   if (allowDetailItem) {
@@ -161,23 +262,23 @@ export default function HistoryPage({
                 <dl className="history-allow-chain-meta">
                   <div>
                     <dt>네트워크</dt>
-                    <dd>{extractNetwork(allowDetailItem.extra)}</dd>
+                    <dd>{getHistoryNetwork(allowDetailItem)}</dd>
                   </div>
                   <div>
                     <dt>Token ID</dt>
-                    <dd>{extractTokenId(allowDetailItem.summary)}</dd>
+                    <dd>{getHistoryTokenId(allowDetailItem)}</dd>
                   </div>
                   <div>
                     <dt>Content Hash</dt>
-                    <dd>-</dd>
+                    <dd>{getHistoryContentHash(allowDetailItem)}</dd>
                   </div>
                   <div>
                     <dt>Tx Hash</dt>
-                    <dd>{extractTxHash(allowDetailItem.extra)}</dd>
+                    <dd>{getHistoryTxHashShort(allowDetailItem)}</dd>
                   </div>
                   <div>
                     <dt>발행 시각</dt>
-                    <dd>{allowDetailItem.timestamp} UTC</dd>
+                    <dd>{getHistoryMintedAt(allowDetailItem)}</dd>
                   </div>
                 </dl>
               </section>
@@ -187,9 +288,17 @@ export default function HistoryPage({
               <button
                 type="button"
                 className="btn btn-primary"
+                onClick={() => void handleDownloadWatermarkedImage(allowDetailItem)}
+                disabled={!allowDetailItem.downloadUrl}
+              >
+                워터마크 이미지 다운로드
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
                 onClick={() => void handleCopyBlockchainUrl(allowDetailItem)}
               >
-                블록체인 URL 복사
+                 URL 복사
               </button>
               <button
                 type="button"
@@ -207,6 +316,10 @@ export default function HistoryPage({
 
   if (reviewDetailItem) {
     const reviewMeta = parseReviewMeta(reviewDetailItem.extra);
+    const reviewVoteClosed = isVoteClosed(reviewDetailItem);
+    const yesRate = reviewMeta.total > 0 ? reviewMeta.yesRate : 50;
+    const noRate = 100 - yesRate;
+    const similarityLabel = getVoteSimilarity(reviewDetailItem);
 
     return (
       <section className="history-shell">
@@ -291,9 +404,23 @@ export default function HistoryPage({
             </div>
 
             <div className="history-allow-actions">
-              <button type="button" className="btn btn-primary">
-                투표 참여하기
-              </button>
+              {!reviewVoteClosed ? (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => setReviewVoteModalOpen(true)}
+                >
+                  투표 참여하기
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  disabled
+                >
+                  투표가 종료되었습니다
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn-secondary"
@@ -304,6 +431,116 @@ export default function HistoryPage({
             </div>
           </div>
         </div>
+
+        {reviewVoteModalOpen ? (
+          <div className="modal-backdrop" onClick={() => setReviewVoteModalOpen(false)}>
+            <div className="modal-shell review-vote-modal" onClick={(event) => event.stopPropagation()}>
+              <button type="button" className="modal-close" onClick={() => setReviewVoteModalOpen(false)}>
+                닫기
+              </button>
+              <span className="review-vote-modal-tag">REVIEW</span>
+              <h3 className="review-vote-modal-title">커뮤니티 검증 투표</h3>
+              <p className="review-vote-modal-subtitle">진행 중인 커뮤니티 검증 투표에 바로 참여할 수 있습니다.</p>
+
+              <div className="review-vote-modal-compare-grid">
+                <section className="review-vote-modal-panel">
+                  <h4>업로드 이미지</h4>
+                  <div
+                    className={`review-vote-modal-image ${!reviewDetailItem.previewUrl ? "is-placeholder" : ""}`}
+                    style={
+                      reviewDetailItem.previewUrl
+                        ? {
+                            backgroundImage: `url(${reviewDetailItem.previewUrl})`,
+                            backgroundSize: "cover",
+                            backgroundPosition: "center",
+                          }
+                        : undefined
+                    }
+                  />
+                  <strong>{reviewDetailItem.fileName}</strong>
+                </section>
+
+                <div className="review-vote-modal-bubble" aria-label={`유사도 ${similarityLabel}`}>
+                  <span>유사도</span>
+                  <strong>{similarityLabel}</strong>
+                </div>
+
+                <section className="review-vote-modal-panel">
+                  <h4>유사 후보</h4>
+                  <div className="review-vote-modal-image is-candidate-placeholder">
+                    <span>후보 이미지 준비 중</span>
+                  </div>
+                  <strong>유사 후보 비교 필요</strong>
+                </section>
+              </div>
+
+              <div className="review-vote-modal-stat-grid">
+                <article className="review-vote-modal-stat">
+                  <span>투표 ID</span>
+                  <strong>{reviewDetailItem.blockchain?.vote?.vote_id || "VOTE-UNKNOWN"}</strong>
+                </article>
+                <article className="review-vote-modal-stat">
+                  <span>마감 예정</span>
+                  <strong>{reviewMeta.deadline}</strong>
+                </article>
+                <article className="review-vote-modal-stat">
+                  <span>참여 인원</span>
+                  <strong>{reviewMeta.total}명</strong>
+                </article>
+              </div>
+
+              <div className="review-vote-modal-bar">
+                <div className="review-vote-modal-bar-track">
+                  <div className="review-vote-modal-bar-fill is-yes" style={{ width: `${yesRate}%` }}>
+                    찬성 {yesRate}%
+                  </div>
+                  <div className="review-vote-modal-bar-fill is-no" style={{ width: `${noRate}%` }}>
+                    반대 {noRate}%
+                  </div>
+                </div>
+              </div>
+
+              <div className="review-vote-modal-actions">
+                <button
+                  type="button"
+                  className="btn review-vote-modal-action review-vote-modal-action-yes"
+                  disabled={reviewVoteSubmitting || reviewVoteClosed}
+                  onClick={async () => {
+                    try {
+                      await onCastReviewVote(reviewDetailItem, "yes");
+                      setReviewVoteModalOpen(false);
+                    } catch {
+                      // parent handles toast/error state
+                    }
+                  }}
+                >
+                  {reviewVoteSubmitting ? "처리 중..." : "찬성"}
+                </button>
+                <button
+                  type="button"
+                  className="btn review-vote-modal-action review-vote-modal-action-no"
+                  disabled={reviewVoteSubmitting || reviewVoteClosed}
+                  onClick={async () => {
+                    try {
+                      await onCastReviewVote(reviewDetailItem, "no");
+                      setReviewVoteModalOpen(false);
+                    } catch {
+                      // parent handles toast/error state
+                    }
+                  }}
+                >
+                  {reviewVoteSubmitting ? "처리 중..." : "반대"}
+                </button>
+              </div>
+
+              <p className="review-vote-modal-note">
+                {reviewVoteClosed
+                  ? "투표가 종료되어 더 이상 참여할 수 없습니다."
+                  : "투표 결과는 블록체인 상태에 따라 실시간으로 반영됩니다."}
+              </p>
+            </div>
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -513,13 +750,13 @@ export default function HistoryPage({
                         <h4>블록체인 기록</h4>
                         <div className="history-detail-line-list history-detail-line-list--blockchain">
                           <p>
-                            <strong>Token ID:</strong> {extractTokenId(item.summary)}
+                            <strong>Token ID:</strong> {getHistoryTokenId(item)}
                           </p>
                           <p>
-                            <strong>Content Hash:</strong> -
+                            <strong>Content Hash:</strong> {getHistoryContentHash(item)}
                           </p>
                           <p>
-                            <strong>Transaction:</strong> {extractTxHash(item.extra)}
+                            <strong>Transaction:</strong> {getHistoryTxHashShort(item)}
                           </p>
                         </div>
                         <button
