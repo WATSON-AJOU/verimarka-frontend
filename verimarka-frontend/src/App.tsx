@@ -22,7 +22,7 @@ import Footer from "./components/layout/Footer";
 import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
 import { resultConfig, systemCards, tabs } from "./lib/mockData";
-import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest } from "./lib/api";
+import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest, authenticatedFetch } from "./lib/api";
 import { watsonNftAbi } from "./lib/watsonNftAbi";
 import { sepolia, walletConnectEnabled } from "./lib/wallet";
 import { getAccessToken } from "./lib/token";
@@ -967,24 +967,13 @@ export default function App() {
     }
   }
 
-  function buildDownloadHeaders(url: string) {
-    if (isCrossOriginUrl(url)) return undefined;
-    const accessToken = getAccessToken();
-    if (!accessToken) return undefined;
-    return {
-      Authorization: `Bearer ${accessToken}`,
-    };
-  }
-
   async function downloadFile(url: string, fileName: string) {
     if (isCrossOriginUrl(url)) {
       triggerDirectDownload(url, fileName);
       return;
     }
 
-    const response = await fetch(url, {
-      headers: buildDownloadHeaders(url),
-    });
+    const response = await authenticatedFetch(url);
     if (!response.ok) {
       throw new Error("다운로드 파일을 불러오지 못했습니다.");
     }
@@ -1025,9 +1014,7 @@ export default function App() {
     }
 
     try {
-      const response = await fetch(url, {
-        headers: buildDownloadHeaders(url),
-      });
+      const response = await authenticatedFetch(url);
       if (!response.ok) {
         throw new Error("다운로드 파일을 불러오지 못했습니다.");
       }
