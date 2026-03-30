@@ -66,6 +66,37 @@ async function refreshAccessToken(): Promise<string | null> {
   }
 }
 
+export async function authenticatedFetch(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  options: { retryAfterRefresh?: boolean } = {},
+): Promise<Response> {
+  const headers = new Headers(init.headers ?? {});
+  const token = getAccessToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const response = await fetch(input, {
+    ...init,
+    headers,
+  });
+
+  if (response.status === 401 && !options.retryAfterRefresh) {
+    const nextAccessToken = await refreshAccessToken();
+    if (nextAccessToken) {
+      const retryHeaders = new Headers(init.headers ?? {});
+      retryHeaders.set("Authorization", `Bearer ${nextAccessToken}`);
+      return fetch(input, {
+        ...init,
+        headers: retryHeaders,
+      });
+    }
+  }
+
+  return response;
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestOptions = {},
