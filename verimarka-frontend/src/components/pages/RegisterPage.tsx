@@ -21,20 +21,6 @@ function getStepState(progress: number, index: number, total: number) {
   return "대기";
 }
 
-function buildWatermarkedFileName(fileName: string) {
-  const trimmed = fileName.trim();
-  if (!trimmed) return "watermarked_VM";
-
-  const dotIndex = trimmed.lastIndexOf(".");
-  if (dotIndex <= 0 || dotIndex === trimmed.length - 1) {
-    return `${trimmed}_VM`;
-  }
-
-  const baseName = trimmed.slice(0, dotIndex);
-  const extension = trimmed.slice(dotIndex);
-  return `${baseName}_VM${extension}`;
-}
-
 function formatDisplayDateTime(value: number | string | null | undefined) {
   if (value === null || value === undefined || value === "") return "-";
 
@@ -47,6 +33,12 @@ function formatDisplayDateTime(value: number | string | null | undefined) {
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
   return `${year}.${month}.${day} ${hours}:${minutes}`;
+}
+
+function shortenMiddle(value: string, leading = 8, trailing = 4) {
+  if (!value || value === "-") return "-";
+  if (value.length <= leading + trailing + 3) return value;
+  return `${value.slice(0, leading)}...${value.slice(-trailing)}`;
 }
 
 interface RegisterPageProps {
@@ -140,14 +132,15 @@ export default function RegisterPage({
   const uploadTimestampLabel = formatDisplayDateTime(selectedFile?.lastModified);
   const candidatePreviewUrl = contentResult?.top_match?.preview_url || grapeImage;
   const watermarkedPreviewUrl = contentResult?.watermark_file_url || previewUrl || grapeImage;
-  const mintedFileName = buildWatermarkedFileName(selectedFile?.name || contentResult?.original_filename || "watermarked_VM");
+  const mintedFileName = selectedFile?.name || contentResult?.original_filename || "-";
   const mintedNetwork = contentResult?.blockchain?.network_name || "-";
   const mintedTokenId = contentResult?.blockchain?.token_id ? `#${contentResult.blockchain.token_id}` : "-";
-  const mintedContentHash = contentResult?.blockchain?.file_hash || "-";
-  const mintedTxHash = contentResult?.blockchain?.tx_hash || "-";
+  const mintedContentHash = shortenMiddle(contentResult?.blockchain?.file_hash || "-", 10, 4);
+  const mintedTxHash = shortenMiddle(contentResult?.blockchain?.tx_hash || "-", 8, 4);
   const mintedWalletAddress =
-    contentResult?.blockchain?.owner_address || contentResult?.blockchain?.recipient_address || "-";
+    shortenMiddle(contentResult?.blockchain?.owner_address || contentResult?.blockchain?.recipient_address || "-", 6, 4);
   const mintedAtLabel = contentResult?.blockchain?.minted_at_display || "-";
+  const mintedIssuedAtLabel = mintedAtLabel !== "-" && !mintedAtLabel.endsWith("UTC") ? `${mintedAtLabel} UTC` : mintedAtLabel;
   const topCosineValue = contentResult?.top_cosine;
   const topCosineLabel = typeof topCosineValue === "number" ? topCosineValue.toFixed(4) : "-";
   const topCosinePercent = typeof topCosineValue === "number" ? `${(topCosineValue * 100).toFixed(1)}%` : "-";
@@ -419,10 +412,6 @@ export default function RegisterPage({
 
                     {registerResult.tone === "allow" && analysisStage !== "watermarked" ? (
                       <div className="mint-complete-layout allow-ready-layout">
-                        <span className="result-badge">ALLOW</span>
-                        <h3 className="result-title">AI 분석이 완료되었습니다.</h3>
-                        <p className="result-subtitle">유사한 콘텐츠가 발견되지 않아 워터마크 삽입 단계로 진행할 수 있습니다.</p>
-
                         <div className="mint-complete-grid">
                           <div className="mint-complete-card">
                             <h4>업로드 이미지</h4>
@@ -530,10 +519,6 @@ export default function RegisterPage({
                       </div>
                     ) : registerResult.tone === "allow" && analysisStage === "minted" ? (
                       <div className="mint-complete-layout">
-                        <span className="result-badge">MINTED</span>
-                        <h3 className="result-title">토큰 발행이 완료되었습니다</h3>
-                        <p className="result-subtitle">콘텐츠가 블록체인에 안전하게 기록되었습니다.</p>
-
                         <div className="mint-complete-grid">
                           <div className="mint-complete-card">
                             <h4>저작물 정보</h4>
@@ -585,7 +570,7 @@ export default function RegisterPage({
                               </div>
                               <div className="mint-file-row">
                                 <span>발행 일시</span>
-                                <strong>{mintedAtLabel}</strong>
+                                <strong>{mintedIssuedAtLabel}</strong>
                               </div>
                             </div>
 
