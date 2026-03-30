@@ -5,6 +5,7 @@ interface WalletConnectModalProps {
   connectors: Connector[];
   walletConnectEnabled: boolean;
   connecting: boolean;
+  connectingLabel?: string;
   onClose: () => void;
   onSelectConnector: (connector: Connector) => void;
 }
@@ -16,6 +17,10 @@ function getConnectorDescription(connector: Connector) {
 
   if (connector.id === "rabby") {
     return "브라우저 Rabby 지갑 확장 프로그램으로 연결합니다.";
+  }
+
+  if (connector.id === "trustWallet") {
+    return "브라우저 Trust Wallet 확장 프로그램으로 연결합니다.";
   }
 
   if (connector.id === "walletConnect") {
@@ -30,6 +35,7 @@ export default function WalletConnectModal({
   connectors,
   walletConnectEnabled,
   connecting,
+  connectingLabel,
   onClose,
   onSelectConnector,
 }: WalletConnectModalProps) {
@@ -47,6 +53,11 @@ export default function WalletConnectModal({
         <p className="authHint authHint--center">
           연결할 지갑 방식을 선택하고, 지갑에서 서명을 완료하세요.
         </p>
+        {connecting ? (
+          <p className="authHint authHint--center">
+            {connectingLabel || "지갑 승인창을 확인하고 서명을 완료하세요."}
+          </p>
+        ) : null}
 
         <div className="walletConnectorList">
           {connectors.map((connector) => {
@@ -65,12 +76,14 @@ export default function WalletConnectModal({
                       ? "MetaMask"
                       : connector.id === "rabby"
                         ? "Rabby"
+                        : connector.id === "trustWallet"
+                          ? "Trust Wallet"
                         : connector.name}
                   </strong>
                   <span>
                     {connector.id === "walletConnect"
                       ? "WalletConnect"
-                      : connector.id === "rabby"
+                      : connector.id === "rabby" || connector.id === "trustWallet"
                         ? "Injected"
                         : "Injected"}
                   </span>
