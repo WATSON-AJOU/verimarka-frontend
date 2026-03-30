@@ -6,11 +6,22 @@ interface MyPageProps {
   avatarInitial: string;
   emailVerified: boolean;
   phoneVerified: boolean;
+  walletAddress: string | null;
+  walletNetworkLabel: string;
+  walletTypeLabel: string;
+  nftCount: number;
+  voteMinimum: number;
+  voteEligible: boolean;
+  walletSummaryLoading: boolean;
+  walletConnecting: boolean;
+  walletDisconnecting: boolean;
   onOpenProfileEdit: () => void;
   onOpenPhoneIdentity: () => void;
   onOpenEmailIdentity: () => void;
   onLogout: () => void;
   onOpenWithdraw: () => void;
+  onConnectWallet: () => void;
+  onDisconnectWallet: () => void;
 }
 
 export default function MyPage({
@@ -21,11 +32,22 @@ export default function MyPage({
   avatarInitial,
   emailVerified,
   phoneVerified,
+  walletAddress,
+  walletNetworkLabel,
+  walletTypeLabel,
+  nftCount,
+  voteMinimum,
+  voteEligible,
+  walletSummaryLoading,
+  walletConnecting,
+  walletDisconnecting,
   onOpenProfileEdit,
   onOpenPhoneIdentity,
   onOpenEmailIdentity,
   onLogout,
   onOpenWithdraw,
+  onConnectWallet,
+  onDisconnectWallet,
 }: MyPageProps) {
   return (
     <section className="mypage-shell">
@@ -95,20 +117,30 @@ export default function MyPage({
           <article className="mypage-card token-status-card">
             <div className="mypage-card-head">
               <h3>보유 토큰</h3>
-              <span className="mypage-chip is-pending">대기</span>
+              <span className={`mypage-chip ${voteEligible ? "is-done" : "is-pending"}`}>
+                {walletAddress ? (voteEligible ? "참여 가능" : "대기") : "미연결"}
+              </span>
             </div>
             <p>NFT 보유 수량을 기준으로 블록체인 투표 참여 권한이 결정됩니다.</p>
-            <div className="token-status-row">
-              <div className="token-count-box">
+            <div className="token-status-grid">
+              <div className="token-count-box token-count-box--hero">
                 <span>현재 보유 수량</span>
-                <strong><em>0</em> NFT</strong>
+                <strong><em>{walletSummaryLoading ? "-" : nftCount}</em> NFT</strong>
               </div>
               <div className="token-count-box">
                 <span>투표 최소 조건</span>
-                <strong><em>3</em> NFT</strong>
+                <strong><em>{voteMinimum}</em> NFT</strong>
               </div>
             </div>
-            <p className="token-status-note">현재 3 NFT 부족하여 투표 권한이 활성화되지 않았습니다.</p>
+            <div className="token-status-note token-status-note--panel">
+              {!walletAddress
+                ? "지갑을 연결해야 보유 NFT 수량을 조회할 수 있습니다."
+                : walletSummaryLoading
+                  ? "체인에서 NFT 보유 수량을 조회하고 있습니다."
+                  : voteEligible
+                    ? `현재 ${nftCount} NFT를 보유하여 투표 권한이 활성화되었습니다.`
+                    : `현재 ${Math.max(voteMinimum - nftCount, 0)} NFT 부족하여 투표 권한이 활성화되지 않았습니다.`}
+            </div>
           </article>
 
           <article className="mypage-card">
@@ -117,9 +149,53 @@ export default function MyPage({
               <span className="mypage-chip">필수</span>
             </div>
             <p>등록 토큰 관리를 위해 지갑을 연결해야합니다.</p>
+            <div className="wallet-panel">
+              <div className="wallet-link-status">
+                <span className={`mypage-verify-item ${walletAddress ? "is-done" : "is-pending"}`}>
+                  {walletAddress ? "연결 완료" : "미연결"}
+                </span>
+                <div className="wallet-link-meta">
+                  <strong>{walletAddress ?? "연결된 지갑이 없습니다."}</strong>
+                  <span>
+                    {walletAddress
+                      ? `${walletNetworkLabel} · ${walletTypeLabel || "Injected Wallet"}`
+                      : "브라우저 지갑으로 연결 후 서명하여 등록합니다."}
+                  </span>
+                </div>
+              </div>
+
+              <div className="wallet-brief-grid">
+                <div className="wallet-brief-box">
+                  <span>네트워크</span>
+                  <strong>{walletAddress ? walletNetworkLabel : "-"}</strong>
+                </div>
+                <div className="wallet-brief-box">
+                  <span>지갑 유형</span>
+                  <strong>{walletAddress ? walletTypeLabel : "-"}</strong>
+                </div>
+              </div>
+
+              {!walletAddress ? (
+                <div className="wallet-guide-box">
+                  <strong>연결 안내</strong>
+                  <p>MetaMask, Rabby 또는 WalletConnect로 지갑을 연결한 뒤 서명을 완료하면 등록과 검증 기능을 사용할 수 있습니다.</p>
+                  <ul>
+                    <li>1. 지갑 확장 프로그램 또는 모바일 지갑 앱 준비</li>
+                    <li>2. 아래 `지갑 등록하기` 선택</li>
+                    <li>3. 지갑 선택 후 서명 요청 승인</li>
+                  </ul>
+                </div>
+              ) : null}
+            </div>
             <div className="mypage-actions wallet-actions">
-              <button className="btn btn-primary" type="button">지갑 등록하기</button>
-              <button className="wallet-disconnect-link" type="button">지갑 해제하기</button>
+              <button className="btn btn-primary" type="button" onClick={onConnectWallet} disabled={walletConnecting}>
+                {walletConnecting ? "지갑 연결 중..." : walletAddress ? "지갑 다시 연결하기" : "지갑 등록하기"}
+              </button>
+              {walletAddress ? (
+                <button className="wallet-disconnect-link" type="button" onClick={onDisconnectWallet} disabled={walletDisconnecting}>
+                  {walletDisconnecting ? "해제 중..." : "지갑 해제하기"}
+                </button>
+              ) : null}
             </div>
           </article>
         </div>

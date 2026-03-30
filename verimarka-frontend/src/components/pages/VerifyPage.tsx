@@ -276,11 +276,14 @@ export default function VerifyPage({
       </article>
 
       <aside className="register-history verify-history-panel">
-        <h3>최근 등록된 사진</h3>
+        <h3>진행 중인 투표</h3>
         <div className="history-scroll">
           {recentItems.map((item, index) => (
             <article key={item.id} className="history-item verify-history-item">
-              <div className={`history-thumb ${index % 3 === 0 ? "history-thumb-city" : index % 3 === 1 ? "history-thumb-review" : "history-thumb-green"}`} />
+              <div
+                className={`history-thumb ${item.previewUrl ? "" : index % 3 === 0 ? "history-thumb-city" : index % 3 === 1 ? "history-thumb-review" : "history-thumb-green"}`}
+                style={item.previewUrl ? { backgroundImage: `url(${item.previewUrl})` } : undefined}
+              />
               <div className="history-meta">
                 <p>{item.title}</p>
                 <span>{item.description}</span>

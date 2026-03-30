@@ -6,7 +6,7 @@ interface Props {
   onClose: () => void;
   onSubmit: (
     email: string,
-    username: string,
+    nickname: string,
     password: string,
     termsAgreed: boolean,
     privacyAgreed: boolean,
@@ -21,10 +21,11 @@ export default function SignupModal({
   onLogin,
 }: Props) {
   const passwordRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
+  const nicknameRule = /^[A-Za-z0-9가-힣 ]+$/;
   const [nicknameStatus, setNicknameStatus] = useState<"idle" | "checking" | "available" | "duplicate">("idle");
   const [nicknameMessage, setNicknameMessage] = useState("");
   const [email, setEmail] = useState("");
-  const [username, setUsername] = useState("");
+  const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirm, setPasswordConfirm] = useState("");
   const [agreeAll, setAgreeAll] = useState(false);
@@ -49,7 +50,7 @@ export default function SignupModal({
 
   useEffect(() => {
     if (!open) return;
-    const trimmed = username.trim();
+    const trimmed = nickname.trim();
 
     if (!trimmed) {
       setNicknameStatus("idle");
@@ -60,6 +61,12 @@ export default function SignupModal({
     if (trimmed.length > 30) {
       setNicknameStatus("duplicate");
       setNicknameMessage("닉네임은 30자 이하로 입력해주세요.");
+      return;
+    }
+
+    if (!nicknameRule.test(trimmed)) {
+      setNicknameStatus("duplicate");
+      setNicknameMessage("닉네임에는 특수문자를 포함할 수 없습니다.");
       return;
     }
 
@@ -80,7 +87,7 @@ export default function SignupModal({
     }, 350);
 
     return () => window.clearTimeout(timer);
-  }, [open, username]);
+  }, [open, nickname]);
 
   async function checkNicknameAvailability(rawValue: string) {
     const trimmed = rawValue.trim();
@@ -94,6 +101,12 @@ export default function SignupModal({
     if (trimmed.length > 30) {
       setNicknameStatus("duplicate");
       setNicknameMessage("닉네임은 30자 이하로 입력해주세요.");
+      return false;
+    }
+
+    if (!nicknameRule.test(trimmed)) {
+      setNicknameStatus("duplicate");
+      setNicknameMessage("닉네임에는 특수문자를 포함할 수 없습니다.");
       return false;
     }
 
@@ -120,7 +133,7 @@ export default function SignupModal({
     e.preventDefault();
 
     if (nicknameStatus !== "available") {
-      const available = await checkNicknameAvailability(username);
+      const available = await checkNicknameAvailability(nickname);
       if (!available) {
         setErrorMessage("사용 가능한 닉네임인지 확인해주세요.");
         return;
@@ -151,9 +164,9 @@ export default function SignupModal({
     setErrorMessage("");
 
     try {
-      await onSubmit(email, username, password, agreeTerms, agreePrivacy);
+      await onSubmit(email, nickname, password, agreeTerms, agreePrivacy);
       setEmail("");
-      setUsername("");
+      setNickname("");
       setNicknameStatus("idle");
       setNicknameMessage("");
       setPassword("");
@@ -198,8 +211,11 @@ export default function SignupModal({
               className="fieldInput"
               type="text"
               placeholder="사용할 닉네임 입력"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              onBlur={() => {
+                void checkNicknameAvailability(nickname);
+              }}
               required
             />
             {nicknameMessage ? (
