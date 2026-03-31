@@ -168,16 +168,29 @@ export default function RegisterPage({
   const reviewVoteTotal = Math.max(1, reviewYesVotes + reviewNoVotes);
   const reviewYesRate = Math.round((reviewYesVotes / reviewVoteTotal) * 100);
   const reviewNoRate = 100 - reviewYesRate;
+  const isWatermarkedStage = registerResult?.tone === "allow" && analysisStage === "watermarked";
   const isMintedStage = registerResult?.tone === "allow" && analysisStage === "minted";
-  const pageHeaderTitle = isMintedStage ? "토큰 발행이 완료되었습니다." : "원본 이미지를 등록하세요.";
+  const pageHeaderTitle = isMintedStage
+    ? "토큰 발행이 완료되었습니다."
+    : isWatermarkedStage
+      ? "워터마크 삽입이 완료되었습니다."
+      : "원본 이미지를 등록하세요.";
   const pageHeaderSubtitle = isMintedStage
     ? "콘텐츠가 블록체인에 안전하게 기록되었습니다."
-    : "이미지를 업로드하면 등록 절차가 시작됩니다.";
-  const resultBadgeLabel = isMintedStage ? "MINTED" : registerResult?.badge ?? "";
-  const resultTitle = isMintedStage ? "토큰 발행이 완료되었습니다." : registerResult?.title ?? "";
+    : isWatermarkedStage
+      ? "워터마크 이미지가 준비되었습니다. NFT 토큰 발행을 진행할 수 있습니다."
+      : "이미지를 업로드하면 등록 절차가 시작됩니다.";
+  const resultBadgeLabel = isMintedStage ? "MINTED" : isWatermarkedStage ? "WATERMARKED" : registerResult?.badge ?? "";
+  const resultTitle = isMintedStage
+    ? "토큰 발행이 완료되었습니다."
+    : isWatermarkedStage
+      ? "워터마크 삽입이 완료되었습니다."
+      : registerResult?.title ?? "";
   const resultSubtitle = isMintedStage
     ? "콘텐츠가 블록체인에 안전하게 기록되었습니다."
-    : registerResult?.subtitle ?? "";
+    : isWatermarkedStage
+      ? "워터마크 이미지가 준비되었습니다. NFT 토큰 발행을 진행할 수 있습니다."
+      : registerResult?.subtitle ?? "";
 
   return (
     <section className="register-layout">
