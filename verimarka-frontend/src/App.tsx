@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAccount, useChainId, useConnect, useDisconnect, usePublicClient, useSignMessage, useSwitchChain, useWalletClient } from "wagmi";
+import type { Connector } from "wagmi";
+import { createWalletClient, custom, type EIP1193Provider, type WalletClient } from "viem";
 import { estimateContractGas, waitForTransactionReceipt, writeContract } from "viem/actions";
 import "./App.css";
 import EmailLoginModal from "./components/auth/EmailLoginModal";
@@ -241,6 +243,7 @@ export default function App() {
   const inactivityTimeoutRef = useRef<number | null>(null);
   const walletClientRef = useRef(walletClient);
   const publicClientRef = useRef(publicClient);
+  const fallbackWalletClientRef = useRef<WalletClient | null>(null);
 
   const phoneVerified = Boolean(user?.phone_verified);
   const emailVerified = Boolean(user?.email_verified);
@@ -267,11 +270,18 @@ export default function App() {
 
   useEffect(() => {
     walletClientRef.current = walletClient;
+    if (walletClient) {
+      fallbackWalletClientRef.current = null;
+    }
   }, [walletClient]);
 
   useEffect(() => {
     publicClientRef.current = publicClient;
   }, [publicClient]);
+
+  useEffect(() => {
+    fallbackWalletClientRef.current = null;
+  }, [connectedConnector?.id, connectedWalletAddress, currentWalletChainId]);
 
   useEffect(() => {
     console.info("wallet.state_changed", {
@@ -355,13 +365,53 @@ export default function App() {
     }
   }
 
+  async function createFallbackWalletClient(options?: {
+    connector?: Connector | null;
+    account?: string | null;
+  }): Promise<WalletClient | null> {
+    const connector = options?.connector ?? connectedConnector;
+    const account = options?.account ?? connectedWalletAddress;
+    if (!connector || !account) {
+      return null;
+    }
+
+    try {
+      const provider = await connector.getProvider();
+      if (!provider || typeof provider !== "object" || !("request" in provider)) {
+        return null;
+      }
+
+      const client = createWalletClient({
+        account: account as `0x${string}`,
+        chain: sepolia,
+        transport: custom(provider as EIP1193Provider),
+      });
+      fallbackWalletClientRef.current = client;
+      console.info("wallet.fallback_client_created", {
+        connectorId: connector.id,
+        account,
+      });
+      return client;
+    } catch (error) {
+      console.warn("wallet.fallback_client_failed", {
+        connectorId: connector.id,
+        account,
+        error,
+      });
+      return null;
+    }
+  }
+
   async function waitForWalletClients(timeoutMs = 3000, intervalMs = 150) {
     const startedAt = Date.now();
 
     while (Date.now() - startedAt < timeoutMs) {
-      if (walletClientRef.current && publicClientRef.current) {
+      const resolvedWalletClient =
+        walletClientRef.current ?? fallbackWalletClientRef.current ?? (await createFallbackWalletClient());
+
+      if (resolvedWalletClient && publicClientRef.current) {
         return {
-          walletClient: walletClientRef.current,
+          walletClient: resolvedWalletClient,
           publicClient: publicClientRef.current,
         };
       }
@@ -370,7 +420,8 @@ export default function App() {
     }
 
     return {
-      walletClient: walletClientRef.current ?? null,
+      walletClient:
+        walletClientRef.current ?? fallbackWalletClientRef.current ?? (await createFallbackWalletClient()),
       publicClient: publicClientRef.current ?? null,
     };
   }
@@ -1819,7 +1870,10 @@ export default function App() {
       return;
     }
 
-    if (!walletClient) {
+    const resolvedWalletClient =
+      walletClient ?? fallbackWalletClientRef.current ?? (await createFallbackWalletClient());
+
+    if (!resolvedWalletClient) {
       console.warn("vote.wallet_client_missing", {
         isConnected,
         connectedWalletAddress,
@@ -1828,6 +1882,7 @@ export default function App() {
         currentWalletChainId,
         linkedWalletAddress: user?.wallet_address ?? null,
         hasPublicClient: Boolean(publicClient),
+        hasFallbackWalletClient: Boolean(fallbackWalletClientRef.current),
       });
       setWalletConnectModalOpen(true);
       openToast("브라우저 지갑 서명 세션을 확인하지 못했습니다. 지갑을 다시 연결한 뒤 투표해주세요.");
@@ -1873,7 +1928,8 @@ export default function App() {
         estimatedGas: estimatedGas.toString(),
       });
 
-      const hash = await writeContract(walletClient, {
+      const hash = await writeContract(resolvedWalletClient, {
+        chain: sepolia,
         address: contractAddress as `0x${string}`,
         abi: watsonNftAbi,
         functionName: "voteForDocument",
