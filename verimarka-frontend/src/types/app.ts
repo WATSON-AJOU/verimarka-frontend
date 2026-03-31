@@ -59,7 +59,7 @@ export interface HistoryItem {
     network_name?: string | null;
     chain_id?: number | null;
     contract_address?: string | null;
-    token_id?: number | null;
+    token_id?: number | string | null;
     file_hash?: string | null;
     content_hash?: string | null;
     tx_hash?: string | null;
@@ -147,7 +147,7 @@ export interface RegisteredContentResponse {
     owner_address?: string;
     author_name?: string;
     wm_id?: number | null;
-    token_id?: number | null;
+    token_id?: number | string | null;
     status?: string;
     verification_link?: string;
     token_uri?: string;
@@ -223,7 +223,7 @@ export interface VerifyResultResponse {
     status_label?: string;
   };
   blockchain?: {
-    token_id?: number | null;
+    token_id?: number | string | null;
     owner_address?: string | null;
     author_name?: string | null;
     status?: string | null;
