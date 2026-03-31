@@ -402,6 +402,40 @@ export default function App() {
     }
   }
 
+  async function resolveConnectorChainId(connector?: Connector | null): Promise<number | null> {
+    const targetConnector = connector ?? connectedConnector;
+    if (!targetConnector) {
+      return null;
+    }
+
+    try {
+      const provider = await targetConnector.getProvider();
+      if (!provider || typeof provider !== "object" || !("request" in provider)) {
+        return null;
+      }
+
+      const chainIdValue = await (provider as EIP1193Provider).request({
+        method: "eth_chainId",
+      });
+
+      if (typeof chainIdValue === "string") {
+        return chainIdValue.startsWith("0x") ? Number.parseInt(chainIdValue, 16) : Number.parseInt(chainIdValue, 10);
+      }
+
+      if (typeof chainIdValue === "number") {
+        return chainIdValue;
+      }
+
+      return null;
+    } catch (error) {
+      console.warn("wallet.resolve_chain_id_failed", {
+        connectorId: targetConnector.id,
+        error,
+      });
+      return null;
+    }
+  }
+
   async function waitForWalletClients(timeoutMs = 3000, intervalMs = 150) {
     const startedAt = Date.now();
 
@@ -1306,11 +1340,14 @@ export default function App() {
         const result = await connectAsync({ connector: targetConnector });
         walletAddress = result.accounts[0];
         walletType = targetConnector.name;
-        walletChainId = result.chainId ?? sepolia.id;
+        const providerChainId = await resolveConnectorChainId(targetConnector);
+        walletChainId = providerChainId ?? result.chainId ?? currentWalletChainId ?? sepolia.id;
         console.info("wallet.connect.connected", {
           walletAddress,
           walletType,
           walletChainId,
+          resultChainId: result.chainId ?? null,
+          providerChainId,
           accounts: result.accounts,
         });
         setWalletConnectingLabel(
@@ -1334,6 +1371,13 @@ export default function App() {
       if (!walletAddress) {
         throw new Error("지갑 주소를 확인할 수 없습니다.");
       }
+
+      const verifiedChainId = (await resolveConnectorChainId()) ?? walletChainId;
+      walletChainId = verifiedChainId;
+      console.info("wallet.connect.chain_resolved", {
+        walletAddress,
+        walletChainId,
+      });
 
       const challenge = await apiRequest<{
         address: string;
@@ -1906,9 +1950,10 @@ export default function App() {
     setHistoryVoteSubmitting(true);
 
     try {
-      if (currentWalletChainId !== chainId) {
+      const providerChainId = (await resolveConnectorChainId()) ?? currentWalletChainId ?? null;
+      if (providerChainId !== chainId) {
         console.info("vote.switch_chain", {
-          fromChainId: currentWalletChainId,
+          fromChainId: providerChainId,
           toChainId: chainId,
         });
         await switchChainAsync({ chainId });
