@@ -168,13 +168,23 @@ export default function RegisterPage({
   const reviewVoteTotal = Math.max(1, reviewYesVotes + reviewNoVotes);
   const reviewYesRate = Math.round((reviewYesVotes / reviewVoteTotal) * 100);
   const reviewNoRate = 100 - reviewYesRate;
+  const isMintedStage = registerResult?.tone === "allow" && analysisStage === "minted";
+  const pageHeaderTitle = isMintedStage ? "토큰 발행이 완료되었습니다." : "원본 이미지를 등록하세요.";
+  const pageHeaderSubtitle = isMintedStage
+    ? "콘텐츠가 블록체인에 안전하게 기록되었습니다."
+    : "이미지를 업로드하면 등록 절차가 시작됩니다.";
+  const resultBadgeLabel = isMintedStage ? "MINTED" : registerResult?.badge ?? "";
+  const resultTitle = isMintedStage ? "토큰 발행이 완료되었습니다." : registerResult?.title ?? "";
+  const resultSubtitle = isMintedStage
+    ? "콘텐츠가 블록체인에 안전하게 기록되었습니다."
+    : registerResult?.subtitle ?? "";
 
   return (
     <section className="register-layout">
       <article className="register-card">
         <div className="register-header">
-          <h2>원본 이미지를 등록하세요.</h2>
-          <p>이미지를 업로드하면 등록 절차가 시작됩니다.</p>
+          <h2>{pageHeaderTitle}</h2>
+          <p>{pageHeaderSubtitle}</p>
         </div>
 
         <input
@@ -408,9 +418,9 @@ export default function RegisterPage({
               {registerResult && analysisStage !== "watermarking" && analysisStage !== "minting" && analysisStage !== "reviewStarting" ? (
                 <div className="analysis-result-view" data-result={registerResult.tone === "review" ? "pending" : registerResult.tone === "block" ? "reject" : "allow"}>
                   <div className="analysis-result-body">
-                    <span className="result-badge">{registerResult.badge}</span>
-                    <h3 className="result-title">{registerResult.title}</h3>
-                    <p className="result-subtitle">{registerResult.subtitle}</p>
+                    <span className="result-badge">{resultBadgeLabel}</span>
+                    <h3 className="result-title">{resultTitle}</h3>
+                    <p className="result-subtitle">{resultSubtitle}</p>
 
                     {registerResult.tone === "allow" && analysisStage === "mintFailed" ? (
                       <div className="watermark-complete-layout">
