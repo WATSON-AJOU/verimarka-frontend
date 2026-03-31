@@ -10,6 +10,7 @@ export type AnalysisStage =
   | "watermarking"
   | "watermarked"
   | "minting"
+  | "mintFailed"
   | "minted"
   | AnalysisResult;
 

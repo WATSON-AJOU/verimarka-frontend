@@ -205,6 +205,7 @@ export default function App() {
   const [watermarkJobId, setWatermarkJobId] = useState<string | null>(null);
   const [mintProgress, setMintProgress] = useState(0);
   const [mintRequestPending, setMintRequestPending] = useState(false);
+  const [mintErrorMessage, setMintErrorMessage] = useState("");
   const [contentResult, setContentResult] = useState<RegisteredContentResponse | null>(null);
   const [verifyFile, setVerifyFile] = useState<File | null>(null);
   const [verifyPreviewUrl, setVerifyPreviewUrl] = useState("");
@@ -1277,6 +1278,7 @@ export default function App() {
     }
     setSelectedFile(nextFile);
     setContentResult(null);
+    setMintErrorMessage("");
     openToast("이미지 업로드가 완료되었습니다.");
   }
 
@@ -1336,6 +1338,7 @@ export default function App() {
     setAnalysisRequestPending(true);
     setAnalysisJobId(null);
     setContentResult(null);
+    setMintErrorMessage("");
     openToast("등록 가능 여부 분석을 요청했습니다.");
 
     try {
@@ -1552,10 +1555,12 @@ export default function App() {
       contentResult.blockchain?.minted &&
       contentResult.blockchain?.tx_hash
     ) {
+      setMintErrorMessage("");
       setAnalysisStage("minted");
       return;
     }
 
+    setMintErrorMessage("");
     setAnalysisStage("minting");
     setMintProgress(0);
     setMintRequestPending(true);
@@ -1575,9 +1580,11 @@ export default function App() {
       await refreshWalletSummary({ silent: true });
       openToast("NFT 토큰 발행이 완료되었습니다.");
     } catch (error) {
-      setAnalysisStage("watermarked");
+      const message = error instanceof Error ? error.message : "NFT 토큰 발행에 실패했습니다.";
+      setMintErrorMessage(message);
+      setAnalysisStage("mintFailed");
       setMintProgress(0);
-      window.alert(error instanceof Error ? error.message : "NFT 토큰 발행에 실패했습니다.");
+      openToast("NFT 토큰 발행에 실패했습니다.");
     } finally {
       setMintRequestPending(false);
     }
@@ -1954,6 +1961,7 @@ export default function App() {
             reviewConsentEndAtLabel={formatReviewVoteEndAt(reviewConsentOpenedAt ?? Date.now())}
             watermarkProgress={watermarkProgress}
             mintProgress={mintProgress}
+            mintErrorMessage={mintErrorMessage}
             reviewVoteDraft={reviewVoteDraft}
             reviewVoteModalOpen={reviewVoteModalOpen}
             onCloseReviewConsentModal={() => setReviewConsentModalOpen(false)}
@@ -1969,7 +1977,11 @@ export default function App() {
             onCloseReviewVoteModal={() => setReviewVoteModalOpen(false)}
             onCastReviewDemoVote={castReviewDemoVote}
             onRefreshReviewVote={() => {
-              void refreshReviewVote();
+              if (!contentResult?.public_id) {
+                void refreshReviewVote();
+                return;
+              }
+              openOngoingVoteHistory(contentResult.public_id);
             }}
           />
         ) : null}

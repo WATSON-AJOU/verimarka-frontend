@@ -79,6 +79,7 @@ interface RegisterPageProps {
   reviewVoteModalOpen: boolean;
   watermarkProgress: number;
   mintProgress: number;
+  mintErrorMessage: string;
   onCloseReviewConsentModal: () => void;
   onToggleReviewConsentNotify: () => void;
   onConfirmReviewConsent: () => void;
@@ -119,6 +120,7 @@ export default function RegisterPage({
   reviewVoteModalOpen,
   watermarkProgress,
   mintProgress,
+  mintErrorMessage,
   onCloseReviewConsentModal,
   onToggleReviewConsentNotify,
   onConfirmReviewConsent,
@@ -410,82 +412,9 @@ export default function RegisterPage({
                     <h3 className="result-title">{registerResult.title}</h3>
                     <p className="result-subtitle">{registerResult.subtitle}</p>
 
-                    {registerResult.tone === "allow" && analysisStage !== "watermarked" ? (
-                      <div className="mint-complete-layout allow-ready-layout">
-                        <div className="mint-complete-grid">
-                          <div className="mint-complete-card">
-                            <h4>업로드 이미지</h4>
-                            <div className="mint-complete-frame">
-                              <img src={previewUrl} alt={selectedFileName} />
-                            </div>
-                            <div className="mint-file-meta">
-                              <div className="mint-file-row">
-                                <span>파일명</span>
-                                <strong>{selectedFileName}</strong>
-                              </div>
-                              <div className="mint-file-row">
-                                <span>업로드 일시</span>
-                                <strong>{uploadTimestampLabel}</strong>
-                              </div>
-                              <div className="mint-file-row">
-                                <span>파일 크기</span>
-                                <strong>{formatFileSize(selectedFileSize)}</strong>
-                              </div>
-                              <div className="mint-file-row">
-                                <span>다음 단계</span>
-                                <strong>워터마크 삽입 및 토큰 발행 준비</strong>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mint-complete-card">
-                            <h4>AI 분석 결과</h4>
-                            <div className="mint-chain-meta">
-                              <div className="mint-file-row">
-                                <span>의미 기반 유사도</span>
-                                <strong>{typeof topCosineValue === "number" ? `${topCosineValue.toFixed(4)} (${topCosinePercent})` : "-"}</strong>
-                              </div>
-                              <div className="mint-file-row">
-                                <span>pHash 비교</span>
-                                <strong>{topPhashLabel === "-" ? "-" : `Distance ${topPhashLabel} / Threshold 8`}</strong>
-                              </div>
-                              <div className="mint-file-row">
-                                <span>판정 결과</span>
-                                <strong>유사한 콘텐츠가 발견되지 않았습니다.</strong>
-                              </div>
-                              <div className="mint-file-row">
-                                <span>안내</span>
-                                <strong>이제 워터마크 이미지를 생성한 뒤 토큰 발행을 진행할 수 있습니다.</strong>
-                              </div>
-                            </div>
-
-                            <div className="mint-complete-actions">
-                              <button className="btn btn-primary" type="button" onClick={onPrimaryAction}>
-                                워터마크 삽입 진행하기
-                              </button>
-                              <button className="btn btn-secondary" type="button" onClick={onMoveToHistory}>
-                                분석 기록 보기
-                              </button>
-                              <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
-                                다른 이미지 업로드
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    ) : registerResult.tone === "allow" && analysisStage === "watermarked" ? (
+                    {registerResult.tone === "allow" && analysisStage === "mintFailed" ? (
                       <div className="watermark-complete-layout">
                         <div className="watermark-compare-grid">
-                          <div className="watermark-compare-card">
-                            <div className="watermark-compare-head">
-                              <h4>원본 이미지</h4>
-                              <span className="watermark-compare-chip">Original</span>
-                            </div>
-                            <div className="watermark-compare-frame">
-                              <img src={previewUrl} alt={`${selectedFileName} 원본`} />
-                            </div>
-                          </div>
-
                           <div className="watermark-compare-card">
                             <div className="watermark-compare-head">
                               <h4>워터마크 삽입 결과</h4>
@@ -497,14 +426,20 @@ export default function RegisterPage({
                           </div>
                         </div>
 
-                        <div className="watermark-file-summary">
-                          <strong>{selectedFileName}</strong>
-                          <span>{formatFileSize(selectedFileSize)} · {uploadTimestampLabel}</span>
+                        <div className="mint-file-meta">
+                          <div className="mint-file-row">
+                            <span>상태</span>
+                            <strong>토큰 발행 실패</strong>
+                          </div>
+                          <div className="mint-file-row">
+                            <span>오류 메시지</span>
+                            <strong>{mintErrorMessage || "NFT 토큰 발행 중 오류가 발생했습니다."}</strong>
+                          </div>
                         </div>
 
                         <div className="watermark-complete-actions">
                           <button className="btn btn-primary" type="button" onClick={onPrimaryAction}>
-                            NFT 토큰 발행하기
+                            NFT 토큰 발행 다시 시도하기
                           </button>
                           <button className="btn btn-primary" type="button" onClick={onDownloadWatermarked}>
                             워터마크 이미지 다운로드
@@ -580,6 +515,113 @@ export default function RegisterPage({
                               </button>
                               <button className="btn btn-secondary" type="button" onClick={onMoveToHistory}>
                                 기록으로 돌아가기
+                              </button>
+                              <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
+                                다른 이미지 업로드
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ) : registerResult.tone === "allow" && analysisStage === "watermarked" ? (
+                      <div className="watermark-complete-layout">
+                        <div className="watermark-compare-grid">
+                          <div className="watermark-compare-card">
+                            <div className="watermark-compare-head">
+                              <h4>원본 이미지</h4>
+                              <span className="watermark-compare-chip">Original</span>
+                            </div>
+                            <div className="watermark-compare-frame">
+                              <img src={previewUrl} alt={`${selectedFileName} 원본`} />
+                            </div>
+                          </div>
+
+                          <div className="watermark-compare-card">
+                            <div className="watermark-compare-head">
+                              <h4>워터마크 삽입 결과</h4>
+                              <span className="watermark-compare-chip">Watermarked</span>
+                            </div>
+                            <div className="watermark-compare-frame">
+                              <img src={watermarkedPreviewUrl} alt={`${selectedFileName} 워터마크`} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="watermark-file-summary">
+                          <strong>{selectedFileName}</strong>
+                          <span>{formatFileSize(selectedFileSize)} · {uploadTimestampLabel}</span>
+                        </div>
+
+                        <div className="watermark-complete-actions">
+                          <button className="btn btn-primary" type="button" onClick={onPrimaryAction}>
+                            NFT 토큰 발행하기
+                          </button>
+                          <button className="btn btn-primary" type="button" onClick={onDownloadWatermarked}>
+                            워터마크 이미지 다운로드
+                          </button>
+                          <button className="btn btn-secondary" type="button" onClick={onMoveToHistory}>
+                            분석 기록 보기
+                          </button>
+                          <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
+                            다른 이미지 업로드
+                          </button>
+                        </div>
+                      </div>
+                    ) : registerResult.tone === "allow" ? (
+                      <div className="mint-complete-layout allow-ready-layout">
+                        <div className="mint-complete-grid">
+                          <div className="mint-complete-card">
+                            <h4>업로드 이미지</h4>
+                            <div className="mint-complete-frame">
+                              <img src={previewUrl} alt={selectedFileName} />
+                            </div>
+                            <div className="mint-file-meta">
+                              <div className="mint-file-row">
+                                <span>파일명</span>
+                                <strong>{selectedFileName}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>업로드 일시</span>
+                                <strong>{uploadTimestampLabel}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>파일 크기</span>
+                                <strong>{formatFileSize(selectedFileSize)}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>다음 단계</span>
+                                <strong>워터마크 삽입 및 토큰 발행 준비</strong>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mint-complete-card">
+                            <h4>AI 분석 결과</h4>
+                            <div className="mint-chain-meta">
+                              <div className="mint-file-row">
+                                <span>의미 기반 유사도</span>
+                                <strong>{typeof topCosineValue === "number" ? `${topCosineValue.toFixed(4)} (${topCosinePercent})` : "-"}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>pHash 비교</span>
+                                <strong>{topPhashLabel === "-" ? "-" : `Distance ${topPhashLabel} / Threshold 8`}</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>판정 결과</span>
+                                <strong>유사한 콘텐츠가 발견되지 않았습니다.</strong>
+                              </div>
+                              <div className="mint-file-row">
+                                <span>안내</span>
+                                <strong>이제 워터마크 이미지를 생성한 뒤 토큰 발행을 진행할 수 있습니다.</strong>
+                              </div>
+                            </div>
+
+                            <div className="mint-complete-actions">
+                              <button className="btn btn-primary" type="button" onClick={onPrimaryAction}>
+                                워터마크 삽입 진행하기
+                              </button>
+                              <button className="btn btn-secondary" type="button" onClick={onMoveToHistory}>
+                                분석 기록 보기
                               </button>
                               <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
                                 다른 이미지 업로드
