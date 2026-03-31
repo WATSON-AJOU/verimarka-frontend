@@ -1136,8 +1136,12 @@ export default function App() {
       let walletAddress = connectedWalletAddress;
       let walletType = connectedConnector?.name || "Injected Wallet";
       let walletChainId = currentWalletChainId ?? sepolia.id;
+      const signerSessionMissing = !walletClient;
       const requiresNewConnection =
-        !walletAddress || !isConnected || (connectorId && connectedConnector?.id !== connectorId);
+        !walletAddress ||
+        !isConnected ||
+        signerSessionMissing ||
+        (connectorId && connectedConnector?.id !== connectorId);
 
       if (requiresNewConnection) {
         if (connectorId === "walletConnect" && !walletConnectEnabled) {
@@ -1154,6 +1158,14 @@ export default function App() {
           connectors[0];
         if (!targetConnector) {
           throw new Error("사용 가능한 지갑 연결 방식을 찾을 수 없습니다.");
+        }
+
+        if (isConnected) {
+          try {
+            await disconnectAsync();
+          } catch (disconnectError) {
+            console.warn("wallet.reconnect_disconnect_failed", disconnectError);
+          }
         }
 
         const result = await connectAsync({ connector: targetConnector });
