@@ -90,6 +90,55 @@ function getWalletInstallMessage(connectorId?: string) {
   return "브라우저 지갑이 설치되어 있지 않습니다. MetaMask 같은 지갑을 먼저 설치하세요.";
 }
 
+async function watchMintedNftAsset(options: {
+  contractAddress?: string | null;
+  tokenId?: number | null;
+}) {
+  const { contractAddress, tokenId } = options;
+  if (!contractAddress || tokenId === null || tokenId === undefined) {
+    return false;
+  }
+
+  const ethereum = (window as Window & {
+    ethereum?: {
+      request?: (args: {
+        method: string;
+        params?: Record<string, unknown>;
+      }) => Promise<unknown>;
+    };
+  }).ethereum;
+
+  if (!ethereum?.request) {
+    return false;
+  }
+
+  try {
+    const result = await ethereum.request({
+      method: "wallet_watchAsset",
+      params: {
+        type: "ERC721",
+        options: {
+          address: contractAddress,
+          tokenId: String(tokenId),
+        },
+      },
+    });
+    console.info("wallet.watch_asset_result", {
+      contractAddress,
+      tokenId,
+      result,
+    });
+    return Boolean(result);
+  } catch (error) {
+    console.warn("wallet.watch_asset_failed", {
+      contractAddress,
+      tokenId,
+      error,
+    });
+    return false;
+  }
+}
+
 const TAB_PATHS: Record<TabName, string> = {
   home: "/",
   add: "/register",
@@ -1379,6 +1428,36 @@ export default function App() {
         walletChainId,
       });
 
+      if (walletChainId !== sepolia.id) {
+        console.warn("wallet.connect.unsupported_chain", {
+          walletAddress,
+          walletChainId,
+          expectedChainId: sepolia.id,
+        });
+
+        try {
+          await switchChainAsync({ chainId: sepolia.id });
+        } catch (switchError) {
+          console.warn("wallet.connect.switch_chain_failed", {
+            walletAddress,
+            walletChainId,
+            expectedChainId: sepolia.id,
+            switchError,
+          });
+        }
+
+        const switchedChainId = (await resolveConnectorChainId()) ?? walletChainId;
+        walletChainId = switchedChainId;
+        console.info("wallet.connect.chain_rechecked", {
+          walletAddress,
+          walletChainId,
+        });
+
+        if (walletChainId !== sepolia.id) {
+          throw new Error("Sepolia 네트워크로 전환한 뒤 다시 시도해주세요.");
+        }
+      }
+
       const challenge = await apiRequest<{
         address: string;
         message: string;
@@ -1807,6 +1886,10 @@ export default function App() {
       setAnalysisStage("minted");
       await refreshWalletSummary({ silent: true });
       openToast("NFT 토큰 발행이 완료되었습니다.");
+      void watchMintedNftAsset({
+        contractAddress: response.blockchain?.contract_address ?? null,
+        tokenId: response.blockchain?.token_id ?? null,
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "NFT 토큰 발행에 실패했습니다.";
       setMintErrorMessage(message);
