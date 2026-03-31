@@ -104,13 +104,6 @@ function getTabFromPath(pathname: string): TabName {
   return "home";
 }
 
-function buildHistoryEntryUrl(entryId: string) {
-  const url = new URL(window.location.href);
-  url.pathname = TAB_PATHS.history;
-  url.searchParams.set("entry", entryId);
-  return url.toString();
-}
-
 function buildWatermarkedFileName(fileName: string) {
   const trimmed = fileName.trim();
   if (!trimmed) return "watermarked_VM";
@@ -1948,8 +1941,7 @@ export default function App() {
             }}
             onMoveToHistory={() => navigateToTab("history")}
             onCopyVerificationUrl={() => {
-              const historyLink = buildHistoryEntryUrl(contentResult?.public_id || "");
-              void navigator.clipboard.writeText(historyLink);
+              void navigator.clipboard.writeText(window.location.href);
               openToast("URL 복사가 완료되었습니다.");
             }}
             uploadInputRef={uploadInputRef}

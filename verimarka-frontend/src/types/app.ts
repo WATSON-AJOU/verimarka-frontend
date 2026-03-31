@@ -144,6 +144,7 @@ export interface RegisteredContentResponse {
     contract_address?: string;
     recipient_address?: string;
     owner_address?: string;
+    author_name?: string;
     wm_id?: number | null;
     token_id?: number | null;
     status?: string;
@@ -223,6 +224,7 @@ export interface VerifyResultResponse {
   blockchain?: {
     token_id?: number | null;
     owner_address?: string | null;
+    author_name?: string | null;
     status?: string | null;
     verification_link?: string | null;
     network_name?: string | null;
