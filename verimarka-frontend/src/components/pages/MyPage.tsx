@@ -9,9 +9,11 @@ interface MyPageProps {
   walletAddress: string | null;
   walletNetworkLabel: string;
   walletTypeLabel: string;
-  nftCount: number;
+  nftCount: number | null;
   voteMinimum: number;
   voteEligible: boolean;
+  walletLookupStatus: "not_connected" | "ok" | "failed";
+  walletLookupError?: string | null;
   walletSummaryLoading: boolean;
   walletConnecting: boolean;
   walletDisconnecting: boolean;
@@ -38,6 +40,8 @@ export default function MyPage({
   nftCount,
   voteMinimum,
   voteEligible,
+  walletLookupStatus,
+  walletLookupError,
   walletSummaryLoading,
   walletConnecting,
   walletDisconnecting,
@@ -118,14 +122,14 @@ export default function MyPage({
             <div className="mypage-card-head">
               <h3>보유 토큰</h3>
               <span className={`mypage-chip ${voteEligible ? "is-done" : "is-pending"}`}>
-                {walletAddress ? (voteEligible ? "참여 가능" : "대기") : "미연결"}
+                {!walletAddress ? "미연결" : walletLookupStatus === "failed" ? "조회 실패" : voteEligible ? "참여 가능" : "대기"}
               </span>
             </div>
             <p>NFT 보유 수량을 기준으로 블록체인 투표 참여 권한이 결정됩니다.</p>
             <div className="token-status-grid">
               <div className="token-count-box token-count-box--hero">
                 <span>현재 보유 수량</span>
-                <strong><em>{walletSummaryLoading ? "-" : nftCount}</em> NFT</strong>
+                <strong><em>{walletSummaryLoading || walletLookupStatus === "failed" ? "-" : (nftCount ?? "-")}</em> NFT</strong>
               </div>
               <div className="token-count-box">
                 <span>투표 최소 조건</span>
@@ -137,9 +141,11 @@ export default function MyPage({
                 ? "지갑을 연결해야 보유 NFT 수량을 조회할 수 있습니다."
                 : walletSummaryLoading
                   ? "체인에서 NFT 보유 수량을 조회하고 있습니다."
+                  : walletLookupStatus === "failed"
+                    ? (walletLookupError || "NFT 보유 수량을 조회하지 못했습니다. 잠시 후 다시 시도해주세요.")
                   : voteEligible
-                    ? `현재 ${nftCount} NFT를 보유하여 투표 권한이 활성화되었습니다.`
-                    : `현재 ${Math.max(voteMinimum - nftCount, 0)} NFT 부족하여 투표 권한이 활성화되지 않았습니다.`}
+                    ? `현재 ${nftCount ?? 0} NFT를 보유하여 투표 권한이 활성화되었습니다.`
+                    : `현재 ${Math.max(voteMinimum - (nftCount ?? 0), 0)} NFT 부족하여 투표 권한이 활성화되지 않았습니다.`}
             </div>
           </article>
 

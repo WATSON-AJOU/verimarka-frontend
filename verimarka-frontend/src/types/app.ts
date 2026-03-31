@@ -251,9 +251,11 @@ export interface WalletSummaryResponse {
   chain_id: number | null;
   wallet_type: string;
   network_name: string;
-  nft_count: number;
+  nft_count: number | null;
   vote_minimum: number;
   vote_eligible: boolean;
+  lookup_status: "not_connected" | "ok" | "failed";
+  lookup_error?: string | null;
 }
 
 export interface AsyncContentJobResponse {
