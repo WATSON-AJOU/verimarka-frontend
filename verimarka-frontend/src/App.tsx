@@ -1663,8 +1663,32 @@ export default function App() {
       return;
     }
 
-    if (!walletClient || !publicClient) {
-      openToast("지갑 클라이언트를 확인할 수 없습니다. 다시 연결 후 시도하세요.");
+    if (!walletClient) {
+      console.warn("vote.wallet_client_missing", {
+        isConnected,
+        connectedWalletAddress,
+        connectorId: connectedConnector?.id ?? null,
+        connectorName: connectedConnector?.name ?? null,
+        currentWalletChainId,
+        linkedWalletAddress: user?.wallet_address ?? null,
+        hasPublicClient: Boolean(publicClient),
+      });
+      setWalletConnectModalOpen(true);
+      openToast("브라우저 지갑 서명 세션을 확인하지 못했습니다. 지갑을 다시 연결한 뒤 투표해주세요.");
+      return;
+    }
+
+    if (!publicClient) {
+      console.warn("vote.public_client_missing", {
+        isConnected,
+        connectedWalletAddress,
+        connectorId: connectedConnector?.id ?? null,
+        connectorName: connectedConnector?.name ?? null,
+        currentWalletChainId,
+        linkedWalletAddress: user?.wallet_address ?? null,
+        hasWalletClient: Boolean(walletClient),
+      });
+      openToast("블록체인 RPC 클라이언트를 확인하지 못했습니다. 새로고침 후 다시 시도하세요.");
       return;
     }
 
