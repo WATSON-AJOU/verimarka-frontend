@@ -3147,6 +3147,54 @@ body.modal-open {
   letter-spacing: 0.04em;
 }
 
+.walletConnectGuide {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 16px 18px;
+  border: 1px solid #dbe4f3;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #f8fbff 0%, #f3f7ff 100%);
+}
+
+.walletConnectGuide strong {
+  color: #223253;
+  font-size: 0.98rem;
+  font-weight: 800;
+}
+
+.walletConnectGuide p,
+.walletConnectGuide ul {
+  margin: 0;
+  color: #5f6f90;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.walletConnectGuide ul {
+  padding-left: 18px;
+}
+
+.walletConnectStatus {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.walletConnectStatus.is-ready {
+  background: rgba(43, 141, 82, 0.14);
+  color: #2b7f53;
+}
+
+.walletConnectStatus.is-disabled {
+  background: rgba(210, 140, 43, 0.14);
+  color: #9c6516;
+}
+
 .walletConnectorList {
   display: grid;
   gap: 14px;
@@ -3206,6 +3254,10 @@ body.modal-open {
   color: #8f5b12;
   font-size: 0.82rem;
   font-weight: 700;
+}
+
+.walletConnectReadyText {
+  color: #476bb1 !important;
 }
 
 .authTitle {

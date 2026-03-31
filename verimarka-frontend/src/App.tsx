@@ -82,7 +82,7 @@ function getWalletInstallMessage(connectorId?: string) {
   }
 
   if (connectorId === "walletConnect") {
-    return "WalletConnect를 사용할 수 없습니다. Project ID 설정을 확인하세요.";
+    return "WalletConnect QR 연결을 사용할 수 없습니다. 배포 환경의 VITE_WALLETCONNECT_PROJECT_ID 설정을 확인하세요.";
   }
 
   return "브라우저 지갑이 설치되어 있지 않습니다. MetaMask 같은 지갑을 먼저 설치하세요.";
@@ -229,14 +229,18 @@ export default function App() {
     chain_id: null,
     wallet_type: "",
     network_name: "Sepolia",
-    nft_count: 0,
+    nft_count: null,
     vote_minimum: 3,
     vote_eligible: false,
+    lookup_status: "not_connected",
+    lookup_error: null,
   });
   const [walletSummaryLoading, setWalletSummaryLoading] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const verifyInputRef = useRef<HTMLInputElement | null>(null);
   const inactivityTimeoutRef = useRef<number | null>(null);
+  const walletClientRef = useRef(walletClient);
+  const publicClientRef = useRef(publicClient);
 
   const phoneVerified = Boolean(user?.phone_verified);
   const emailVerified = Boolean(user?.email_verified);
@@ -261,6 +265,35 @@ export default function App() {
   const walletTypeLabel = user?.wallet_type || connectedConnector?.name || "Injected Wallet";
   const walletRequired = !user?.wallet_address;
 
+  useEffect(() => {
+    walletClientRef.current = walletClient;
+  }, [walletClient]);
+
+  useEffect(() => {
+    publicClientRef.current = publicClient;
+  }, [publicClient]);
+
+  useEffect(() => {
+    console.info("wallet.state_changed", {
+      isConnected,
+      connectedWalletAddress: connectedWalletAddress ?? null,
+      connectorId: connectedConnector?.id ?? null,
+      connectorName: connectedConnector?.name ?? null,
+      currentWalletChainId,
+      hasWalletClient: Boolean(walletClient),
+      hasPublicClient: Boolean(publicClient),
+      linkedWalletAddress: user?.wallet_address ?? null,
+    });
+  }, [
+    isConnected,
+    connectedWalletAddress,
+    connectedConnector,
+    currentWalletChainId,
+    walletClient,
+    publicClient,
+    user?.wallet_address,
+  ]);
+
   function navigateToTab(nextTab: TabName, options?: { replace?: boolean; search?: string }) {
     navigate(
       {
@@ -283,9 +316,11 @@ export default function App() {
         chain_id: null,
         wallet_type: "",
         network_name: "Sepolia",
-        nft_count: 0,
+        nft_count: null,
         vote_minimum: 3,
         vote_eligible: false,
+        lookup_status: "not_connected",
+        lookup_error: null,
       });
       return;
     }
@@ -302,20 +337,42 @@ export default function App() {
       setWalletSummary(response);
     } catch {
       setWalletSummary({
-        connected: false,
-        address: null,
-        chain_id: null,
-        wallet_type: "",
+        connected: Boolean(user?.wallet_address),
+        address: user?.wallet_address ?? null,
+        chain_id: user?.wallet_chain_id ?? null,
+        wallet_type: user?.wallet_type ?? "",
         network_name: "Sepolia",
-        nft_count: 0,
+        nft_count: null,
         vote_minimum: 3,
         vote_eligible: false,
+        lookup_status: "failed",
+        lookup_error: "NFT 보유 수량을 조회하지 못했습니다. 잠시 후 다시 시도해주세요.",
       });
     } finally {
       if (!options?.silent) {
         setWalletSummaryLoading(false);
       }
     }
+  }
+
+  async function waitForWalletClients(timeoutMs = 3000, intervalMs = 150) {
+    const startedAt = Date.now();
+
+    while (Date.now() - startedAt < timeoutMs) {
+      if (walletClientRef.current && publicClientRef.current) {
+        return {
+          walletClient: walletClientRef.current,
+          publicClient: publicClientRef.current,
+        };
+      }
+
+      await new Promise((resolve) => window.setTimeout(resolve, intervalMs));
+    }
+
+    return {
+      walletClient: walletClientRef.current ?? null,
+      publicClient: publicClientRef.current ?? null,
+    };
   }
 
   useEffect(() => {
@@ -559,9 +616,11 @@ export default function App() {
         chain_id: null,
         wallet_type: "",
         network_name: "Sepolia",
-        nft_count: 0,
+        nft_count: null,
         vote_minimum: 3,
         vote_eligible: false,
+        lookup_status: "not_connected",
+        lookup_error: null,
       });
       return;
     }
@@ -1130,7 +1189,11 @@ export default function App() {
     }
 
     setWalletConnecting(true);
-    setWalletConnectingLabel("지갑 승인창을 확인하고 연결 요청을 완료하세요.");
+    setWalletConnectingLabel(
+      connectorId === "walletConnect"
+        ? "WalletConnect QR 또는 지갑 앱 승인창을 확인하고 연결 요청을 완료하세요."
+        : "지갑 승인창을 확인하고 연결 요청을 완료하세요.",
+    );
 
     try {
       let walletAddress = connectedWalletAddress;
@@ -1142,6 +1205,17 @@ export default function App() {
         !isConnected ||
         signerSessionMissing ||
         (connectorId && connectedConnector?.id !== connectorId);
+
+      console.info("wallet.connect.start", {
+        requestedConnectorId: connectorId ?? null,
+        isConnected,
+        connectedWalletAddress: connectedWalletAddress ?? null,
+        connectedConnectorId: connectedConnector?.id ?? null,
+        connectedConnectorName: connectedConnector?.name ?? null,
+        currentWalletChainId,
+        signerSessionMissing,
+        requiresNewConnection,
+      });
 
       if (requiresNewConnection) {
         if (connectorId === "walletConnect" && !walletConnectEnabled) {
@@ -1160,9 +1234,19 @@ export default function App() {
           throw new Error("사용 가능한 지갑 연결 방식을 찾을 수 없습니다.");
         }
 
+        console.info("wallet.connect.reconnect_required", {
+          targetConnectorId: targetConnector.id,
+          targetConnectorName: targetConnector.name,
+          signerSessionMissing,
+        });
+
         if (isConnected) {
           try {
             await disconnectAsync();
+            console.info("wallet.connect.disconnected_existing_session", {
+              previousConnectorId: connectedConnector?.id ?? null,
+              previousAddress: connectedWalletAddress ?? null,
+            });
           } catch (disconnectError) {
             console.warn("wallet.reconnect_disconnect_failed", disconnectError);
           }
@@ -1172,7 +1256,28 @@ export default function App() {
         walletAddress = result.accounts[0];
         walletType = targetConnector.name;
         walletChainId = result.chainId ?? sepolia.id;
-        setWalletConnectingLabel("지갑 연결이 확인되었습니다. 지갑에서 서명 요청을 승인하세요.");
+        console.info("wallet.connect.connected", {
+          walletAddress,
+          walletType,
+          walletChainId,
+          accounts: result.accounts,
+        });
+        setWalletConnectingLabel(
+          targetConnector.id === "walletConnect"
+            ? "모바일 지갑 앱에서 WalletConnect 연결과 서명 요청을 승인하세요."
+            : "지갑 연결이 확인되었습니다. 지갑에서 서명 요청을 승인하세요.",
+        );
+
+        const clientState = await waitForWalletClients();
+        console.info("wallet.connect.client_wait_completed", {
+          walletAddress,
+          hasWalletClient: Boolean(clientState.walletClient),
+          hasPublicClient: Boolean(clientState.publicClient),
+        });
+
+        if (!clientState.walletClient) {
+          throw new Error("브라우저 지갑 서명 세션을 준비하지 못했습니다. 지갑 연결을 다시 시도해주세요.");
+        }
       }
 
       if (!walletAddress) {
@@ -1190,7 +1295,17 @@ export default function App() {
         body: { address: walletAddress },
       });
 
+      console.info("wallet.connect.challenge_created", {
+        walletAddress,
+        expiresAt: challenge.expires_at,
+      });
+
       const signature = await signMessageAsync({ message: challenge.message });
+
+      console.info("wallet.connect.signed", {
+        walletAddress,
+        signatureLength: signature.length,
+      });
 
       await apiRequest("/wallets/connect/verify/", {
         method: "POST",
@@ -1201,6 +1316,12 @@ export default function App() {
           chain_id: walletChainId,
           wallet_type: walletType,
         },
+      });
+
+      console.info("wallet.connect.verified", {
+        walletAddress,
+        walletType,
+        walletChainId,
       });
 
       setWalletConnectModalOpen(false);
@@ -1650,6 +1771,11 @@ export default function App() {
       return;
     }
 
+    if (walletSummary.lookup_status === "failed") {
+      openToast(walletSummary.lookup_error || "NFT 보유 수량을 조회하지 못했습니다. 잠시 후 다시 시도해주세요.");
+      return;
+    }
+
     if (!walletSummary.vote_eligible) {
       openToast(`투표 참여는 최소 ${walletSummary.vote_minimum} NFT 보유 후 가능합니다.`);
       return;
@@ -1669,6 +1795,24 @@ export default function App() {
     const tokenId = item.blockchain?.token_id;
     const contractAddress = item.blockchain?.contract_address;
     const chainId = item.blockchain?.chain_id ?? sepolia.id;
+
+    console.info("vote.submit_attempt", {
+      itemId: item.id,
+      choice,
+      isConnected,
+      connectedWalletAddress: connectedWalletAddress ?? null,
+      connectorId: connectedConnector?.id ?? null,
+      connectorName: connectedConnector?.name ?? null,
+      currentWalletChainId,
+      linkedWalletAddress: user?.wallet_address ?? null,
+      hasWalletClient: Boolean(walletClient),
+      hasPublicClient: Boolean(publicClient),
+      tokenId: tokenId ?? null,
+      contractAddress: contractAddress ?? null,
+      chainId,
+      voteStatus: item.blockchain?.vote?.status ?? null,
+      voteEndTime: item.blockchain?.vote?.end_time ?? null,
+    });
 
     if (tokenId === null || tokenId === undefined || !contractAddress) {
       openToast("투표 대상의 블록체인 정보가 부족합니다. 새로고침 후 다시 시도하세요.");
@@ -1708,6 +1852,10 @@ export default function App() {
 
     try {
       if (currentWalletChainId !== chainId) {
+        console.info("vote.switch_chain", {
+          fromChainId: currentWalletChainId,
+          toChainId: chainId,
+        });
         await switchChainAsync({ chainId });
       }
 
@@ -1719,6 +1867,12 @@ export default function App() {
         account: connectedWalletAddress as `0x${string}`,
       });
 
+      console.info("vote.estimated_gas", {
+        tokenId,
+        chainId,
+        estimatedGas: estimatedGas.toString(),
+      });
+
       const hash = await writeContract(walletClient, {
         address: contractAddress as `0x${string}`,
         abi: watsonNftAbi,
@@ -1728,7 +1882,17 @@ export default function App() {
         gas: (estimatedGas * 12n) / 10n,
       });
 
+      console.info("vote.tx_submitted", {
+        tokenId,
+        hash,
+      });
+
       await waitForTransactionReceipt(publicClient, { hash });
+
+      console.info("vote.tx_confirmed", {
+        tokenId,
+        hash,
+      });
 
       await apiRequest<RegisteredContentResponse>(`/contents/${item.id}/review-vote/`, {
         method: "GET",
@@ -1745,9 +1909,17 @@ export default function App() {
             ? "이미 이 투표에 참여했습니다."
             : message.includes("Voting time ended")
               ? "투표가 종료되어 더 이상 참여할 수 없습니다."
-              : message.includes("Voting not active")
+            : message.includes("Voting not active")
                 ? "현재 진행 중인 투표가 아닙니다."
                 : message;
+      console.error("vote.submit_failed", {
+        itemId: item.id,
+        choice,
+        tokenId,
+        contractAddress,
+        chainId,
+        message,
+      });
       openToast(normalizedMessage);
       throw error;
     } finally {
@@ -2075,6 +2247,8 @@ export default function App() {
             nftCount={walletSummary.nft_count}
             voteMinimum={walletSummary.vote_minimum}
             voteEligible={walletSummary.vote_eligible}
+            walletLookupStatus={walletSummary.lookup_status}
+            walletLookupError={walletSummary.lookup_error}
             walletSummaryLoading={walletSummaryLoading}
             walletConnecting={walletConnecting}
             walletDisconnecting={walletDisconnecting}
