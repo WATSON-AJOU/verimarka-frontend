@@ -92,7 +92,7 @@ function getWalletInstallMessage(connectorId?: string) {
 
 async function watchMintedNftAsset(options: {
   contractAddress?: string | null;
-  tokenId?: number | null;
+  tokenId?: number | string | null;
 }) {
   const { contractAddress, tokenId } = options;
   if (!contractAddress || tokenId === null || tokenId === undefined) {
@@ -293,6 +293,7 @@ export default function App() {
   const walletClientRef = useRef(walletClient);
   const publicClientRef = useRef(publicClient);
   const fallbackWalletClientRef = useRef<WalletClient | null>(null);
+  const watchedMintAssetKeyRef = useRef<string | null>(null);
 
   const phoneVerified = Boolean(user?.phone_verified);
   const emailVerified = Boolean(user?.email_verified);
@@ -331,6 +332,23 @@ export default function App() {
   useEffect(() => {
     fallbackWalletClientRef.current = null;
   }, [connectedConnector?.id, connectedWalletAddress, currentWalletChainId]);
+
+  useEffect(() => {
+    if (analysisStage !== "minted") return;
+
+    const blockchain = contentResult?.blockchain;
+    if (blockchain?.mint_kind !== "content" || !blockchain?.minted) return;
+
+    const contractAddress = blockchain.contract_address ?? null;
+    const tokenId = blockchain.token_id ?? null;
+    if (!contractAddress || tokenId === null || tokenId === undefined) return;
+
+    const watchKey = `${contentResult?.public_id ?? "unknown"}:${contractAddress}:${String(tokenId)}`;
+    if (watchedMintAssetKeyRef.current === watchKey) return;
+
+    watchedMintAssetKeyRef.current = watchKey;
+    void watchMintedNftAsset({ contractAddress, tokenId });
+  }, [analysisStage, contentResult]);
 
   useEffect(() => {
     console.info("wallet.state_changed", {
@@ -1886,10 +1904,6 @@ export default function App() {
       setAnalysisStage("minted");
       await refreshWalletSummary({ silent: true });
       openToast("NFT 토큰 발행이 완료되었습니다.");
-      void watchMintedNftAsset({
-        contractAddress: response.blockchain?.contract_address ?? null,
-        tokenId: response.blockchain?.token_id ?? null,
-      });
     } catch (error) {
       const message = error instanceof Error ? error.message : "NFT 토큰 발행에 실패했습니다.";
       setMintErrorMessage(message);
