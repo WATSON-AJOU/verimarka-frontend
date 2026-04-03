@@ -282,3 +282,31 @@ export interface AnalysisJobStatusResponse {
   started_at?: string | null;
   completed_at?: string | null;
 }
+
+export interface ReviewVoteSigningResponse {
+  token_id: number;
+  vote_id: string;
+  voter: string;
+  nonce: number;
+  deadline: number;
+  domain: {
+    name: string;
+    version: string;
+    chainId: number;
+    verifyingContract: string;
+  };
+  types: {
+    Vote: Array<{
+      name: string;
+      type: string;
+    }>;
+  };
+  primaryType: "Vote";
+}
+
+export interface ReviewVoteCastResponse {
+  tx_hash?: string | null;
+  block_number?: number | null;
+  gas_used?: number | null;
+  content: RegisteredContentResponse;
+}

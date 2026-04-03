@@ -85,7 +85,7 @@ interface RegisterPageProps {
   onConfirmReviewConsent: () => void;
   onOpenReviewVoteModal: () => void;
   onCloseReviewVoteModal: () => void;
-  onCastReviewDemoVote: (choice: "yes" | "no") => void;
+  onCastReviewVote: (choice: "yes" | "no") => void;
   onRefreshReviewVote: () => void;
 }
 
@@ -126,7 +126,7 @@ export default function RegisterPage({
   onConfirmReviewConsent,
   onOpenReviewVoteModal,
   onCloseReviewVoteModal,
-  onCastReviewDemoVote,
+  onCastReviewVote,
   onRefreshReviewVote,
 }: RegisterPageProps) {
   const selectedFileName = selectedFile?.name || contentResult?.original_filename || "-";
@@ -886,7 +886,7 @@ export default function RegisterPage({
               <button
                 className="btn btn-primary"
                 type="button"
-                onClick={() => onCastReviewDemoVote("yes")}
+                onClick={() => onCastReviewVote("yes")}
                 disabled={Boolean(reviewVoteDraft?.votedChoice)}
               >
                 찬성
@@ -894,7 +894,7 @@ export default function RegisterPage({
               <button
                 className="btn btn-secondary review-vote-modal-negative"
                 type="button"
-                onClick={() => onCastReviewDemoVote("no")}
+                onClick={() => onCastReviewVote("no")}
                 disabled={Boolean(reviewVoteDraft?.votedChoice)}
               >
                 반대
@@ -902,7 +902,7 @@ export default function RegisterPage({
             </div>
 
             <p className="review-vote-modal-note">
-              투표 결과는 데모 상태이며 실제 서비스에서는 블록체인에 기록됩니다.
+              투표 결과는 지갑 서명 후 블록체인에 기록됩니다.
             </p>
           </div>
         </div>
