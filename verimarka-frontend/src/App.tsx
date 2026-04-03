@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAccount, useChainId, useConnect, useDisconnect, usePublicClient, useSignMessage, useSwitchChain, useWalletClient } from "wagmi";
 import type { Connector } from "wagmi";
 import { createWalletClient, custom, type EIP1193Provider, type WalletClient } from "viem";
-import { estimateContractGas, waitForTransactionReceipt, writeContract } from "viem/actions";
 import "./App.css";
 import EmailLoginModal from "./components/auth/EmailLoginModal";
 import EmailVerificationModal from "./components/auth/EmailVerificationModal";
@@ -25,10 +24,9 @@ import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
 import { resultConfig, systemCards, tabs } from "./lib/mockData";
 import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest, authenticatedFetch } from "./lib/api";
-import { watsonNftAbi } from "./lib/watsonNftAbi";
 import { sepolia, walletConnectEnabled } from "./lib/wallet";
 import { getAccessToken } from "./lib/token";
-import type { ActivityItem, AnalysisJobStatusResponse, AnalysisStage, AsyncContentJobResponse, AsyncVerifyJobResponse, ModalType, RegisteredContentResponse, TabName, VerifyResultResponse, WalletSummaryResponse } from "./types/app";
+import type { ActivityItem, AnalysisJobStatusResponse, AnalysisStage, AsyncContentJobResponse, AsyncVerifyJobResponse, ModalType, RegisteredContentResponse, ReviewVoteCastResponse, ReviewVoteSigningResponse, TabName, VerifyResultResponse, WalletSummaryResponse } from "./types/app";
 import type { HistoryItem } from "./types/app";
 
 function formatFileSize(bytes: number) {
@@ -501,6 +499,70 @@ export default function App() {
       });
       return null;
     }
+  }
+
+  async function getConnectedWalletProvider(connector?: Connector | null): Promise<EIP1193Provider | null> {
+    const targetConnector = connector ?? connectedConnector;
+    if (!targetConnector) {
+      return null;
+    }
+
+    try {
+      const provider = await targetConnector.getProvider();
+      if (!provider || typeof provider !== "object" || !("request" in provider)) {
+        return null;
+      }
+      return provider as EIP1193Provider;
+    } catch (error) {
+      console.warn("wallet.resolve_provider_failed", {
+        connectorId: targetConnector.id,
+        error,
+      });
+      return null;
+    }
+  }
+
+  async function requestReviewVoteSignature(
+    signing: ReviewVoteSigningResponse,
+    choice: "yes" | "no",
+  ): Promise<string> {
+    const provider = await getConnectedWalletProvider();
+    if (!provider) {
+      throw new Error("브라우저 지갑 provider를 확인하지 못했습니다. 지갑을 다시 연결한 뒤 투표해주세요.");
+    }
+
+    const typedData = {
+      domain: signing.domain,
+      primaryType: signing.primaryType,
+      types: {
+        EIP712Domain: [
+          { name: "name", type: "string" },
+          { name: "version", type: "string" },
+          { name: "chainId", type: "uint256" },
+          { name: "verifyingContract", type: "address" },
+        ],
+        Vote: signing.types.Vote,
+      },
+      message: {
+        tokenId: signing.token_id,
+        isOriginal: choice === "yes",
+        voter: signing.voter,
+        nonce: signing.nonce,
+        deadline: signing.deadline,
+      },
+    };
+
+    const providerRequest = provider.request as (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+    const signature = await providerRequest({
+      method: "eth_signTypedData_v4",
+      params: [signing.voter, JSON.stringify(typedData)],
+    });
+
+    if (typeof signature !== "string" || !signature.startsWith("0x")) {
+      throw new Error("지갑 서명 응답을 확인하지 못했습니다.");
+    }
+
+    return signature;
   }
 
   async function waitForWalletClients(timeoutMs = 3000, intervalMs = 150) {
@@ -1915,82 +1977,54 @@ export default function App() {
     }
   }
 
-  function castReviewDemoVote(choice: "yes" | "no") {
-    if (!contentResult?.public_id) return;
-
-    setReviewVoteDraft((current) => {
-      const base = current && current.contentId === contentResult.public_id
-        ? current
-        : {
-            contentId: contentResult.public_id,
-            upvotes: contentResult.blockchain?.vote?.upvotes ?? 0,
-            downvotes: contentResult.blockchain?.vote?.downvotes ?? 0,
-            participantCount: contentResult.blockchain?.vote?.participant_count ?? 0,
-            votedChoice: null as "yes" | "no" | null,
-          };
-
-      if (base.votedChoice) {
-        return base;
-      }
-
-      return {
-        ...base,
-        upvotes: base.upvotes + (choice === "yes" ? 1 : 0),
-        downvotes: base.downvotes + (choice === "no" ? 1 : 0),
-        participantCount: base.participantCount + 1,
-        votedChoice: choice,
-      };
-    });
-
-    setReviewVoteModalOpen(false);
-    openToast("데모 투표에 참여했습니다. 실제 서비스에서는 블록체인에 기록됩니다.");
-  }
-
-  async function castHistoryReviewVote(item: HistoryItem, choice: "yes" | "no") {
+  async function submitSignedReviewVote(publicId: string, options: {
+    choice: "yes" | "no";
+    chainId: number;
+    tokenId?: number | string | null;
+    contractAddress?: string | null;
+    voteStatus?: string | null;
+    voteEndTime?: string | null;
+  }): Promise<ReviewVoteCastResponse> {
     if (historyVoteSubmitting) {
       openToast("이미 투표 요청을 처리 중입니다.");
-      return;
+      throw new Error("Vote submission already in progress.");
     }
 
     if (!hasAuthSession) {
       setModal("loginChoice");
       openToast("로그인 후 투표할 수 있습니다.");
-      return;
+      throw new Error("Authentication required.");
     }
 
     if (walletRequired) {
       promptWalletRequired("지갑 연결 후 투표할 수 있습니다.");
-      return;
+      throw new Error("Wallet link required.");
     }
 
     if (walletSummary.lookup_status === "failed") {
       openToast(walletSummary.lookup_error || "NFT 보유 수량을 조회하지 못했습니다. 잠시 후 다시 시도해주세요.");
-      return;
+      throw new Error("Wallet summary lookup failed.");
     }
 
     if (!walletSummary.vote_eligible) {
       openToast(`투표 참여는 최소 ${walletSummary.vote_minimum} NFT 보유 후 가능합니다.`);
-      return;
+      throw new Error("Vote eligibility requirement not met.");
     }
 
     if (!connectedWalletAddress || !isConnected) {
       setWalletConnectModalOpen(true);
       openToast("투표하려면 연결된 지갑이 필요합니다.");
-      return;
+      throw new Error("Connected wallet required.");
     }
 
     if (!user?.wallet_address || user.wallet_address.toLowerCase() !== connectedWalletAddress.toLowerCase()) {
       openToast("서비스에 연동된 지갑과 현재 연결된 지갑이 다릅니다. 같은 지갑으로 다시 연결하세요.");
-      return;
+      throw new Error("Connected wallet does not match linked wallet.");
     }
 
-    const tokenId = item.blockchain?.token_id;
-    const contractAddress = item.blockchain?.contract_address;
-    const chainId = item.blockchain?.chain_id ?? sepolia.id;
-
     console.info("vote.submit_attempt", {
-      itemId: item.id,
-      choice,
+      itemId: publicId,
+      choice: options.choice,
       isConnected,
       connectedWalletAddress: connectedWalletAddress ?? null,
       connectorId: connectedConnector?.id ?? null,
@@ -1999,123 +2033,81 @@ export default function App() {
       linkedWalletAddress: user?.wallet_address ?? null,
       hasWalletClient: Boolean(walletClient),
       hasPublicClient: Boolean(publicClient),
-      tokenId: tokenId ?? null,
-      contractAddress: contractAddress ?? null,
-      chainId,
-      voteStatus: item.blockchain?.vote?.status ?? null,
-      voteEndTime: item.blockchain?.vote?.end_time ?? null,
+      tokenId: options.tokenId ?? null,
+      contractAddress: options.contractAddress ?? null,
+      chainId: options.chainId,
+      voteStatus: options.voteStatus ?? null,
+      voteEndTime: options.voteEndTime ?? null,
     });
-
-    if (tokenId === null || tokenId === undefined || !contractAddress) {
-      openToast("투표 대상의 블록체인 정보가 부족합니다. 새로고침 후 다시 시도하세요.");
-      return;
-    }
-
-    const resolvedWalletClient =
-      walletClient ?? fallbackWalletClientRef.current ?? (await createFallbackWalletClient());
-
-    if (!resolvedWalletClient) {
-      console.warn("vote.wallet_client_missing", {
-        isConnected,
-        connectedWalletAddress,
-        connectorId: connectedConnector?.id ?? null,
-        connectorName: connectedConnector?.name ?? null,
-        currentWalletChainId,
-        linkedWalletAddress: user?.wallet_address ?? null,
-        hasPublicClient: Boolean(publicClient),
-        hasFallbackWalletClient: Boolean(fallbackWalletClientRef.current),
-      });
-      setWalletConnectModalOpen(true);
-      openToast("브라우저 지갑 서명 세션을 확인하지 못했습니다. 지갑을 다시 연결한 뒤 투표해주세요.");
-      return;
-    }
-
-    if (!publicClient) {
-      console.warn("vote.public_client_missing", {
-        isConnected,
-        connectedWalletAddress,
-        connectorId: connectedConnector?.id ?? null,
-        connectorName: connectedConnector?.name ?? null,
-        currentWalletChainId,
-        linkedWalletAddress: user?.wallet_address ?? null,
-        hasWalletClient: Boolean(walletClient),
-      });
-      openToast("블록체인 RPC 클라이언트를 확인하지 못했습니다. 새로고침 후 다시 시도하세요.");
-      return;
-    }
 
     setHistoryVoteSubmitting(true);
 
     try {
       const providerChainId = (await resolveConnectorChainId()) ?? currentWalletChainId ?? null;
-      if (providerChainId !== chainId) {
+      if (providerChainId !== options.chainId) {
         console.info("vote.switch_chain", {
           fromChainId: providerChainId,
-          toChainId: chainId,
+          toChainId: options.chainId,
         });
-        await switchChainAsync({ chainId });
+        await switchChainAsync({ chainId: options.chainId });
       }
 
-      const estimatedGas = await estimateContractGas(publicClient, {
-        address: contractAddress as `0x${string}`,
-        abi: watsonNftAbi,
-        functionName: "voteForDocument",
-        args: [BigInt(tokenId), choice === "yes"],
-        account: connectedWalletAddress as `0x${string}`,
-      });
-
-      console.info("vote.estimated_gas", {
-        tokenId,
-        chainId,
-        estimatedGas: estimatedGas.toString(),
-      });
-
-      const hash = await writeContract(resolvedWalletClient, {
-        chain: sepolia,
-        address: contractAddress as `0x${string}`,
-        abi: watsonNftAbi,
-        functionName: "voteForDocument",
-        args: [BigInt(tokenId), choice === "yes"],
-        account: connectedWalletAddress as `0x${string}`,
-        gas: (estimatedGas * 12n) / 10n,
-      });
-
-      console.info("vote.tx_submitted", {
-        tokenId,
-        hash,
-      });
-
-      await waitForTransactionReceipt(publicClient, { hash });
-
-      console.info("vote.tx_confirmed", {
-        tokenId,
-        hash,
-      });
-
-      await apiRequest<RegisteredContentResponse>(`/contents/${item.id}/review-vote/`, {
+      const signing = await apiRequest<ReviewVoteSigningResponse>(`/contents/${publicId}/review-vote/signing/`, {
         method: "GET",
         auth: true,
       });
-      await loadHistoryEntries({ silent: true });
-      openToast(choice === "yes" ? "찬성 투표가 기록되었습니다." : "반대 투표가 기록되었습니다.");
+
+      console.info("vote.signing_context_loaded", {
+        itemId: publicId,
+        tokenId: signing.token_id,
+        nonce: signing.nonce,
+        deadline: signing.deadline,
+        chainId: signing.domain.chainId,
+      });
+
+      const signature = await requestReviewVoteSignature(signing, options.choice);
+
+      console.info("vote.signature_created", {
+        itemId: publicId,
+        tokenId: signing.token_id,
+        signatureLength: signature.length,
+      });
+
+      const response = await apiRequest<ReviewVoteCastResponse>(`/contents/${publicId}/review-vote/vote/`, {
+        method: "POST",
+        auth: true,
+        body: {
+          is_original: options.choice === "yes",
+          deadline: signing.deadline,
+          signature,
+        },
+      });
+
+      console.info("vote.relay_submitted", {
+        itemId: publicId,
+        tokenId: signing.token_id,
+        txHash: response.tx_hash ?? null,
+      });
+
+      return response;
     } catch (error) {
       const message = error instanceof Error ? error.message : "투표 참여 중 오류가 발생했습니다.";
       const normalizedMessage =
-        message.includes("gas limit too high")
-          ? "지갑이 과도한 가스 한도를 설정해 투표에 실패했습니다. 다시 시도해주세요."
-          : message.includes("Already voted")
-            ? "이미 이 투표에 참여했습니다."
-            : message.includes("Voting time ended")
-              ? "투표가 종료되어 더 이상 참여할 수 없습니다."
+        message.includes("Already voted")
+          ? "이미 이 투표에 참여했습니다."
+          : message.includes("Voting time ended") || message.includes("Signature expired")
+            ? "투표가 종료되었거나 서명이 만료되었습니다. 다시 시도해주세요."
             : message.includes("Voting not active")
-                ? "현재 진행 중인 투표가 아닙니다."
+              ? "현재 진행 중인 투표가 아닙니다."
+              : message.includes("Invalid signature")
+                ? "지갑 서명 검증에 실패했습니다. 다시 시도해주세요."
                 : message;
       console.error("vote.submit_failed", {
-        itemId: item.id,
-        choice,
-        tokenId,
-        contractAddress,
-        chainId,
+        itemId: publicId,
+        choice: options.choice,
+        tokenId: options.tokenId ?? null,
+        contractAddress: options.contractAddress ?? null,
+        chainId: options.chainId,
         message,
       });
       openToast(normalizedMessage);
@@ -2123,6 +2115,45 @@ export default function App() {
     } finally {
       setHistoryVoteSubmitting(false);
     }
+  }
+
+  async function castReviewVote(choice: "yes" | "no") {
+    if (!contentResult?.public_id) {
+      return;
+    }
+
+    const response = await submitSignedReviewVote(contentResult.public_id, {
+      choice,
+      chainId: contentResult.blockchain?.chain_id ?? sepolia.id,
+      tokenId: contentResult.blockchain?.token_id ?? null,
+      contractAddress: contentResult.blockchain?.contract_address ?? null,
+      voteStatus: contentResult.blockchain?.vote?.status ?? null,
+      voteEndTime: contentResult.blockchain?.vote?.end_time ?? null,
+    });
+
+    setContentResult(response.content);
+    setReviewVoteDraft({
+      contentId: response.content.public_id,
+      upvotes: response.content.blockchain?.vote?.upvotes ?? 0,
+      downvotes: response.content.blockchain?.vote?.downvotes ?? 0,
+      participantCount: response.content.blockchain?.vote?.participant_count ?? 0,
+      votedChoice: choice,
+    });
+    setReviewVoteModalOpen(false);
+    openToast(choice === "yes" ? "찬성 투표가 기록되었습니다." : "반대 투표가 기록되었습니다.");
+  }
+
+  async function castHistoryReviewVote(item: HistoryItem, choice: "yes" | "no") {
+    await submitSignedReviewVote(item.id, {
+      choice,
+      chainId: item.blockchain?.chain_id ?? sepolia.id,
+      tokenId: item.blockchain?.token_id ?? null,
+      contractAddress: item.blockchain?.contract_address ?? null,
+      voteStatus: item.blockchain?.vote?.status ?? null,
+      voteEndTime: item.blockchain?.vote?.end_time ?? null,
+    });
+    await loadHistoryEntries({ silent: true });
+    openToast(choice === "yes" ? "찬성 투표가 기록되었습니다." : "반대 투표가 기록되었습니다.");
   }
 
   async function sendPhoneVerificationCode() {
@@ -2381,7 +2412,9 @@ export default function App() {
             }}
             onOpenReviewVoteModal={() => setReviewVoteModalOpen(true)}
             onCloseReviewVoteModal={() => setReviewVoteModalOpen(false)}
-            onCastReviewDemoVote={castReviewDemoVote}
+            onCastReviewVote={(choice) => {
+              void castReviewVote(choice);
+            }}
             onRefreshReviewVote={() => {
               if (!contentResult?.public_id) {
                 void refreshReviewVote();
