@@ -191,6 +191,8 @@ export default function RegisterPage({
     : isWatermarkedStage
       ? "워터마크 이미지가 준비되었습니다. NFT 토큰 발행을 진행할 수 있습니다."
       : registerResult?.subtitle ?? "";
+  const resultNote = registerResult?.note ?? "";
+  const shouldRenderResultNote = resultNote.trim() !== "" && resultNote.trim() !== resultSubtitle.trim();
 
   return (
     <section className="register-layout">
@@ -716,10 +718,6 @@ export default function RegisterPage({
                       </div>
                     ) : registerResult.tone === "review" ? (
                       <div className="review-vote-layout">
-                        <div className="review-vote-headline">
-                          <h4>유사 후보가 감지되어 커뮤니티 투표 생성이 필요합니다.</h4>
-                        </div>
-
                         <div className="review-vote-compare-grid">
                           <div className="review-vote-card">
                             <div className="review-vote-caption">업로드 원본 · {selectedFile.name}</div>
@@ -764,7 +762,7 @@ export default function RegisterPage({
                             등록 취소하기
                           </button>
                         </div>
-                        <p className="result-note">{registerResult.note}</p>
+                        {shouldRenderResultNote ? <p className="result-note">{resultNote}</p> : null}
                       </div>
                     ) : (
                       <>
@@ -811,7 +809,7 @@ export default function RegisterPage({
                             업로드 화면으로 돌아가기
                           </button>
                         </div>
-                        <p className="result-note">{registerResult.note}</p>
+                        {shouldRenderResultNote ? <p className="result-note">{resultNote}</p> : null}
                       </>
                     )}
                   </div>

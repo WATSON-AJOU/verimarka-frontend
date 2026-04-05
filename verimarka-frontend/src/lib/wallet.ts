@@ -17,33 +17,82 @@ const walletConnectMetadata = {
   icons: ["https://verimarka.com/favicon.ico"],
 };
 
-function getTrustWalletProvider(windowObject?: unknown) {
-  const ethereum = (windowObject as {
-    ethereum?: {
-      providers?: Array<Record<string, unknown>>;
-      isTrust?: boolean;
-      isTrustWallet?: boolean;
-    };
-  } | undefined)?.ethereum;
+type InjectedProvider = {
+  providers?: Array<Record<string, unknown>>;
+  isMetaMask?: boolean;
+  isRabby?: boolean;
+  isTrust?: boolean;
+  isTrustWallet?: boolean;
+};
 
-  if (!ethereum) return undefined;
+function getInjectedProviders(windowObject?: unknown): InjectedProvider[] {
+  const ethereum = (windowObject as { ethereum?: InjectedProvider } | undefined)?.ethereum;
 
-  const providers = Array.isArray(ethereum.providers) ? ethereum.providers : [ethereum];
-  return providers.find(
+  if (!ethereum) return [];
+
+  return Array.isArray(ethereum.providers) ? (ethereum.providers as InjectedProvider[]) : [ethereum];
+}
+
+function getMetaMaskProvider(windowObject?: unknown) {
+  return getInjectedProviders(windowObject).find(
     (provider) =>
-      Boolean(
-        (provider as { isTrust?: boolean; isTrustWallet?: boolean }).isTrust ||
-          (provider as { isTrust?: boolean; isTrustWallet?: boolean }).isTrustWallet,
-      ),
+      Boolean(provider.isMetaMask) &&
+      !provider.isRabby &&
+      !provider.isTrust &&
+      !provider.isTrustWallet,
   ) as never;
+}
+
+function getRabbyProvider(windowObject?: unknown) {
+  return getInjectedProviders(windowObject).find((provider) => Boolean(provider.isRabby)) as never;
+}
+
+function getTrustWalletProvider(windowObject?: unknown) {
+  return getInjectedProviders(windowObject).find(
+    (provider) => Boolean(provider.isTrust || provider.isTrustWallet),
+  ) as never;
+}
+
+export function hasConnectorProvider(connectorId?: string) {
+  if (typeof window === "undefined") return false;
+
+  if (!connectorId) {
+    return getInjectedProviders(window).length > 0;
+  }
+
+  if (connectorId === "metaMask") {
+    return Boolean(getMetaMaskProvider(window));
+  }
+
+  if (connectorId === "rabby") {
+    return Boolean(getRabbyProvider(window));
+  }
+
+  if (connectorId === "trustWallet") {
+    return Boolean(getTrustWalletProvider(window));
+  }
+
+  return getInjectedProviders(window).length > 0;
 }
 
 const connectors = [
   injected({
-    target: "metaMask",
+    target: {
+      id: "metaMask",
+      name: "MetaMask",
+      provider(windowObject) {
+        return getMetaMaskProvider(windowObject);
+      },
+    },
   }),
   injected({
-    target: "rabby",
+    target: {
+      id: "rabby",
+      name: "Rabby",
+      provider(windowObject) {
+        return getRabbyProvider(windowObject);
+      },
+    },
   }),
   injected({
     target: {
