@@ -153,6 +153,10 @@ function getTabFromPath(pathname: string): TabName {
   return "home";
 }
 
+function buildTabPath(nextTab: TabName, options?: { search?: string }) {
+  return `${TAB_PATHS[nextTab]}${options?.search ?? ""}`;
+}
+
 function buildWatermarkedFileName(fileName: string) {
   const trimmed = fileName.trim();
   if (!trimmed) return "watermarked_VM";
@@ -377,6 +381,18 @@ export default function App() {
       },
       { replace: options?.replace ?? false },
     );
+  }
+
+  function hardNavigateToTab(nextTab: TabName, options?: { search?: string }) {
+    const nextPath = buildTabPath(nextTab, options);
+    const currentPath = `${window.location.pathname}${window.location.search}`;
+
+    if (currentPath === nextPath) {
+      window.location.reload();
+      return;
+    }
+
+    window.location.assign(nextPath);
   }
 
   function openOngoingVoteHistory(entryId: string) {
@@ -1652,6 +1668,21 @@ export default function App() {
     navigateToTab(nextTab);
   }
 
+  function moveToHeaderTab(nextTab: TabName) {
+    const tabConfig = tabs.find((tab) => tab.key === nextTab);
+    if (tabConfig?.requiresAuth && !hasAuthSession) {
+      setModal("loginChoice");
+      openToast("로그인 후 이용 가능합니다.");
+      return;
+    }
+    if (nextTab === "mypage" && !hasAuthSession) {
+      setModal("loginChoice");
+      openToast("로그인 후 마이페이지를 이용할 수 있습니다.");
+      return;
+    }
+    hardNavigateToTab(nextTab);
+  }
+
   function handlePickFile(event: React.ChangeEvent<HTMLInputElement>) {
     const nextFile = event.target.files?.[0];
     if (!nextFile) return;
@@ -2265,7 +2296,7 @@ export default function App() {
         isLoggedIn={isLoggedIn}
         displayName={displayName}
         avatarInitial={avatarInitial}
-        onMoveTab={moveToTab}
+        onMoveTab={moveToHeaderTab}
         onOpenLogin={() => setModal("loginChoice")}
         onOpenSignup={() => setModal("signup")}
         onLogout={handleLogout}

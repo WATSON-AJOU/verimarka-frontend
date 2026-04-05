@@ -1063,11 +1063,8 @@ main {
   gap: 18px;
 }
 
-.review-vote-headline h4 {
-  margin: 0;
-  color: #24365a;
-  font-size: 1.2rem;
-  font-weight: 700;
+.review-vote-headline {
+  display: none;
 }
 
 .review-vote-compare-grid,
