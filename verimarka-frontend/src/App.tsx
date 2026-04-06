@@ -197,6 +197,7 @@ const LOADING_RING_DURATION_MS = 15000;
 const LOADING_RING_MAX_PENDING_PROGRESS = 99;
 const AUTO_LOGOUT_IDLE_MS = 30 * 60 * 1000;
 const POST_LOGOUT_TOAST_KEY = "verimarka:post-logout-toast";
+const SUSPENDED_ACCOUNT_MESSAGE = "정지된 계정입니다.";
 
 export default function App() {
   const navigate = useNavigate();
@@ -1155,6 +1156,11 @@ export default function App() {
         phash: string;
         extra: string;
         preview_url?: string | null;
+        original_preview_url?: string | null;
+        comparison_preview_url?: string | null;
+        comparison_file_name?: string;
+        comparison_public_id?: string;
+        comparison_label?: string;
         download_url?: string | null;
         blockchain?: HistoryItem["blockchain"];
       }>>("/logs/history/", {
@@ -1173,6 +1179,11 @@ export default function App() {
           phash: item.phash,
           extra: item.extra,
           previewUrl: item.preview_url ?? null,
+          originalPreviewUrl: item.original_preview_url ?? item.preview_url ?? null,
+          comparisonPreviewUrl: item.comparison_preview_url ?? null,
+          comparisonFileName: item.comparison_file_name ?? "",
+          comparisonPublicId: item.comparison_public_id ?? "",
+          comparisonLabel: item.comparison_label ?? "",
           downloadUrl: item.download_url ?? null,
           blockchain: item.blockchain ?? null,
         })),
@@ -1336,9 +1347,21 @@ export default function App() {
   }
 
   async function handleLogin(email: string, password: string) {
-    await login(email, password);
-    setModal("none");
-    openToast("로그인되었습니다. 반갑습니다.");
+    try {
+      await login(email, password);
+      setModal("none");
+      openToast("로그인되었습니다. 반갑습니다.");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "로그인에 실패했습니다.";
+      if (message.includes("사용 정지된 계정입니다.") || message.includes(SUSPENDED_ACCOUNT_MESSAGE)) {
+        logout();
+        setModal("none");
+        navigateToTab("home", { replace: true });
+        openToast(SUSPENDED_ACCOUNT_MESSAGE);
+        return;
+      }
+      throw error;
+    }
   }
 
   async function handleSignup(
