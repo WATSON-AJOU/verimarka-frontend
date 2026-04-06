@@ -1,6 +1,10 @@
 import { useEffect, useRef } from "react"
 import { apiRequest } from "../../lib/api"
-import { setTokens } from "../../lib/token"
+import { clearTokens, setTokens } from "../../lib/token"
+
+const POST_LOGOUT_TOAST_KEY = "verimarka:post-logout-toast"
+const SUSPENDED_ACCOUNT_MESSAGE = "정지된 계정입니다."
+const GOOGLE_OAUTH_CODE_KEY = "verimarka:oauth:google:last-code"
 
 interface OAuthTokenResponse {
   access: string
@@ -34,6 +38,11 @@ export default function GoogleCallback() {
       if (!code) {
         throw new Error("Google authorization code가 없습니다.")
       }
+      const lastHandledCode = window.sessionStorage.getItem(GOOGLE_OAUTH_CODE_KEY)
+      if (lastHandledCode === code) {
+        return
+      }
+      window.sessionStorage.setItem(GOOGLE_OAUTH_CODE_KEY, code)
 
       const redirect_uri = `${window.location.origin}/auth/google/callback`
 
@@ -46,7 +55,21 @@ export default function GoogleCallback() {
       window.location.replace("/")
     }
 
-    login()
+    login().catch((error) => {
+      const message =
+        error instanceof Error ? error.message : "Google 로그인에 실패했습니다."
+      if (
+        message.includes("사용 정지된 계정입니다.") ||
+        message.includes(SUSPENDED_ACCOUNT_MESSAGE)
+      ) {
+        clearTokens()
+        window.sessionStorage.setItem(POST_LOGOUT_TOAST_KEY, SUSPENDED_ACCOUNT_MESSAGE)
+        window.location.replace("/")
+        return
+      }
+      window.alert(message)
+      window.location.replace("/")
+    })
   }, [])
 
   return <div>Google 로그인 처리중...</div>

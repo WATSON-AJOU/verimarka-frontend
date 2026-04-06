@@ -103,7 +103,7 @@ export default function HomePage({
             {activities.length === 0 ? (
               <article className="glass-activity-card">
                 <h3>최근 활동이 없습니다.</h3>
-                <p>활동이 생성되면 이 영역에 최신 3건이 표시됩니다.</p>
+                <p>활동이 생성되면 이 영역에 최신 6건이 표시됩니다.</p>
               </article>
             ) : null}
             {activities.map((activity) => {
