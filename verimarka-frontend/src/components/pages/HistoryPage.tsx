@@ -157,6 +157,15 @@ export default function HistoryPage({
     return parseCosinePercent(item.cosine);
   }
 
+  function buildPreviewStyle(url?: string | null) {
+    if (!url) return undefined;
+    return {
+      backgroundImage: `url(${url})`,
+      backgroundSize: "cover",
+      backgroundPosition: "center",
+    } as const;
+  }
+
   const [expandedId, setExpandedId] = useState<string | null>(initialExpandedId ?? null);
   const [allowDetailId, setAllowDetailId] = useState<string | null>(null);
   const [reviewDetailId, setReviewDetailId] = useState<string | null>(null);
@@ -221,17 +230,10 @@ export default function HistoryPage({
               <section className="history-allow-panel">
                 <h3>저작물 정보</h3>
                 <div className="history-allow-artwork-frame">
+                  <div className="history-compare-caption">원본 이미지</div>
                   <div
-                    className={`history-allow-artwork-image ${!allowDetailItem.previewUrl ? "is-placeholder" : ""}`}
-                    style={
-                      allowDetailItem.previewUrl
-                        ? {
-                            backgroundImage: `url(${allowDetailItem.previewUrl})`,
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                          }
-                        : undefined
-                    }
+                    className={`history-allow-artwork-image ${!allowDetailItem.originalPreviewUrl ? "is-placeholder" : ""}`}
+                    style={buildPreviewStyle(allowDetailItem.originalPreviewUrl)}
                   />
                 </div>
                 <dl className="history-allow-meta">
@@ -260,6 +262,19 @@ export default function HistoryPage({
 
               <section className="history-allow-panel">
                 <h3>블록체인 기록 데이터</h3>
+                <div className="history-block-candidate-frame">
+                  <div className="history-compare-caption">워터마크 삽입본</div>
+                  {allowDetailItem.comparisonPreviewUrl ? (
+                    <div
+                      className="history-allow-artwork-image"
+                      style={buildPreviewStyle(allowDetailItem.comparisonPreviewUrl)}
+                    />
+                  ) : (
+                    <div className="history-allow-artwork-image history-allow-artwork-image--message">
+                      워터마크 이미지가 없습니다.
+                    </div>
+                  )}
+                </div>
                 <dl className="history-allow-chain-meta">
                   <div>
                     <dt>네트워크</dt>
@@ -334,17 +349,10 @@ export default function HistoryPage({
               <section className="history-allow-panel">
                 <h3>검토 대상 정보</h3>
                 <div className="history-allow-artwork-frame">
+                  <div className="history-compare-caption">원본 이미지</div>
                   <div
-                    className={`history-allow-artwork-image ${!reviewDetailItem.previewUrl ? "is-placeholder review-placeholder" : ""}`}
-                    style={
-                      reviewDetailItem.previewUrl
-                        ? {
-                            backgroundImage: `url(${reviewDetailItem.previewUrl})`,
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                          }
-                        : undefined
-                    }
+                    className={`history-allow-artwork-image ${!reviewDetailItem.originalPreviewUrl ? "is-placeholder review-placeholder" : ""}`}
+                    style={buildPreviewStyle(reviewDetailItem.originalPreviewUrl)}
                   />
                 </div>
                 <dl className="history-allow-meta">
@@ -369,6 +377,18 @@ export default function HistoryPage({
 
               <section className="history-allow-panel">
                 <h3>투표/검토 진행 현황</h3>
+                <div className="history-block-candidate-frame">
+                  <div className="history-compare-caption">{reviewDetailItem.comparisonLabel || "유사 후보"}</div>
+                  <div
+                    className={`history-allow-artwork-image ${!reviewDetailItem.comparisonPreviewUrl ? "is-placeholder review-placeholder" : ""}`}
+                    style={buildPreviewStyle(reviewDetailItem.comparisonPreviewUrl)}
+                  />
+                  {reviewDetailItem.comparisonFileName ? (
+                    <strong className="history-compare-file-name history-compare-file-name--block">
+                      {reviewDetailItem.comparisonFileName}
+                    </strong>
+                  ) : null}
+                </div>
                 <dl className="history-allow-chain-meta">
                   <div>
                     <dt>현재 상태</dt>
@@ -448,15 +468,7 @@ export default function HistoryPage({
                   <h4>업로드 이미지</h4>
                   <div
                     className={`review-vote-modal-image ${!reviewDetailItem.previewUrl ? "is-placeholder" : ""}`}
-                    style={
-                      reviewDetailItem.previewUrl
-                        ? {
-                            backgroundImage: `url(${reviewDetailItem.previewUrl})`,
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                          }
-                        : undefined
-                    }
+                    style={buildPreviewStyle(reviewDetailItem.originalPreviewUrl)}
                   />
                   <strong>{reviewDetailItem.fileName}</strong>
                 </section>
@@ -467,11 +479,14 @@ export default function HistoryPage({
                 </div>
 
                 <section className="review-vote-modal-panel">
-                  <h4>유사 후보</h4>
-                  <div className="review-vote-modal-image is-candidate-placeholder">
-                    <span>후보 이미지 준비 중</span>
+                  <h4>{reviewDetailItem.comparisonLabel || "유사 후보"}</h4>
+                  <div
+                    className={`review-vote-modal-image ${!reviewDetailItem.comparisonPreviewUrl ? "is-candidate-placeholder" : ""}`}
+                    style={buildPreviewStyle(reviewDetailItem.comparisonPreviewUrl)}
+                  >
+                    {!reviewDetailItem.comparisonPreviewUrl ? <span>후보 이미지 준비 중</span> : null}
                   </div>
-                  <strong>유사 후보 비교 필요</strong>
+                  <strong>{reviewDetailItem.comparisonFileName || "유사 후보 비교 필요"}</strong>
                 </section>
               </div>
 
@@ -559,17 +574,10 @@ export default function HistoryPage({
               <section className="history-allow-panel">
                 <h3>차단 대상 정보</h3>
                 <div className="history-allow-artwork-frame">
+                  <div className="history-compare-caption">원본 이미지</div>
                   <div
-                    className={`history-allow-artwork-image ${!blockDetailItem.previewUrl ? "is-placeholder block-placeholder" : ""}`}
-                    style={
-                      blockDetailItem.previewUrl
-                        ? {
-                            backgroundImage: `url(${blockDetailItem.previewUrl})`,
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                          }
-                        : undefined
-                    }
+                    className={`history-allow-artwork-image ${!blockDetailItem.originalPreviewUrl ? "is-placeholder block-placeholder" : ""}`}
+                    style={buildPreviewStyle(blockDetailItem.originalPreviewUrl)}
                   />
                 </div>
                 <dl className="history-allow-meta">
@@ -594,6 +602,18 @@ export default function HistoryPage({
 
               <section className="history-allow-panel">
                 <h3>차단 상태</h3>
+                <div className="history-block-candidate-frame">
+                  <div className="history-compare-caption">{blockDetailItem.comparisonLabel || "유사 후보"}</div>
+                  <div
+                    className={`history-allow-artwork-image ${!blockDetailItem.comparisonPreviewUrl ? "is-placeholder block-placeholder" : ""}`}
+                    style={buildPreviewStyle(blockDetailItem.comparisonPreviewUrl)}
+                  />
+                  {blockDetailItem.comparisonFileName ? (
+                    <strong className="history-compare-file-name history-compare-file-name--block">
+                      {blockDetailItem.comparisonFileName}
+                    </strong>
+                  ) : null}
+                </div>
                 <dl className="history-allow-chain-meta">
                   <div>
                     <dt>판정 결과</dt>
