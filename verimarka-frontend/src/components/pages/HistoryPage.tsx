@@ -625,7 +625,7 @@ export default function HistoryPage({
                   </div>
                   <div>
                     <dt>등록 상태</dt>
-                    <dd>유사도 초과로 등록 차단</dd>
+                    <dd>{blockDetailItem.summary}</dd>
                   </div>
                   <div>
                     <dt>기록 시각</dt>
