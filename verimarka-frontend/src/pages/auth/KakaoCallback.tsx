@@ -1,6 +1,10 @@
 import { useEffect, useRef } from "react"
 import { apiRequest } from "../../lib/api"
-import { setTokens } from "../../lib/token"
+import { clearTokens, setTokens } from "../../lib/token"
+
+const POST_LOGOUT_TOAST_KEY = "verimarka:post-logout-toast"
+const SUSPENDED_ACCOUNT_MESSAGE = "정지된 계정입니다."
+const KAKAO_OAUTH_CODE_KEY = "verimarka:oauth:kakao:last-code"
 
 interface OAuthTokenResponse {
   access: string
@@ -34,6 +38,11 @@ export default function KakaoCallback() {
       if (!code) {
         throw new Error("Kakao authorization code가 없습니다.")
       }
+      const lastHandledCode = window.sessionStorage.getItem(KAKAO_OAUTH_CODE_KEY)
+      if (lastHandledCode === code) {
+        return
+      }
+      window.sessionStorage.setItem(KAKAO_OAUTH_CODE_KEY, code)
 
       const redirect_uri = `${window.location.origin}/auth/kakao/callback`
 
@@ -46,7 +55,21 @@ export default function KakaoCallback() {
       window.location.replace("/")
     }
 
-    login()
+    login().catch((error) => {
+      const message =
+        error instanceof Error ? error.message : "Kakao 로그인에 실패했습니다."
+      if (
+        message.includes("사용 정지된 계정입니다.") ||
+        message.includes(SUSPENDED_ACCOUNT_MESSAGE)
+      ) {
+        clearTokens()
+        window.sessionStorage.setItem(POST_LOGOUT_TOAST_KEY, SUSPENDED_ACCOUNT_MESSAGE)
+        window.location.replace("/")
+        return
+      }
+      window.alert(message)
+      window.location.replace("/")
+    })
   }, [])
 
   return <div>Kakao 로그인 처리중...</div>
