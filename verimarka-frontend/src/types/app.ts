@@ -54,6 +54,11 @@ export interface HistoryItem {
   phash: string;
   extra: string;
   previewUrl?: string | null;
+  originalPreviewUrl?: string | null;
+  comparisonPreviewUrl?: string | null;
+  comparisonFileName?: string;
+  comparisonPublicId?: string;
+  comparisonLabel?: string;
   downloadUrl?: string | null;
   blockchain?: {
     network_name?: string | null;
