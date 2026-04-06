@@ -2196,6 +2196,37 @@ main {
   background: #fbfdff;
 }
 
+.history-compare-frame {
+  margin-top: 16px;
+  border: 1px solid #d5e1f2;
+  border-radius: 18px;
+  padding: 14px;
+  background: #fbfdff;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.history-compare-caption {
+  margin-bottom: 8px;
+  color: #7384a3;
+  font-size: 0.95rem;
+  font-weight: 900;
+}
+
+.history-compare-file-name {
+  margin-top: 10px;
+  display: block;
+  color: #273b61;
+  font-size: 0.98rem;
+  font-weight: 900;
+  word-break: break-word;
+}
+
+.history-compare-file-name--block {
+  text-align: center;
+}
+
 .history-allow-artwork-image {
   aspect-ratio: 1.18 / 1;
   width: 100%;
@@ -2214,6 +2245,26 @@ main {
 
 .history-allow-artwork-image.is-placeholder.block-placeholder {
   background: linear-gradient(130deg, #f4f7fc, #dfe7f7 55%, #eef3fb);
+}
+
+.history-allow-artwork-image--message {
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: #f6f9fe;
+  color: #6c7d99;
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.5;
+  text-align: center;
+}
+
+.history-block-candidate-frame {
+  margin-top: 16px;
+  border: 1px solid #d5e1f2;
+  border-radius: 18px;
+  padding: 14px;
+  background: #fbfdff;
 }
 
 .history-allow-meta,
@@ -2486,6 +2537,10 @@ main {
   .history-allow-detail-grid,
   .history-allow-actions,
   .history-log-expand {
+    grid-template-columns: 1fr;
+  }
+
+  .history-compare-frame {
     grid-template-columns: 1fr;
   }
 
