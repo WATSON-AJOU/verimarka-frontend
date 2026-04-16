@@ -14,6 +14,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: verimarka-frontend
 
     steps:
       - name: Checkout
@@ -24,6 +27,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
+          cache-dependency-path: verimarka-frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
@@ -48,6 +52,7 @@ jobs:
         run: |
           mkdir -p ~/.ssh
           ssh-keyscan -H "${{ secrets.FRONTEND_DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+        working-directory: .
 
       - name: Sync dist to server
         env:
@@ -68,3 +73,4 @@ jobs:
           RELOAD_COMMAND: ${{ secrets.FRONTEND_RELOAD_COMMAND }}
         run: |
           ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" "${RELOAD_COMMAND:-cd /opt/verimarka/verimarka-BACKEND && docker compose -f docker-compose.prod.yml exec -T verimarka-nginx nginx -s reload}"
+        working-directory: .
