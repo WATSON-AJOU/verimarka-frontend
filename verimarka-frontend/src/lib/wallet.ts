@@ -210,7 +210,13 @@ export async function waitForConnectorProvider(connectorId?: string, timeoutMs =
 const connectors = [
   injected({
     unstable_shimAsyncInject: 1_500,
-    target: "metaMask",
+    target: {
+      id: "metaMask",
+      name: "MetaMask",
+      provider(windowObject) {
+        return getMetaMaskProvider(windowObject);
+      },
+    },
   }),
   injected({
     unstable_shimAsyncInject: 1_500,
