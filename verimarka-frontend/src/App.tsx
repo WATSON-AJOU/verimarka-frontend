@@ -24,9 +24,9 @@ import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
 import { resultConfig, systemCards, tabs } from "./lib/mockData";
 import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest, authenticatedFetch } from "./lib/api";
-import { hasConnectorProvider, isMetaMaskConnectorId, normalizeWalletConnectorId, sepolia, walletConnectEnabled } from "./lib/wallet";
+import { hasConnectorProvider, isMetaMaskConnectorId, logConnectorProviderSnapshot, normalizeWalletConnectorId, sepolia, waitForConnectorProvider, walletConnectEnabled } from "./lib/wallet";
 import { getAccessToken } from "./lib/token";
-import type { ActivityItem, AnalysisJobStatusResponse, AnalysisStage, AsyncContentJobResponse, AsyncVerifyJobResponse, ModalType, RegisteredContentResponse, ReviewVoteCastResponse, ReviewVoteSigningResponse, TabName, VerifyResultResponse, WalletSummaryResponse } from "./types/app";
+import type { ActivityItem, AnalysisJobStatusResponse, AnalysisStage, AsyncContentJobResponse, AsyncVerifyJobResponse, HistoryAllowResumePayload, ModalType, RegisteredContentResponse, ReviewVoteCastResponse, ReviewVoteSigningResponse, TabName, VerifyResultResponse, WalletSummaryResponse } from "./types/app";
 import type { HistoryItem } from "./types/app";
 
 function formatFileSize(bytes: number) {
@@ -259,6 +259,7 @@ export default function App() {
   const [mintProgress, setMintProgress] = useState(0);
   const [mintRequestPending, setMintRequestPending] = useState(false);
   const [mintErrorMessage, setMintErrorMessage] = useState("");
+  const [pendingRegisterContinuation, setPendingRegisterContinuation] = useState<"watermarkThenMint" | "mint" | null>(null);
   const [contentResult, setContentResult] = useState<RegisteredContentResponse | null>(null);
   const [verifyFile, setVerifyFile] = useState<File | null>(null);
   const [verifyPreviewUrl, setVerifyPreviewUrl] = useState("");
@@ -1472,6 +1473,7 @@ export default function App() {
         signerSessionMissing,
         requiresNewConnection,
       });
+      logConnectorProviderSnapshot(connectorId);
 
       if (requiresNewConnection) {
         if (connectorId === "walletConnect" && !walletConnectEnabled) {
@@ -1479,7 +1481,11 @@ export default function App() {
         }
 
         if (connectorId !== "walletConnect" && !hasConnectorProvider(connectorId)) {
+          const providerResolved = await waitForConnectorProvider(connectorId);
+          logConnectorProviderSnapshot(connectorId);
+          if (!providerResolved) {
           throw new Error(getWalletInstallMessage(connectorId));
+          }
         }
 
         const targetConnector =
@@ -2178,6 +2184,166 @@ export default function App() {
     }
   }
 
+  function hasContentMintForHistory(blockchain?: HistoryAllowResumePayload["blockchain"] | null) {
+    return blockchain?.mint_kind === "content" && Boolean(blockchain?.minted);
+  }
+
+  function parseHistoryCosine(value: string) {
+    const matched = value.match(/([0-9]*\.?[0-9]+)/);
+    if (!matched) return null;
+    const parsed = Number(matched[1]);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  function parseHistoryPhash(value: string) {
+    const matched = value.match(/Distance\s+(\d+)/i);
+    if (!matched) return null;
+    const parsed = Number(matched[1]);
+    return Number.isNaN(parsed) ? null : parsed;
+  }
+
+  function buildContentResultFromHistory(item: HistoryAllowResumePayload): RegisteredContentResponse {
+    const blockchain = item.blockchain || {};
+    return {
+      id: 0,
+      public_id: item.id,
+      status: "allow",
+      original_filename: item.fileName,
+      original_storage_key: "",
+      mime_type: "image/png",
+      file_size: 0,
+      file_url: item.originalPreviewUrl || item.previewUrl || null,
+      watermark_file_url: item.comparisonPreviewUrl || null,
+      decision: "allow",
+      reason: item.extra,
+      next_action: "none",
+      top_cosine: parseHistoryCosine(item.cosine),
+      top_phash_dist: parseHistoryPhash(item.phash),
+      top_match: {},
+      candidates: [],
+      watermark: {
+        applied: Boolean(item.downloadUrl),
+        requested: Boolean(item.downloadUrl),
+        output_url: item.comparisonPreviewUrl || null,
+        output_key: null,
+        payload_id: null,
+        model: null,
+        model_version: null,
+        nbits: null,
+        scaling_w: null,
+        proportion_masked: null,
+        details: {},
+      },
+      blockchain: {
+        minted: Boolean(blockchain.minted),
+        mint_kind: blockchain.mint_kind,
+        network_name: blockchain.network_name || undefined,
+        chain_id: blockchain.chain_id ?? undefined,
+        contract_address: blockchain.contract_address || undefined,
+        recipient_address: blockchain.recipient_address || undefined,
+        owner_address: blockchain.owner_address || undefined,
+        token_id: blockchain.token_id ?? undefined,
+        status: blockchain.status || undefined,
+        file_hash: blockchain.file_hash || blockchain.content_hash || undefined,
+        tx_hash: blockchain.tx_hash || blockchain.transaction_hash || undefined,
+        minted_at: blockchain.minted_at || undefined,
+        minted_at_display: blockchain.minted_at_display || undefined,
+        vote: blockchain.vote
+          ? {
+              active: blockchain.vote.active,
+              vote_id: blockchain.vote.vote_id,
+              status: blockchain.vote.status,
+              upvotes: blockchain.vote.upvotes,
+              downvotes: blockchain.vote.downvotes,
+              participant_count: blockchain.vote.participant_count,
+              end_time: blockchain.vote.end_time || undefined,
+              end_time_display: blockchain.vote.end_time_display || undefined,
+              started_at: blockchain.vote.started_at || undefined,
+              started_at_display: blockchain.vote.started_at_display || undefined,
+              finalized_at: blockchain.vote.finalized_at || undefined,
+              finalized_at_display: blockchain.vote.finalized_at_display || undefined,
+              similarity_percent: blockchain.vote.similarity_percent ?? undefined,
+              threshold: blockchain.vote.threshold ?? undefined,
+              delta: blockchain.vote.delta ?? undefined,
+            }
+          : undefined,
+      },
+      timing_ms: {},
+    };
+  }
+
+  function openAllowHistoryFlow(item: HistoryAllowResumePayload) {
+    const hydratedContent = buildContentResultFromHistory(item);
+    const contentMinted = hasContentMintForHistory(item.blockchain);
+    const watermarkApplied = Boolean(item.downloadUrl);
+
+    setSelectedFile(null);
+    setPreviewUrl(item.originalPreviewUrl || item.previewUrl || "");
+    setContentResult(hydratedContent);
+    setAnalysisProgress(0);
+    setAnalysisRequestPending(false);
+    setAnalysisJobId(null);
+    setWatermarkProgress(0);
+    setWatermarkRequestPending(false);
+    setWatermarkJobId(null);
+    setMintProgress(0);
+    setMintRequestPending(false);
+    setMintErrorMessage("");
+    setAnalysisStage(contentMinted ? "minted" : watermarkApplied ? "watermarked" : "allow");
+    setPendingRegisterContinuation(contentMinted ? null : watermarkApplied ? "mint" : "watermarkThenMint");
+    navigateToTab("add");
+  }
+
+  useEffect(() => {
+    if (activeTab !== "add" || !contentResult || !pendingRegisterContinuation) return;
+
+    if (!hasAuthSession || !phoneVerified || walletRequired) {
+      setPendingRegisterContinuation(null);
+      return;
+    }
+
+    const contentMinted =
+      contentResult.blockchain?.mint_kind === "content" &&
+      Boolean(contentResult.blockchain?.minted) &&
+      Boolean(contentResult.blockchain?.tx_hash);
+
+    if (contentMinted) {
+      setPendingRegisterContinuation(null);
+      return;
+    }
+
+    if (pendingRegisterContinuation === "watermarkThenMint") {
+      if (!contentResult.watermark?.applied) {
+        if (!watermarkRequestPending && analysisStage !== "watermarking") {
+          void startWatermark();
+        }
+        return;
+      }
+
+      setPendingRegisterContinuation("mint");
+      return;
+    }
+
+    if (!contentResult.watermark?.applied) {
+      setPendingRegisterContinuation(null);
+      return;
+    }
+
+    if (!mintRequestPending && analysisStage !== "minting") {
+      void startMint();
+    }
+  }, [
+    activeTab,
+    analysisStage,
+    contentResult,
+    hasAuthSession,
+    mintRequestPending,
+    pendingRegisterContinuation,
+    phoneVerified,
+    walletRequired,
+    watermarkRequestPending,
+  ]);
+
   async function castReviewVote(choice: "yes" | "no") {
     if (!contentResult?.public_id) {
       return;
@@ -2518,6 +2684,7 @@ export default function App() {
             onFilterChange={setHistoryFilter}
             onOpenToast={openToast}
             onCastReviewVote={castHistoryReviewVote}
+            onResumeAllowFlow={openAllowHistoryFlow}
             reviewVoteSubmitting={historyVoteSubmitting}
             initialExpandedId={historyEntryFromUrl}
             initialDetailType={historyDetailTypeFromUrl}

@@ -129,11 +129,13 @@ export default function RegisterPage({
   onCastReviewVote,
   onRefreshReviewVote,
 }: RegisterPageProps) {
+  const hasSelectedContent = Boolean(selectedFile || contentResult);
   const selectedFileName = selectedFile?.name || contentResult?.original_filename || "-";
   const selectedFileSize = selectedFile?.size ?? contentResult?.file_size ?? 0;
-  const uploadTimestampLabel = formatDisplayDateTime(selectedFile?.lastModified);
+  const uploadTimestampLabel = formatDisplayDateTime(selectedFile?.lastModified || contentResult?.blockchain?.minted_at || null);
+  const originalPreviewUrl = previewUrl || contentResult?.file_url || grapeImage;
   const candidatePreviewUrl = contentResult?.top_match?.preview_url || grapeImage;
-  const watermarkedPreviewUrl = contentResult?.watermark_file_url || previewUrl || grapeImage;
+  const watermarkedPreviewUrl = contentResult?.watermark_file_url || previewUrl || contentResult?.file_url || grapeImage;
   const mintedFileName = selectedFile?.name || contentResult?.original_filename || "-";
   const mintedNetwork = contentResult?.blockchain?.network_name || "-";
   const mintedTokenId = contentResult?.blockchain?.token_id ? `#${contentResult.blockchain.token_id}` : "-";
@@ -210,7 +212,7 @@ export default function RegisterPage({
           onChange={onPickFile}
         />
 
-        {!selectedFile ? (
+        {!hasSelectedContent ? (
           <button className="upload-dropzone" type="button" onClick={onTriggerPicker}>
             <div className="upload-empty">
               <div>
@@ -275,7 +277,7 @@ export default function RegisterPage({
 
                   <div className="analysis-running-layout">
                     <div className="analysis-preview-card">
-                      <img src={previewUrl} alt={selectedFile.name} />
+                      <img src={originalPreviewUrl} alt={selectedFileName} />
                       <div className="analysis-progress-overlay">
                         <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(analysisProgress)) }}>
                           <span>{Math.round(analysisProgress)}%</span>
@@ -324,7 +326,7 @@ export default function RegisterPage({
                     <div className="analysis-preview-card review-starting-preview">
                       <div className="review-starting-compare">
                         <div className="review-starting-frame">
-                          <img src={previewUrl} alt={selectedFile.name} />
+                          <img src={originalPreviewUrl} alt={selectedFileName} />
                         </div>
                         <div className="review-starting-frame">
                           <img src={candidatePreviewUrl} alt={candidateLabel} />
@@ -365,7 +367,7 @@ export default function RegisterPage({
 
                   <div className="analysis-running-layout">
                     <div className="analysis-preview-card">
-                      <img src={previewUrl} alt={selectedFile.name} />
+                      <img src={originalPreviewUrl} alt={selectedFileName} />
                       <div className="analysis-progress-overlay">
                         <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(watermarkProgress)) }}>
                           <span>{Math.round(watermarkProgress)}%</span>
@@ -401,7 +403,7 @@ export default function RegisterPage({
 
                   <div className="analysis-running-layout">
                     <div className="analysis-preview-card">
-                      <img src={watermarkedPreviewUrl} alt={`${selectedFile.name} 워터마크 결과`} />
+                      <img src={watermarkedPreviewUrl} alt={`${selectedFileName} 워터마크 결과`} />
                       <div className="analysis-progress-overlay">
                         <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(mintProgress)) }}>
                           <span>{Math.round(mintProgress)}%</span>
@@ -557,7 +559,7 @@ export default function RegisterPage({
                               <span className="watermark-compare-chip">Original</span>
                             </div>
                             <div className="watermark-compare-frame">
-                              <img src={previewUrl} alt={`${selectedFileName} 원본`} />
+                              <img src={originalPreviewUrl} alt={`${selectedFileName} 원본`} />
                             </div>
                           </div>
 
@@ -598,7 +600,7 @@ export default function RegisterPage({
                           <div className="mint-complete-card">
                             <h4>업로드 이미지</h4>
                             <div className="mint-complete-frame">
-                              <img src={previewUrl} alt={selectedFileName} />
+                              <img src={originalPreviewUrl} alt={selectedFileName} />
                             </div>
                             <div className="mint-file-meta">
                               <div className="mint-file-row">
@@ -661,9 +663,9 @@ export default function RegisterPage({
                           <div className="review-live-card">
                             <h4>업로드 이미지</h4>
                             <div className="review-live-image-frame">
-                              <img src={previewUrl} alt={selectedFile.name} />
+                              <img src={originalPreviewUrl} alt={selectedFileName} />
                             </div>
-                            <strong>{selectedFile.name}</strong>
+                            <strong>{selectedFileName}</strong>
                           </div>
 
                           <div className="review-live-similarity-bubble">
@@ -720,9 +722,9 @@ export default function RegisterPage({
                       <div className="review-vote-layout">
                         <div className="review-vote-compare-grid">
                           <div className="review-vote-card">
-                            <div className="review-vote-caption">업로드 원본 · {selectedFile.name}</div>
+                            <div className="review-vote-caption">업로드 원본 · {selectedFileName}</div>
                             <div className="review-vote-frame">
-                              <img src={previewUrl} alt={selectedFile.name} />
+                              <img src={originalPreviewUrl} alt={selectedFileName} />
                             </div>
                           </div>
 
@@ -768,9 +770,9 @@ export default function RegisterPage({
                       <>
                         <div className="result-reject-spotlight">
                           <figure className="reject-image-panel">
-                            <figcaption>업로드 원본 · {selectedFile.name}</figcaption>
+                            <figcaption>업로드 원본 · {selectedFileName}</figcaption>
                             <div className="reject-image-frame">
-                              <img src={previewUrl} alt={selectedFile.name} />
+                              <img src={originalPreviewUrl} alt={selectedFileName} />
                             </div>
                           </figure>
                           <figure className="reject-image-panel">
@@ -837,9 +839,9 @@ export default function RegisterPage({
               <div className="review-live-card review-vote-modal-card">
                 <h4>업로드 이미지</h4>
                 <div className="review-live-image-frame">
-                  <img src={previewUrl} alt={selectedFile?.name || "업로드 이미지"} />
+                  <img src={originalPreviewUrl} alt={selectedFileName || "업로드 이미지"} />
                 </div>
-                <strong>{selectedFile?.name || "업로드 이미지"}</strong>
+                <strong>{selectedFileName || "업로드 이미지"}</strong>
               </div>
 
               <div className="review-live-similarity-bubble review-vote-modal-bubble">

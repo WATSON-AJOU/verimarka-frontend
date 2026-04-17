@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { authenticatedFetch } from "../../lib/api";
-import type { HistoryItem } from "../../types/app";
+import type { HistoryAllowResumePayload, HistoryItem } from "../../types/app";
 
 interface HistoryPageProps {
   items: HistoryItem[];
@@ -8,6 +8,7 @@ interface HistoryPageProps {
   onFilterChange: (filter: "all" | "allow" | "block" | "review" | "verify") => void;
   onOpenToast: (message: string, duration?: number) => void;
   onCastReviewVote: (item: HistoryItem, choice: "yes" | "no") => Promise<void>;
+  onResumeAllowFlow: (item: HistoryAllowResumePayload) => void;
   reviewVoteSubmitting?: boolean;
   initialExpandedId?: string | null;
   initialDetailType?: "allow" | "review" | "block" | null;
@@ -19,6 +20,7 @@ export default function HistoryPage({
   onFilterChange,
   onOpenToast,
   onCastReviewVote,
+  onResumeAllowFlow,
   reviewVoteSubmitting = false,
   initialExpandedId,
   initialDetailType,
@@ -113,6 +115,14 @@ export default function HistoryPage({
 
   function getHistoryMintedAt(item: HistoryItem) {
     return item.blockchain?.minted_at_display || item.blockchain?.minted_at || `${item.timestamp} UTC`;
+  }
+
+  function hasContentMint(item: HistoryItem) {
+    return item.blockchain?.mint_kind === "content" && Boolean(item.blockchain?.minted);
+  }
+
+  function hasWatermarkedAsset(item: HistoryItem) {
+    return Boolean(item.downloadUrl);
   }
 
   function buildAllowDecisionText(item: HistoryItem) {
@@ -218,13 +228,16 @@ export default function HistoryPage({
   }
 
   if (allowDetailItem) {
+    const contentMinted = hasContentMint(allowDetailItem);
+    const watermarked = hasWatermarkedAsset(allowDetailItem);
+
     return (
       <section className="history-shell">
         <div className="history-allow-detail-view">
           <div className="history-allow-detail-card">
             <span className="history-allow-detail-badge">ALLOW</span>
-            <h2>토큰 발행 상세 정보</h2>
-            <p>블록체인에 안전하게 저장된 자산 보호 기록입니다.</p>
+            <h2>{contentMinted ? "토큰 발행 상세 정보" : "기록 상세 정보"}</h2>
+            <p>{contentMinted ? "블록체인에 안전하게 저장된 자산 보호 기록입니다." : "등록 승인 상태의 저작물 기록입니다."}</p>
 
             <div className="history-allow-detail-grid">
               <section className="history-allow-panel">
@@ -261,9 +274,9 @@ export default function HistoryPage({
               </section>
 
               <section className="history-allow-panel">
-                <h3>블록체인 기록 데이터</h3>
+                <h3>{contentMinted ? "블록체인 기록 데이터" : "등록 진행 상태"}</h3>
                 <div className="history-block-candidate-frame">
-                  <div className="history-compare-caption">워터마크 삽입본</div>
+                  <div className="history-compare-caption">{watermarked ? "워터마크 삽입본" : "현재 상태"}</div>
                   {allowDetailItem.comparisonPreviewUrl ? (
                     <div
                       className="history-allow-artwork-image"
@@ -276,26 +289,49 @@ export default function HistoryPage({
                   )}
                 </div>
                 <dl className="history-allow-chain-meta">
-                  <div>
-                    <dt>네트워크</dt>
-                    <dd>{getHistoryNetwork(allowDetailItem)}</dd>
-                  </div>
-                  <div>
-                    <dt>Token ID</dt>
-                    <dd>{getHistoryTokenId(allowDetailItem)}</dd>
-                  </div>
-                  <div>
-                    <dt>Content Hash</dt>
-                    <dd>{getHistoryContentHash(allowDetailItem)}</dd>
-                  </div>
-                  <div>
-                    <dt>Tx Hash</dt>
-                    <dd>{getHistoryTxHashShort(allowDetailItem)}</dd>
-                  </div>
-                  <div>
-                    <dt>발행 시각</dt>
-                    <dd>{getHistoryMintedAt(allowDetailItem)}</dd>
-                  </div>
+                  {contentMinted ? (
+                    <>
+                      <div>
+                        <dt>네트워크</dt>
+                        <dd>{getHistoryNetwork(allowDetailItem)}</dd>
+                      </div>
+                      <div>
+                        <dt>Token ID</dt>
+                        <dd>{getHistoryTokenId(allowDetailItem)}</dd>
+                      </div>
+                      <div>
+                        <dt>Content Hash</dt>
+                        <dd>{getHistoryContentHash(allowDetailItem)}</dd>
+                      </div>
+                      <div>
+                        <dt>Tx Hash</dt>
+                        <dd>{getHistoryTxHashShort(allowDetailItem)}</dd>
+                      </div>
+                      <div>
+                        <dt>발행 시각</dt>
+                        <dd>{getHistoryMintedAt(allowDetailItem)}</dd>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <dt>판정 결과</dt>
+                        <dd>{allowDetailItem.summary}</dd>
+                      </div>
+                      <div>
+                        <dt>등록 상태</dt>
+                        <dd>{watermarked ? "워터마크 삽입 완료" : "등록 승인 완료"}</dd>
+                      </div>
+                      <div>
+                        <dt>다음 단계</dt>
+                        <dd>{watermarked ? "NFT 토큰 발급 가능" : "워터마크 삽입 후 NFT 발급 가능"}</dd>
+                      </div>
+                      <div>
+                        <dt>기록 시각</dt>
+                        <dd>{allowDetailItem.timestamp}</dd>
+                      </div>
+                    </>
+                  )}
                 </dl>
               </section>
             </div>
@@ -304,10 +340,16 @@ export default function HistoryPage({
               <button
                 type="button"
                 className="btn btn-primary"
-                onClick={() => void handleDownloadWatermarkedImage(allowDetailItem)}
-                disabled={!allowDetailItem.downloadUrl}
+                onClick={() => {
+                  if (contentMinted) {
+                    void handleDownloadWatermarkedImage(allowDetailItem);
+                    return;
+                  }
+                  onResumeAllowFlow(allowDetailItem);
+                }}
+                disabled={contentMinted && !allowDetailItem.downloadUrl}
               >
-                워터마크 이미지 다운로드
+                {contentMinted ? "워터마크 이미지 다운로드" : watermarked ? "NFT 토큰 발행하기" : "워터마크 삽입하기"}
               </button>
               <button
                 type="button"
@@ -785,7 +827,7 @@ export default function HistoryPage({
                           className="btn btn-primary history-detail-btn"
                           onClick={() => setAllowDetailId(item.id)}
                         >
-                          토큰 발행 상세 보기
+                          {hasContentMint(item) ? "토큰 발행 상세 보기" : "기록 자세히 보기"}
                         </button>
                       </>
                     ) : null}

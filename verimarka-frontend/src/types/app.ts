@@ -61,6 +61,8 @@ export interface HistoryItem {
   comparisonLabel?: string;
   downloadUrl?: string | null;
   blockchain?: {
+    minted?: boolean;
+    mint_kind?: "content" | "review_vote";
     network_name?: string | null;
     chain_id?: number | null;
     contract_address?: string | null;
@@ -92,6 +94,20 @@ export interface HistoryItem {
       delta?: number | null;
     } | null;
   } | null;
+}
+
+export interface HistoryAllowResumePayload {
+  id: string;
+  fileName: string;
+  timestamp: string;
+  cosine: string;
+  phash: string;
+  extra: string;
+  previewUrl?: string | null;
+  originalPreviewUrl?: string | null;
+  comparisonPreviewUrl?: string | null;
+  downloadUrl?: string | null;
+  blockchain?: HistoryItem["blockchain"];
 }
 
 export interface RegisteredContentResponse {
