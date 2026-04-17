@@ -267,6 +267,7 @@ export default function App() {
   const [verifyRunning, setVerifyRunning] = useState(false);
   const [verifyJobId, setVerifyJobId] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerifyResultResponse | null>(null);
+  const [verifyRequestedAt, setVerifyRequestedAt] = useState<number | null>(null);
   const [historyFilter, setHistoryFilter] = useState<"all" | "allow" | "block" | "review" | "verify">("all");
   const [historyEntries, setHistoryEntries] = useState<HistoryItem[]>([]);
   const [recentActivities, setRecentActivities] = useState<ActivityItem[]>([]);
@@ -320,6 +321,25 @@ export default function App() {
   const walletNetworkLabel = getWalletNetworkLabel(user?.wallet_chain_id);
   const walletTypeLabel = user?.wallet_type || connectedConnector?.name || "Injected Wallet";
   const walletRequired = !user?.wallet_address;
+  const verifyUserLabel = user?.nickname || user?.display_name || user?.username || "게스트";
+  const walletModalConnectors = useMemo(() => {
+    const visibleConnectors = connectors.filter(
+      (connector) =>
+        isMetaMaskConnectorId(connector.id) ||
+        connector.id === "rabby" ||
+        connector.id === "trustWallet" ||
+        connector.id === "walletConnect",
+    );
+
+    return visibleConnectors.filter((connector, index, array) => {
+      const normalizedConnectorId = normalizeWalletConnectorId(connector.id) || connector.id;
+      return (
+        array.findIndex(
+          (item) => (normalizeWalletConnectorId(item.id) || item.id) === normalizedConnectorId,
+        ) === index
+      );
+    });
+  }, [connectors]);
 
   useEffect(() => {
     walletClientRef.current = walletClient;
@@ -685,6 +705,7 @@ export default function App() {
         setVerifyFile(null);
         setContentResult(null);
         setVerifyResult(null);
+        setVerifyRequestedAt(null);
         openToast("30분 동안 활동이 없어 자동 로그아웃되었습니다.");
       }, AUTO_LOGOUT_IDLE_MS);
     };
@@ -775,6 +796,7 @@ export default function App() {
       setVerifyRunning(false);
       setVerifyJobId(null);
       setVerifyResult(null);
+      setVerifyRequestedAt(null);
       return;
     }
 
@@ -1452,7 +1474,7 @@ export default function App() {
       const normalizedRequestedConnectorId = normalizeWalletConnectorId(connectorId);
       const normalizedConnectedConnectorId = normalizeWalletConnectorId(connectedConnector?.id);
       let walletAddress = connectedWalletAddress;
-      let walletType = connectedConnector?.name || "Injected Wallet";
+      let walletType = normalizedConnectedConnectorId || connectedConnector?.id || connectedConnector?.name || "Injected Wallet";
       let walletChainId = currentWalletChainId ?? sepolia.id;
       const signerSessionMissing = !walletClient;
       const requiresNewConnection =
@@ -1520,7 +1542,7 @@ export default function App() {
 
         const result = await connectAsync({ connector: targetConnector });
         walletAddress = result.accounts[0];
-        walletType = targetConnector.name;
+        walletType = normalizeWalletConnectorId(targetConnector.id) || targetConnector.id || targetConnector.name;
         const providerChainId = await resolveConnectorChainId(targetConnector);
         walletChainId = providerChainId ?? result.chainId ?? currentWalletChainId ?? sepolia.id;
         console.info("wallet.connect.connected", {
@@ -1824,6 +1846,7 @@ export default function App() {
     }
     setVerifyFile(nextFile);
     setVerifyResult(null);
+    setVerifyRequestedAt(Date.now());
     openToast("검증 이미지 업로드가 완료되었습니다.");
   }
 
@@ -1843,11 +1866,13 @@ export default function App() {
 
     const formData = new FormData();
     formData.append("file", verifyFile);
+    const requestedAt = Date.now();
 
     setVerifyProgress(0);
     setVerifyRunning(true);
     setVerifyJobId(null);
     setVerifyResult(null);
+    setVerifyRequestedAt(requestedAt);
     openToast("저작물 검증을 요청했습니다.");
 
     try {
@@ -2662,6 +2687,8 @@ export default function App() {
             verifyProgress={verifyProgress}
             verifyRunning={verifyRunning}
             verifyResult={verifyResult}
+            verifierName={verifyUserLabel}
+            verifyRequestedAt={verifyRequestedAt}
             recentItems={ongoingVoteVerifyItems}
             onOpenOngoingVote={openOngoingVoteHistory}
             uploadInputRef={verifyInputRef}
@@ -2676,6 +2703,7 @@ export default function App() {
               setVerifyRunning(false);
               setVerifyJobId(null);
               setVerifyResult(null);
+              setVerifyRequestedAt(null);
             }}
           />
         ) : null}
@@ -2750,13 +2778,7 @@ export default function App() {
 
       <WalletConnectModal
         open={walletConnectModalOpen}
-        connectors={connectors.filter(
-          (connector) =>
-            isMetaMaskConnectorId(connector.id) ||
-            connector.id === "rabby" ||
-            connector.id === "trustWallet" ||
-            connector.id === "walletConnect",
-        )}
+        connectors={walletModalConnectors}
         walletConnectEnabled={walletConnectEnabled}
         connecting={walletConnecting}
         connectingLabel={walletConnectingLabel}

@@ -40,6 +40,8 @@ interface VerifyPageProps {
   verifyProgress: number;
   verifyRunning: boolean;
   verifyResult: VerifyResultResponse | null;
+  verifierName: string;
+  verifyRequestedAt: number | null;
   recentItems: VerifyHistoryItem[];
   onOpenOngoingVote: (id: string) => void;
   uploadInputRef: React.RefObject<HTMLInputElement | null>;
@@ -56,6 +58,8 @@ export default function VerifyPage({
   verifyProgress,
   verifyRunning,
   verifyResult,
+  verifierName,
+  verifyRequestedAt,
   recentItems,
   onOpenOngoingVote,
   uploadInputRef,
@@ -66,7 +70,7 @@ export default function VerifyPage({
   onResetVerify,
 }: VerifyPageProps) {
   const uploadedPreview = previewUrl || null;
-  const selectedFileTimestampLabel = formatDisplayDateTime(selectedFile?.lastModified);
+  const verifyRequestedAtLabel = formatDisplayDateTime(verifyRequestedAt);
 
   return (
     <section className="verify-layout">
@@ -263,8 +267,8 @@ export default function VerifyPage({
                   <strong>{selectedFile.name}</strong>
                   <span>{formatFileSize(selectedFile.size)} · 준비 완료</span>
                   <div className="verify-ready-table">
-                    <div><span>검증자</span><strong>게스트</strong></div>
-                    <div><span>검증 시각</span><strong>{selectedFileTimestampLabel}</strong></div>
+                    <div><span>검증자</span><strong>{verifierName}</strong></div>
+                    <div><span>검증 시각</span><strong>{verifyRequestedAtLabel}</strong></div>
                   </div>
                 </div>
               </div>
