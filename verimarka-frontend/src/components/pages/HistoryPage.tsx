@@ -359,7 +359,7 @@ export default function HistoryPage({
                 }}
                 disabled={contentMinted && !allowDetailItem.downloadUrl}
               >
-                {contentMinted ? "워터마크 이미지 다운로드" : watermarked ? "NFT 토큰 발행하기" : "워터마크 삽입하기"}
+                {contentMinted ? "워터마크 이미지 다운로드" : watermarked ? "NFT 토큰 발행하기" : "워터마크 삽입하러가기"}
               </button>
               <button
                 type="button"

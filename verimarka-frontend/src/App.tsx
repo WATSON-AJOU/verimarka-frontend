@@ -259,7 +259,6 @@ export default function App() {
   const [mintProgress, setMintProgress] = useState(0);
   const [mintRequestPending, setMintRequestPending] = useState(false);
   const [mintErrorMessage, setMintErrorMessage] = useState("");
-  const [pendingRegisterContinuation, setPendingRegisterContinuation] = useState<"watermarkThenMint" | "mint" | null>(null);
   const [contentResult, setContentResult] = useState<RegisteredContentResponse | null>(null);
   const [verifyFile, setVerifyFile] = useState<File | null>(null);
   const [verifyPreviewUrl, setVerifyPreviewUrl] = useState("");
@@ -2318,59 +2317,8 @@ export default function App() {
     setMintRequestPending(false);
     setMintErrorMessage("");
     setAnalysisStage(contentMinted ? "minted" : watermarkApplied ? "watermarked" : "allow");
-    setPendingRegisterContinuation(contentMinted ? null : watermarkApplied ? "mint" : "watermarkThenMint");
     navigateToTab("add");
   }
-
-  useEffect(() => {
-    if (activeTab !== "add" || !contentResult || !pendingRegisterContinuation) return;
-
-    if (!hasAuthSession || !phoneVerified || walletRequired) {
-      setPendingRegisterContinuation(null);
-      return;
-    }
-
-    const contentMinted =
-      contentResult.blockchain?.mint_kind === "content" &&
-      Boolean(contentResult.blockchain?.minted) &&
-      Boolean(contentResult.blockchain?.tx_hash);
-
-    if (contentMinted) {
-      setPendingRegisterContinuation(null);
-      return;
-    }
-
-    if (pendingRegisterContinuation === "watermarkThenMint") {
-      if (!contentResult.watermark?.applied) {
-        if (!watermarkRequestPending && analysisStage !== "watermarking") {
-          void startWatermark();
-        }
-        return;
-      }
-
-      setPendingRegisterContinuation("mint");
-      return;
-    }
-
-    if (!contentResult.watermark?.applied) {
-      setPendingRegisterContinuation(null);
-      return;
-    }
-
-    if (!mintRequestPending && analysisStage !== "minting") {
-      void startMint();
-    }
-  }, [
-    activeTab,
-    analysisStage,
-    contentResult,
-    hasAuthSession,
-    mintRequestPending,
-    pendingRegisterContinuation,
-    phoneVerified,
-    walletRequired,
-    watermarkRequestPending,
-  ]);
 
   async function castReviewVote(choice: "yes" | "no") {
     if (!contentResult?.public_id) {
