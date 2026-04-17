@@ -2122,6 +2122,8 @@ export default function App() {
       const normalizedMessage =
         message.includes("Already voted")
           ? "이미 이 투표에 참여했습니다."
+          : message.includes("replacement transaction underpriced")
+            ? "이전 투표 트랜잭션이 아직 처리 중입니다. 잠시 후 분석 기록을 새로고침한 뒤 다시 확인해주세요."
           : message.includes("Voting time ended") || message.includes("Signature expired")
             ? "투표가 종료되었거나 서명이 만료되었습니다. 다시 시도해주세요."
             : message.includes("Voting not active")
@@ -2549,7 +2551,9 @@ export default function App() {
             onOpenReviewVoteModal={() => setReviewVoteModalOpen(true)}
             onCloseReviewVoteModal={() => setReviewVoteModalOpen(false)}
             onCastReviewVote={(choice) => {
-              void castReviewVote(choice);
+              void castReviewVote(choice).catch(() => {
+                // castReviewVote already opens a toast with the normalized error.
+              });
             }}
             onRefreshReviewVote={() => {
               if (!contentResult?.public_id) {
