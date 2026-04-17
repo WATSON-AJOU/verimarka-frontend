@@ -87,55 +87,6 @@ function getWalletInstallMessage(connectorId?: string) {
   return "브라우저 지갑이 설치되어 있지 않습니다. MetaMask 같은 지갑을 먼저 설치하세요.";
 }
 
-async function watchMintedNftAsset(options: {
-  contractAddress?: string | null;
-  tokenId?: number | string | null;
-}) {
-  const { contractAddress, tokenId } = options;
-  if (!contractAddress || tokenId === null || tokenId === undefined) {
-    return false;
-  }
-
-  const ethereum = (window as Window & {
-    ethereum?: {
-      request?: (args: {
-        method: string;
-        params?: Record<string, unknown>;
-      }) => Promise<unknown>;
-    };
-  }).ethereum;
-
-  if (!ethereum?.request) {
-    return false;
-  }
-
-  try {
-    const result = await ethereum.request({
-      method: "wallet_watchAsset",
-      params: {
-        type: "ERC721",
-        options: {
-          address: contractAddress,
-          tokenId: String(tokenId),
-        },
-      },
-    });
-    console.info("wallet.watch_asset_result", {
-      contractAddress,
-      tokenId,
-      result,
-    });
-    return Boolean(result);
-  } catch (error) {
-    console.warn("wallet.watch_asset_failed", {
-      contractAddress,
-      tokenId,
-      error,
-    });
-    return false;
-  }
-}
-
 const TAB_PATHS: Record<TabName, string> = {
   home: "/",
   add: "/register",
@@ -296,7 +247,6 @@ export default function App() {
   const walletClientRef = useRef(walletClient);
   const publicClientRef = useRef(publicClient);
   const fallbackWalletClientRef = useRef<WalletClient | null>(null);
-  const watchedMintAssetKeyRef = useRef<string | null>(null);
 
   const phoneVerified = Boolean(user?.phone_verified);
   const emailVerified = Boolean(user?.email_verified);
@@ -354,23 +304,6 @@ export default function App() {
   useEffect(() => {
     fallbackWalletClientRef.current = null;
   }, [connectedConnector?.id, connectedWalletAddress, currentWalletChainId]);
-
-  useEffect(() => {
-    if (analysisStage !== "minted") return;
-
-    const blockchain = contentResult?.blockchain;
-    if (blockchain?.mint_kind !== "content" || !blockchain?.minted) return;
-
-    const contractAddress = blockchain.contract_address ?? null;
-    const tokenId = blockchain.token_id ?? null;
-    if (!contractAddress || tokenId === null || tokenId === undefined) return;
-
-    const watchKey = `${contentResult?.public_id ?? "unknown"}:${contractAddress}:${String(tokenId)}`;
-    if (watchedMintAssetKeyRef.current === watchKey) return;
-
-    watchedMintAssetKeyRef.current = watchKey;
-    void watchMintedNftAsset({ contractAddress, tokenId });
-  }, [analysisStage, contentResult]);
 
   useEffect(() => {
     console.info("wallet.state_changed", {
