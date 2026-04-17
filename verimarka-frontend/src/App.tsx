@@ -1934,6 +1934,9 @@ export default function App() {
         {
           method: "POST",
           auth: true,
+          body: {
+            notify_by_email: reviewConsentNotifyByEmail,
+          },
         },
       );
       setContentResult(response);
