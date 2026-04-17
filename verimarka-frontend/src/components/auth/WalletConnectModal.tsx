@@ -1,4 +1,5 @@
 import type { Connector } from "wagmi";
+import { isMetaMaskConnectorId } from "../../lib/wallet";
 
 interface WalletConnectModalProps {
   open: boolean;
@@ -16,7 +17,7 @@ function getConnectorKind(connector: Connector) {
 }
 
 function getConnectorDescription(connector: Connector) {
-  if (connector.id === "metaMask") {
+  if (isMetaMaskConnectorId(connector.id)) {
     return "브라우저 MetaMask 확장 프로그램으로 연결합니다.";
   }
 
@@ -92,8 +93,8 @@ export default function WalletConnectModal({
                 onClick={() => onSelectConnector(connector)}
               >
                 <div className="walletConnectorHeader">
-                  <strong>
-                    {connector.id === "metaMask"
+                    <strong>
+                    {isMetaMaskConnectorId(connector.id)
                       ? "MetaMask"
                       : connector.id === "rabby"
                         ? "Rabby"
