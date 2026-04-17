@@ -27,9 +27,13 @@ const walletConnectMetadata = {
 type InjectedProvider = {
   providers?: Array<Record<string, unknown>>;
   isMetaMask?: boolean;
+  isBraveWallet?: boolean;
   isRabby?: boolean;
   isTrust?: boolean;
   isTrustWallet?: boolean;
+  _events?: unknown;
+  _state?: unknown;
+  [key: string]: unknown;
 };
 
 function getInjectedProviders(windowObject?: unknown): InjectedProvider[] {
@@ -41,13 +45,63 @@ function getInjectedProviders(windowObject?: unknown): InjectedProvider[] {
 }
 
 function getMetaMaskProvider(windowObject?: unknown) {
-  return getInjectedProviders(windowObject).find(
-    (provider) =>
-      Boolean(provider.isMetaMask) &&
-      !provider.isRabby &&
-      !provider.isTrust &&
-      !provider.isTrustWallet,
-  ) as never;
+  const providers = getInjectedProviders(windowObject);
+  const metaMaskLikeProvider = providers.find((provider) => {
+    if (!provider || typeof provider !== "object") return false;
+
+    if (!provider.isMetaMask) return false;
+
+    // Mirror wagmi's built-in exclusions for wallets that impersonate MetaMask.
+    if (provider.isBraveWallet && !provider._events && !provider._state) return false;
+
+    const conflictingFlags = [
+      "isApexWallet",
+      "isAvalanche",
+      "isBitKeep",
+      "isBlockWallet",
+      "isKuCoinWallet",
+      "isMathWallet",
+      "isOkxWallet",
+      "isOKExWallet",
+      "isOneInchIOSWallet",
+      "isOneInchAndroidWallet",
+      "isOpera",
+      "isPhantom",
+      "isPortal",
+      "isRabby",
+      "isTokenPocket",
+      "isTokenary",
+      "isUniswapWallet",
+      "isZerion",
+      "isTrust",
+      "isTrustWallet",
+    ];
+
+    return conflictingFlags.every((flag) => !provider[flag]);
+  });
+
+  if (metaMaskLikeProvider) {
+    return metaMaskLikeProvider as never;
+  }
+
+  // Some extension builds expose a single injected provider without reliable flags.
+  // If there is only one provider and it does not positively identify as another wallet,
+  // treat it as the requested browser wallet so connection can proceed.
+  if (providers.length === 1) {
+    const [provider] = providers;
+    const looksLikeAnotherWallet =
+      Boolean(provider?.isRabby) ||
+      Boolean(provider?.isTrust) ||
+      Boolean(provider?.isTrustWallet) ||
+      Boolean(provider?.isCoinbaseWallet) ||
+      Boolean(provider?.isPhantom);
+
+    if (!looksLikeAnotherWallet && typeof provider?.request === "function") {
+      return provider as never;
+    }
+  }
+
+  return undefined as never;
 }
 
 function getRabbyProvider(windowObject?: unknown) {
@@ -133,13 +187,7 @@ export async function waitForConnectorProvider(connectorId?: string, timeoutMs =
 const connectors = [
   injected({
     unstable_shimAsyncInject: 1_500,
-    target: {
-      id: "metaMask",
-      name: "MetaMask",
-      provider(windowObject) {
-        return getMetaMaskProvider(windowObject);
-      },
-    },
+    target: "metaMask",
   }),
   injected({
     unstable_shimAsyncInject: 1_500,
