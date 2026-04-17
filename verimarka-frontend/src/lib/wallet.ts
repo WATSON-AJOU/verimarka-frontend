@@ -158,10 +158,16 @@ export function normalizeWalletConnectorId(connectorId?: string) {
 
 export function hasConnectorProvider(connectorId?: string) {
   if (typeof window === "undefined") return false;
+  const ethereum = (window as Window & { ethereum?: unknown }).ethereum;
 
   if (!connectorId) {
-    return getInjectedProviders(window).length > 0;
+    return typeof ethereum !== "undefined" || getInjectedProviders(window).length > 0;
   }
+
+  if (normalizeWalletConnectorId(connectorId) === "metaMask") {
+    return typeof ethereum !== "undefined";
+  }
+
   return Boolean(getProviderForConnector(connectorId, window));
 }
 
@@ -169,16 +175,19 @@ export function logConnectorProviderSnapshot(connectorId?: string) {
   if (typeof window === "undefined") return;
 
   const providers = getInjectedProviders(window);
+  const ethereum = (window as Window & { ethereum?: { request?: unknown } }).ethereum;
   console.info("wallet.provider.snapshot", {
     connectorId: connectorId ?? null,
     normalizedConnectorId: normalizeWalletConnectorId(connectorId) ?? null,
-    hasWindowEthereum: typeof (window as Window & { ethereum?: unknown }).ethereum !== "undefined",
+    hasWindowEthereum: typeof ethereum !== "undefined",
+    hasWindowEthereumRequest: typeof ethereum?.request === "function",
     providerCount: providers.length,
     providers: providers.map((provider) => ({
       isMetaMask: Boolean(provider.isMetaMask),
       isRabby: Boolean(provider.isRabby),
       isTrust: Boolean(provider.isTrust),
       isTrustWallet: Boolean(provider.isTrustWallet),
+      hasRequest: typeof provider.request === "function",
     })),
     matchedProvider: Boolean(getProviderForConnector(connectorId, window)),
   });
