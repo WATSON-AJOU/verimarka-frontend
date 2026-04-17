@@ -167,9 +167,9 @@ export default function RegisterPage({
   const reviewYesVotes = reviewVoteDraft?.upvotes ?? reviewVote?.upvotes ?? 0;
   const reviewNoVotes = reviewVoteDraft?.downvotes ?? reviewVote?.downvotes ?? 0;
   const reviewParticipants = reviewVoteDraft?.participantCount ?? reviewVote?.participant_count ?? reviewYesVotes + reviewNoVotes;
-  const reviewVoteTotal = Math.max(1, reviewYesVotes + reviewNoVotes);
-  const reviewYesRate = Math.round((reviewYesVotes / reviewVoteTotal) * 100);
-  const reviewNoRate = 100 - reviewYesRate;
+  const reviewVoteTotal = reviewYesVotes + reviewNoVotes;
+  const reviewYesRate = reviewVoteTotal > 0 ? Math.round((reviewYesVotes / reviewVoteTotal) * 100) : 50;
+  const reviewNoRate = reviewVoteTotal > 0 ? 100 - reviewYesRate : 50;
   const isWatermarkedStage = registerResult?.tone === "allow" && analysisStage === "watermarked";
   const isMintedStage = registerResult?.tone === "allow" && analysisStage === "minted";
   const pageHeaderTitle = isMintedStage
