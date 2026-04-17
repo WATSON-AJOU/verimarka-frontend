@@ -181,6 +181,7 @@ export default function HistoryPage({
   const [reviewDetailId, setReviewDetailId] = useState<string | null>(null);
   const [blockDetailId, setBlockDetailId] = useState<string | null>(null);
   const [reviewVoteModalOpen, setReviewVoteModalOpen] = useState(false);
+  const [closedReviewNoticeIds, setClosedReviewNoticeIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (initialExpandedId && items.some((item) => item.id === initialExpandedId)) {
@@ -212,6 +213,15 @@ export default function HistoryPage({
       setReviewVoteModalOpen(false);
     }
   }, [reviewDetailItem]);
+
+  useEffect(() => {
+    if (!reviewDetailItem) return;
+    if (!isVoteClosed(reviewDetailItem)) return;
+    if (closedReviewNoticeIds.includes(reviewDetailItem.id)) return;
+
+    onOpenToast("투표가 종료되었습니다.");
+    setClosedReviewNoticeIds((current) => [...current, reviewDetailItem.id]);
+  }, [closedReviewNoticeIds, onOpenToast, reviewDetailItem]);
 
   async function handleCopyBlockchainUrl(item: HistoryItem) {
     const rawTxHash = getHistoryTxHash(item);
@@ -384,8 +394,8 @@ export default function HistoryPage({
         <div className="history-allow-detail-view">
           <div className="history-allow-detail-card">
             <span className="history-review-detail-badge">REVIEW</span>
-            <h2>보류 검토 상세 정보</h2>
-            <p>경계 유사도 케이스로 수동 검토 및 투표가 진행 중입니다.</p>
+            <h2>{reviewVoteClosed ? "투표 결과 상세 정보" : "보류 검토 상세 정보"}</h2>
+            <p>{reviewVoteClosed ? "종료된 커뮤니티 검증 투표 결과입니다." : "경계 유사도 케이스로 수동 검토 및 투표가 진행 중입니다."}</p>
 
             <div className="history-allow-detail-grid">
               <section className="history-allow-panel">
@@ -478,10 +488,10 @@ export default function HistoryPage({
               ) : (
                 <button
                   type="button"
-                  className="btn btn-secondary"
-                  disabled
+                  className="btn btn-primary"
+                  onClick={() => setReviewVoteModalOpen(true)}
                 >
-                  투표가 종료되었습니다
+                  투표결과 자세히보기
                 </button>
               )}
               <button
@@ -502,8 +512,10 @@ export default function HistoryPage({
                 닫기
               </button>
               <span className="review-vote-modal-tag">REVIEW</span>
-              <h3 className="review-vote-modal-title">커뮤니티 검증 투표</h3>
-              <p className="review-vote-modal-subtitle">진행 중인 커뮤니티 검증 투표에 바로 참여할 수 있습니다.</p>
+              <h3 className="review-vote-modal-title">{reviewVoteClosed ? "투표 결과 상세" : "커뮤니티 검증 투표"}</h3>
+              <p className="review-vote-modal-subtitle">
+                {reviewVoteClosed ? "종료된 커뮤니티 검증 투표 결과를 확인할 수 있습니다." : "진행 중인 커뮤니티 검증 투표에 바로 참여할 수 있습니다."}
+              </p>
 
               <div className="review-vote-modal-compare-grid">
                 <section className="review-vote-modal-panel">
@@ -559,36 +571,48 @@ export default function HistoryPage({
               </div>
 
               <div className="review-vote-modal-actions">
-                <button
-                  type="button"
-                  className="btn review-vote-modal-action review-vote-modal-action-yes"
-                  disabled={reviewVoteSubmitting || reviewVoteClosed}
-                  onClick={async () => {
-                    try {
-                      await onCastReviewVote(reviewDetailItem, "yes");
-                      setReviewVoteModalOpen(false);
-                    } catch {
-                      // parent handles toast/error state
-                    }
-                  }}
-                >
-                  {reviewVoteSubmitting ? "처리 중..." : "찬성"}
-                </button>
-                <button
-                  type="button"
-                  className="btn review-vote-modal-action review-vote-modal-action-no"
-                  disabled={reviewVoteSubmitting || reviewVoteClosed}
-                  onClick={async () => {
-                    try {
-                      await onCastReviewVote(reviewDetailItem, "no");
-                      setReviewVoteModalOpen(false);
-                    } catch {
-                      // parent handles toast/error state
-                    }
-                  }}
-                >
-                  {reviewVoteSubmitting ? "처리 중..." : "반대"}
-                </button>
+                {reviewVoteClosed ? (
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setReviewVoteModalOpen(false)}
+                  >
+                    닫기
+                  </button>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className="btn review-vote-modal-action review-vote-modal-action-yes"
+                      disabled={reviewVoteSubmitting || reviewVoteClosed}
+                      onClick={async () => {
+                        try {
+                          await onCastReviewVote(reviewDetailItem, "yes");
+                          setReviewVoteModalOpen(false);
+                        } catch {
+                          // parent handles toast/error state
+                        }
+                      }}
+                    >
+                      {reviewVoteSubmitting ? "처리 중..." : "찬성"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn review-vote-modal-action review-vote-modal-action-no"
+                      disabled={reviewVoteSubmitting || reviewVoteClosed}
+                      onClick={async () => {
+                        try {
+                          await onCastReviewVote(reviewDetailItem, "no");
+                          setReviewVoteModalOpen(false);
+                        } catch {
+                          // parent handles toast/error state
+                        }
+                      }}
+                    >
+                      {reviewVoteSubmitting ? "처리 중..." : "반대"}
+                    </button>
+                  </>
+                )}
               </div>
 
               <p className="review-vote-modal-note">
@@ -869,7 +893,7 @@ export default function HistoryPage({
                           className="btn btn-primary history-detail-btn"
                           onClick={() => setReviewDetailId(item.id)}
                         >
-                          투표 상세 보기
+                          {isVoteClosed(item) ? "투표결과 자세히보기" : "투표 상세 보기"}
                         </button>
                       </>
                     ) : null}
