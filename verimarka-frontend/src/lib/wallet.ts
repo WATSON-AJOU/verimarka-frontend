@@ -60,6 +60,24 @@ function getTrustWalletProvider(windowObject?: unknown) {
   ) as never;
 }
 
+function getProviderForConnector(connectorId?: string, windowObject?: unknown) {
+  const normalizedConnectorId = normalizeWalletConnectorId(connectorId);
+
+  if (normalizedConnectorId === "metaMask") {
+    return getMetaMaskProvider(windowObject);
+  }
+
+  if (normalizedConnectorId === "rabby") {
+    return getRabbyProvider(windowObject);
+  }
+
+  if (normalizedConnectorId === "trustWallet") {
+    return getTrustWalletProvider(windowObject);
+  }
+
+  return getInjectedProviders(windowObject)[0];
+}
+
 export function isMetaMaskConnectorId(connectorId?: string) {
   return Boolean(connectorId && METAMASK_CONNECTOR_IDS.has(connectorId));
 }
@@ -73,29 +91,48 @@ export function normalizeWalletConnectorId(connectorId?: string) {
 export function hasConnectorProvider(connectorId?: string) {
   if (typeof window === "undefined") return false;
 
-  const normalizedConnectorId = normalizeWalletConnectorId(connectorId);
-
   if (!connectorId) {
     return getInjectedProviders(window).length > 0;
   }
+  return Boolean(getProviderForConnector(connectorId, window));
+}
 
-  if (normalizedConnectorId === "metaMask") {
-    return Boolean(getMetaMaskProvider(window));
+export function logConnectorProviderSnapshot(connectorId?: string) {
+  if (typeof window === "undefined") return;
+
+  const providers = getInjectedProviders(window);
+  console.info("wallet.provider.snapshot", {
+    connectorId: connectorId ?? null,
+    normalizedConnectorId: normalizeWalletConnectorId(connectorId) ?? null,
+    hasWindowEthereum: typeof (window as Window & { ethereum?: unknown }).ethereum !== "undefined",
+    providerCount: providers.length,
+    providers: providers.map((provider) => ({
+      isMetaMask: Boolean(provider.isMetaMask),
+      isRabby: Boolean(provider.isRabby),
+      isTrust: Boolean(provider.isTrust),
+      isTrustWallet: Boolean(provider.isTrustWallet),
+    })),
+    matchedProvider: Boolean(getProviderForConnector(connectorId, window)),
+  });
+}
+
+export async function waitForConnectorProvider(connectorId?: string, timeoutMs = 1500, intervalMs = 100) {
+  if (typeof window === "undefined") return false;
+
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < timeoutMs) {
+    if (hasConnectorProvider(connectorId)) {
+      return true;
+    }
+    await new Promise((resolve) => window.setTimeout(resolve, intervalMs));
   }
 
-  if (normalizedConnectorId === "rabby") {
-    return Boolean(getRabbyProvider(window));
-  }
-
-  if (normalizedConnectorId === "trustWallet") {
-    return Boolean(getTrustWalletProvider(window));
-  }
-
-  return getInjectedProviders(window).length > 0;
+  return hasConnectorProvider(connectorId);
 }
 
 const connectors = [
   injected({
+    unstable_shimAsyncInject: 1_500,
     target: {
       id: "metaMask",
       name: "MetaMask",
@@ -105,6 +142,7 @@ const connectors = [
     },
   }),
   injected({
+    unstable_shimAsyncInject: 1_500,
     target: {
       id: "rabby",
       name: "Rabby",
@@ -114,6 +152,7 @@ const connectors = [
     },
   }),
   injected({
+    unstable_shimAsyncInject: 1_500,
     target: {
       id: "trustWallet",
       name: "Trust Wallet",
