@@ -24,7 +24,7 @@ import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
 import { resultConfig, systemCards, tabs } from "./lib/mockData";
 import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest, authenticatedFetch } from "./lib/api";
-import { sepolia, walletConnectEnabled } from "./lib/wallet";
+import { hasConnectorProvider, isMetaMaskConnectorId, normalizeWalletConnectorId, sepolia, walletConnectEnabled } from "./lib/wallet";
 import { getAccessToken } from "./lib/token";
 import type { ActivityItem, AnalysisJobStatusResponse, AnalysisStage, AsyncContentJobResponse, AsyncVerifyJobResponse, ModalType, RegisteredContentResponse, ReviewVoteCastResponse, ReviewVoteSigningResponse, TabName, VerifyResultResponse, WalletSummaryResponse } from "./types/app";
 import type { HistoryItem } from "./types/app";
@@ -67,12 +67,11 @@ function getWalletNetworkLabel(chainId: number | null | undefined) {
   return `Chain #${chainId}`;
 }
 
-function hasInjectedWalletProvider() {
-  if (typeof window === "undefined") return false;
-  return typeof (window as Window & { ethereum?: unknown }).ethereum !== "undefined";
-}
-
 function getWalletInstallMessage(connectorId?: string) {
+  if (isMetaMaskConnectorId(connectorId)) {
+    return "MetaMask 지갑이 설치되어 있지 않습니다. MetaMask 확장 프로그램을 먼저 설치하세요.";
+  }
+
   if (connectorId === "rabby") {
     return "Rabby 지갑이 설치되어 있지 않습니다. Rabby 확장 프로그램을 먼저 설치하세요.";
   }
@@ -1449,6 +1448,8 @@ export default function App() {
     );
 
     try {
+      const normalizedRequestedConnectorId = normalizeWalletConnectorId(connectorId);
+      const normalizedConnectedConnectorId = normalizeWalletConnectorId(connectedConnector?.id);
       let walletAddress = connectedWalletAddress;
       let walletType = connectedConnector?.name || "Injected Wallet";
       let walletChainId = currentWalletChainId ?? sepolia.id;
@@ -1457,13 +1458,15 @@ export default function App() {
         !walletAddress ||
         !isConnected ||
         signerSessionMissing ||
-        (connectorId && connectedConnector?.id !== connectorId);
+        (normalizedRequestedConnectorId && normalizedConnectedConnectorId !== normalizedRequestedConnectorId);
 
       console.info("wallet.connect.start", {
         requestedConnectorId: connectorId ?? null,
+        normalizedRequestedConnectorId: normalizedRequestedConnectorId ?? null,
         isConnected,
         connectedWalletAddress: connectedWalletAddress ?? null,
         connectedConnectorId: connectedConnector?.id ?? null,
+        normalizedConnectedConnectorId: normalizedConnectedConnectorId ?? null,
         connectedConnectorName: connectedConnector?.name ?? null,
         currentWalletChainId,
         signerSessionMissing,
@@ -1475,13 +1478,17 @@ export default function App() {
           throw new Error(getWalletInstallMessage("walletConnect"));
         }
 
-        if (connectorId !== "walletConnect" && !hasInjectedWalletProvider()) {
+        if (connectorId !== "walletConnect" && !hasConnectorProvider(connectorId)) {
           throw new Error(getWalletInstallMessage(connectorId));
         }
 
         const targetConnector =
           connectors.find((item) => item.id === connectorId) ??
+          connectors.find(
+            (item) => normalizeWalletConnectorId(item.id) === normalizedRequestedConnectorId,
+          ) ??
           connectors.find((item) => item.id === "metaMask") ??
+          connectors.find((item) => isMetaMaskConnectorId(item.id)) ??
           connectors[0];
         if (!targetConnector) {
           throw new Error("사용 가능한 지갑 연결 방식을 찾을 수 없습니다.");
@@ -2575,7 +2582,7 @@ export default function App() {
         open={walletConnectModalOpen}
         connectors={connectors.filter(
           (connector) =>
-            connector.id === "metaMask" ||
+            isMetaMaskConnectorId(connector.id) ||
             connector.id === "rabby" ||
             connector.id === "trustWallet" ||
             connector.id === "walletConnect",

@@ -3,6 +3,13 @@ import { createConfig, http } from "wagmi";
 import { sepolia } from "wagmi/chains";
 import { injected, walletConnect } from "wagmi/connectors";
 
+const METAMASK_CONNECTOR_IDS = new Set([
+  "metaMask",
+  "metaMaskSDK",
+  "io.metamask",
+  "io.metamask.mobile",
+]);
+
 const defaultSepoliaRpcUrl =
   import.meta.env.VITE_SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
 export const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "";
@@ -53,22 +60,34 @@ function getTrustWalletProvider(windowObject?: unknown) {
   ) as never;
 }
 
+export function isMetaMaskConnectorId(connectorId?: string) {
+  return Boolean(connectorId && METAMASK_CONNECTOR_IDS.has(connectorId));
+}
+
+export function normalizeWalletConnectorId(connectorId?: string) {
+  if (!connectorId) return connectorId;
+  if (isMetaMaskConnectorId(connectorId)) return "metaMask";
+  return connectorId;
+}
+
 export function hasConnectorProvider(connectorId?: string) {
   if (typeof window === "undefined") return false;
+
+  const normalizedConnectorId = normalizeWalletConnectorId(connectorId);
 
   if (!connectorId) {
     return getInjectedProviders(window).length > 0;
   }
 
-  if (connectorId === "metaMask") {
+  if (normalizedConnectorId === "metaMask") {
     return Boolean(getMetaMaskProvider(window));
   }
 
-  if (connectorId === "rabby") {
+  if (normalizedConnectorId === "rabby") {
     return Boolean(getRabbyProvider(window));
   }
 
-  if (connectorId === "trustWallet") {
+  if (normalizedConnectorId === "trustWallet") {
     return Boolean(getTrustWalletProvider(window));
   }
 
@@ -122,4 +141,4 @@ export const walletConfig = createConfig({
   },
 });
 
-export { sepolia, walletConnectEnabled };
+export { METAMASK_CONNECTOR_IDS, sepolia, walletConnectEnabled };
