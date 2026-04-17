@@ -46,6 +46,7 @@ function getInjectedProviders(windowObject?: unknown): InjectedProvider[] {
 
 function getMetaMaskProvider(windowObject?: unknown) {
   const providers = getInjectedProviders(windowObject);
+  const ethereum = (windowObject as { ethereum?: InjectedProvider } | undefined)?.ethereum;
   const metaMaskLikeProvider = providers.find((provider) => {
     if (!provider || typeof provider !== "object") return false;
 
@@ -98,6 +99,19 @@ function getMetaMaskProvider(windowObject?: unknown) {
 
     if (!looksLikeAnotherWallet && typeof provider?.request === "function") {
       return provider as never;
+    }
+  }
+
+  if (ethereum && typeof ethereum.request === "function") {
+    const looksLikeAnotherWallet =
+      Boolean(ethereum.isRabby) ||
+      Boolean(ethereum.isTrust) ||
+      Boolean(ethereum.isTrustWallet) ||
+      Boolean(ethereum.isCoinbaseWallet) ||
+      Boolean(ethereum.isPhantom);
+
+    if (!looksLikeAnotherWallet) {
+      return ethereum as never;
     }
   }
 
