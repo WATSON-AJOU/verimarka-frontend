@@ -24,7 +24,7 @@ import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
 import { resultConfig, systemCards, tabs } from "./lib/mockData";
 import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest, authenticatedFetch } from "./lib/api";
-import { isMetaMaskConnectorId, logConnectorProviderSnapshot, normalizeWalletConnectorId, sepolia, waitForConnectorProvider, walletConnectEnabled } from "./lib/wallet";
+import { isMetaMaskConnectorId, logConnectorProviderSnapshot, normalizeWalletConnectorId, walletChain, waitForConnectorProvider, walletConnectEnabled } from "./lib/wallet";
 import { getAccessToken } from "./lib/token";
 import type { ActivityItem, AnalysisJobStatusResponse, AnalysisStage, AsyncContentJobResponse, AsyncVerifyJobResponse, HistoryAllowResumePayload, ModalType, RegisteredContentResponse, ReviewVoteCastResponse, ReviewVoteSigningResponse, TabName, VerifyResultResponse, WalletSummaryResponse } from "./types/app";
 import type { HistoryItem } from "./types/app";
@@ -62,8 +62,8 @@ function formatWalletAddress(value: string | null | undefined) {
 }
 
 function getWalletNetworkLabel(chainId: number | null | undefined) {
-  if (chainId === sepolia.id) return "Sepolia";
-  if (!chainId) return "Sepolia";
+  if (chainId === walletChain.id) return "Polygon";
+  if (!chainId) return "Polygon";
   return `Chain #${chainId}`;
 }
 
@@ -235,7 +235,7 @@ export default function App() {
     address: null,
     chain_id: null,
     wallet_type: "",
-    network_name: "Sepolia",
+    network_name: "Polygon",
     nft_count: null,
     vote_minimum: 3,
     vote_eligible: false,
@@ -361,7 +361,7 @@ export default function App() {
         address: null,
         chain_id: null,
         wallet_type: "",
-        network_name: "Sepolia",
+        network_name: "Polygon",
         nft_count: null,
         vote_minimum: 3,
         vote_eligible: false,
@@ -387,7 +387,7 @@ export default function App() {
         address: user?.wallet_address ?? null,
         chain_id: user?.wallet_chain_id ?? null,
         wallet_type: user?.wallet_type ?? "",
-        network_name: "Sepolia",
+        network_name: "Polygon",
         nft_count: null,
         vote_minimum: 3,
         vote_eligible: false,
@@ -419,7 +419,7 @@ export default function App() {
 
       const client = createWalletClient({
         account: account as `0x${string}`,
-        chain: sepolia,
+        chain: walletChain,
         transport: custom(provider as EIP1193Provider),
       });
       fallbackWalletClientRef.current = client;
@@ -802,7 +802,7 @@ export default function App() {
         address: null,
         chain_id: null,
         wallet_type: "",
-        network_name: "Sepolia",
+        network_name: "Polygon",
         nft_count: null,
         vote_minimum: 3,
         vote_eligible: false,
@@ -1409,7 +1409,7 @@ export default function App() {
       const normalizedConnectedConnectorId = normalizeWalletConnectorId(connectedConnector?.id);
       let walletAddress = connectedWalletAddress;
       let walletType = normalizedConnectedConnectorId || connectedConnector?.id || connectedConnector?.name || "Injected Wallet";
-      let walletChainId = currentWalletChainId ?? sepolia.id;
+      let walletChainId = currentWalletChainId ?? walletChain.id;
       const signerSessionMissing = !walletClient;
       const requiresNewConnection =
         !walletAddress ||
@@ -1481,7 +1481,7 @@ export default function App() {
         walletAddress = result.accounts[0];
         walletType = normalizeWalletConnectorId(targetConnector.id) || targetConnector.id || targetConnector.name;
         const providerChainId = await resolveConnectorChainId(targetConnector);
-        walletChainId = providerChainId ?? result.chainId ?? currentWalletChainId ?? sepolia.id;
+        walletChainId = providerChainId ?? result.chainId ?? currentWalletChainId ?? walletChain.id;
         console.info("wallet.connect.connected", {
           walletAddress,
           walletType,
@@ -1519,20 +1519,20 @@ export default function App() {
         walletChainId,
       });
 
-      if (walletChainId !== sepolia.id) {
+      if (walletChainId !== walletChain.id) {
         console.warn("wallet.connect.unsupported_chain", {
           walletAddress,
           walletChainId,
-          expectedChainId: sepolia.id,
+          expectedChainId: walletChain.id,
         });
 
         try {
-          await switchChainAsync({ chainId: sepolia.id });
+          await switchChainAsync({ chainId: walletChain.id });
         } catch (switchError) {
           console.warn("wallet.connect.switch_chain_failed", {
             walletAddress,
             walletChainId,
-            expectedChainId: sepolia.id,
+            expectedChainId: walletChain.id,
             switchError,
           });
         }
@@ -1544,8 +1544,8 @@ export default function App() {
           walletChainId,
         });
 
-        if (walletChainId !== sepolia.id) {
-          throw new Error("Sepolia 네트워크로 전환한 뒤 다시 시도해주세요.");
+        if (walletChainId !== walletChain.id) {
+          throw new Error("Polygon 네트워크로 전환한 뒤 다시 시도해주세요.");
         }
       }
 
@@ -2267,7 +2267,7 @@ export default function App() {
 
     const response = await submitSignedReviewVote(contentResult.public_id, {
       choice,
-      chainId: contentResult.blockchain?.chain_id ?? sepolia.id,
+      chainId: contentResult.blockchain?.chain_id ?? walletChain.id,
       tokenId: contentResult.blockchain?.token_id ?? null,
       contractAddress: contentResult.blockchain?.contract_address ?? null,
       voteStatus: contentResult.blockchain?.vote?.status ?? null,
@@ -2289,7 +2289,7 @@ export default function App() {
   async function castHistoryReviewVote(item: HistoryItem, choice: "yes" | "no") {
     await submitSignedReviewVote(item.id, {
       choice,
-      chainId: item.blockchain?.chain_id ?? sepolia.id,
+      chainId: item.blockchain?.chain_id ?? walletChain.id,
       tokenId: item.blockchain?.token_id ?? null,
       contractAddress: item.blockchain?.contract_address ?? null,
       voteStatus: item.blockchain?.vote?.status ?? null,
