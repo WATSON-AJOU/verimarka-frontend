@@ -46,11 +46,11 @@ function getInjectedProviders(windowObject?: unknown): InjectedProvider[] {
 
 function getMetaMaskProvider(windowObject?: unknown) {
   const providers = getInjectedProviders(windowObject);
-  const ethereum = (windowObject as { ethereum?: InjectedProvider } | undefined)?.ethereum;
-  const metaMaskLikeProvider = providers.find((provider) => {
+  const metaMaskProvider = providers.find((provider) => {
     if (!provider || typeof provider !== "object") return false;
 
     if (!provider.isMetaMask) return false;
+    if (typeof provider.request !== "function") return false;
 
     // Mirror wagmi's built-in exclusions for wallets that impersonate MetaMask.
     if (provider.isBraveWallet && !provider._events && !provider._state) return false;
@@ -81,41 +81,7 @@ function getMetaMaskProvider(windowObject?: unknown) {
     return conflictingFlags.every((flag) => !provider[flag]);
   });
 
-  if (metaMaskLikeProvider) {
-    return metaMaskLikeProvider as never;
-  }
-
-  // Some extension builds expose a single injected provider without reliable flags.
-  // If there is only one provider and it does not positively identify as another wallet,
-  // treat it as the requested browser wallet so connection can proceed.
-  if (providers.length === 1) {
-    const [provider] = providers;
-    const looksLikeAnotherWallet =
-      Boolean(provider?.isRabby) ||
-      Boolean(provider?.isTrust) ||
-      Boolean(provider?.isTrustWallet) ||
-      Boolean(provider?.isCoinbaseWallet) ||
-      Boolean(provider?.isPhantom);
-
-    if (!looksLikeAnotherWallet && typeof provider?.request === "function") {
-      return provider as never;
-    }
-  }
-
-  if (ethereum && typeof ethereum.request === "function") {
-    const looksLikeAnotherWallet =
-      Boolean(ethereum.isRabby) ||
-      Boolean(ethereum.isTrust) ||
-      Boolean(ethereum.isTrustWallet) ||
-      Boolean(ethereum.isCoinbaseWallet) ||
-      Boolean(ethereum.isPhantom);
-
-    if (!looksLikeAnotherWallet) {
-      return ethereum as never;
-    }
-  }
-
-  return undefined as never;
+  return metaMaskProvider as never;
 }
 
 function getRabbyProvider(windowObject?: unknown) {
@@ -158,14 +124,9 @@ export function normalizeWalletConnectorId(connectorId?: string) {
 
 export function hasConnectorProvider(connectorId?: string) {
   if (typeof window === "undefined") return false;
-  const ethereum = (window as Window & { ethereum?: unknown }).ethereum;
 
   if (!connectorId) {
-    return typeof ethereum !== "undefined" || getInjectedProviders(window).length > 0;
-  }
-
-  if (normalizeWalletConnectorId(connectorId) === "metaMask") {
-    return typeof ethereum !== "undefined";
+    return getInjectedProviders(window).length > 0;
   }
 
   return Boolean(getProviderForConnector(connectorId, window));
