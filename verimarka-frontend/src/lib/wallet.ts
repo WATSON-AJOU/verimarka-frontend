@@ -8,6 +8,19 @@ const METAMASK_CONNECTOR_IDS = new Set([
   "metaMaskSDK",
   "io.metamask",
   "io.metamask.mobile",
+  "io.metamask.extension",
+]);
+
+const RABBY_CONNECTOR_IDS = new Set([
+  "rabby",
+  "io.rabby",
+]);
+
+const TRUST_WALLET_CONNECTOR_IDS = new Set([
+  "trustWallet",
+  "trustwallet",
+  "trust",
+  "com.trustwallet.app",
 ]);
 
 const defaultSepoliaRpcUrl =
@@ -42,6 +55,10 @@ function getInjectedProviders(windowObject?: unknown): InjectedProvider[] {
   if (!ethereum) return [];
 
   return Array.isArray(ethereum.providers) ? (ethereum.providers as InjectedProvider[]) : [ethereum];
+}
+
+function hasConnectorRequest(provider: InjectedProvider | undefined) {
+  return Boolean(provider && typeof provider.request === "function");
 }
 
 function getMetaMaskProvider(windowObject?: unknown) {
@@ -116,9 +133,19 @@ export function isMetaMaskConnectorId(connectorId?: string) {
   return Boolean(connectorId && METAMASK_CONNECTOR_IDS.has(connectorId));
 }
 
+export function isRabbyConnectorId(connectorId?: string) {
+  return Boolean(connectorId && RABBY_CONNECTOR_IDS.has(connectorId));
+}
+
+export function isTrustWalletConnectorId(connectorId?: string) {
+  return Boolean(connectorId && TRUST_WALLET_CONNECTOR_IDS.has(connectorId));
+}
+
 export function normalizeWalletConnectorId(connectorId?: string) {
   if (!connectorId) return connectorId;
   if (isMetaMaskConnectorId(connectorId)) return "metaMask";
+  if (isRabbyConnectorId(connectorId)) return "rabby";
+  if (isTrustWalletConnectorId(connectorId)) return "trustWallet";
   return connectorId;
 }
 
@@ -148,7 +175,7 @@ export function logConnectorProviderSnapshot(connectorId?: string) {
       isRabby: Boolean(provider.isRabby),
       isTrust: Boolean(provider.isTrust),
       isTrustWallet: Boolean(provider.isTrustWallet),
-      hasRequest: typeof provider.request === "function",
+      hasRequest: hasConnectorRequest(provider),
     })),
     matchedProvider: Boolean(getProviderForConnector(connectorId, window)),
   });
@@ -171,33 +198,15 @@ export async function waitForConnectorProvider(connectorId?: string, timeoutMs =
 const connectors = [
   injected({
     unstable_shimAsyncInject: 1_500,
-    target: {
-      id: "metaMask",
-      name: "MetaMask",
-      provider(windowObject) {
-        return getMetaMaskProvider(windowObject);
-      },
-    },
+    target: "metaMask",
   }),
   injected({
     unstable_shimAsyncInject: 1_500,
-    target: {
-      id: "rabby",
-      name: "Rabby",
-      provider(windowObject) {
-        return getRabbyProvider(windowObject);
-      },
-    },
+    target: "rabby",
   }),
   injected({
     unstable_shimAsyncInject: 1_500,
-    target: {
-      id: "trustWallet",
-      name: "Trust Wallet",
-      provider(windowObject) {
-        return getTrustWalletProvider(windowObject);
-      },
-    },
+    target: "trustWallet",
   }),
   ...(walletConnectEnabled
     ? [

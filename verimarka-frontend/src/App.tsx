@@ -68,19 +68,21 @@ function getWalletNetworkLabel(chainId: number | null | undefined) {
 }
 
 function getWalletInstallMessage(connectorId?: string) {
-  if (isMetaMaskConnectorId(connectorId)) {
+  const normalizedConnectorId = normalizeWalletConnectorId(connectorId);
+
+  if (normalizedConnectorId === "metaMask") {
     return "MetaMask 지갑이 설치되어 있지 않습니다. MetaMask 확장 프로그램을 먼저 설치하세요.";
   }
 
-  if (connectorId === "rabby") {
+  if (normalizedConnectorId === "rabby") {
     return "Rabby 지갑이 설치되어 있지 않습니다. Rabby 확장 프로그램을 먼저 설치하세요.";
   }
 
-  if (connectorId === "trustWallet") {
+  if (normalizedConnectorId === "trustWallet") {
     return "Trust Wallet 지갑이 설치되어 있지 않습니다. Trust Wallet 확장 프로그램을 먼저 설치하세요.";
   }
 
-  if (connectorId === "walletConnect") {
+  if (normalizedConnectorId === "walletConnect") {
     return "WalletConnect QR 연결을 사용할 수 없습니다. 배포 환경의 VITE_WALLETCONNECT_PROJECT_ID 설정을 확인하세요.";
   }
 
