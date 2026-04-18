@@ -24,7 +24,7 @@ import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
 import { resultConfig, systemCards, tabs } from "./lib/mockData";
 import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest, authenticatedFetch } from "./lib/api";
-import { hasConnectorProvider, isMetaMaskConnectorId, logConnectorProviderSnapshot, normalizeWalletConnectorId, sepolia, waitForConnectorProvider, walletConnectEnabled } from "./lib/wallet";
+import { isMetaMaskConnectorId, logConnectorProviderSnapshot, normalizeWalletConnectorId, sepolia, waitForConnectorProvider, walletConnectEnabled } from "./lib/wallet";
 import { getAccessToken } from "./lib/token";
 import type { ActivityItem, AnalysisJobStatusResponse, AnalysisStage, AsyncContentJobResponse, AsyncVerifyJobResponse, HistoryAllowResumePayload, ModalType, RegisteredContentResponse, ReviewVoteCastResponse, ReviewVoteSigningResponse, TabName, VerifyResultResponse, WalletSummaryResponse } from "./types/app";
 import type { HistoryItem } from "./types/app";
@@ -1436,14 +1436,6 @@ export default function App() {
           throw new Error(getWalletInstallMessage("walletConnect"));
         }
 
-        if (connectorId !== "walletConnect" && !hasConnectorProvider(connectorId)) {
-          const providerResolved = await waitForConnectorProvider(connectorId);
-          logConnectorProviderSnapshot(connectorId);
-          if (!providerResolved) {
-          throw new Error(getWalletInstallMessage(connectorId));
-          }
-        }
-
         const targetConnector =
           connectors.find((item) => item.id === connectorId) ??
           connectors.find(
@@ -1461,6 +1453,17 @@ export default function App() {
           targetConnectorName: targetConnector.name,
           signerSessionMissing,
         });
+
+        if (connectorId !== "walletConnect") {
+          const providerResolved = await waitForConnectorProvider(targetConnector.id);
+          logConnectorProviderSnapshot(targetConnector.id);
+          if (!providerResolved) {
+            console.warn("wallet.connect.provider_precheck_failed", {
+              requestedConnectorId: connectorId ?? null,
+              targetConnectorId: targetConnector.id,
+            });
+          }
+        }
 
         if (isConnected) {
           try {
