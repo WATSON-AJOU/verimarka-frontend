@@ -48,7 +48,7 @@ export default function LoginChoiceModal({
   return (
     <div className="modalOverlay">
       <div className="modalCard authCard" onClick={(e) => e.stopPropagation()}>
-        <button className="modalClose" onClick={onClose}>
+        <button className="modalClose" type="button" onClick={onClose}>
           닫기
         </button>
 
@@ -58,6 +58,7 @@ export default function LoginChoiceModal({
 
         <div className="authActions">
           <button
+            type="button"
             className="socialButton socialButton--google"
             onClick={loginWithGoogle}
           >
@@ -66,6 +67,7 @@ export default function LoginChoiceModal({
           </button>
 
           <button
+            type="button"
             className="socialButton socialButton--apple"
             disabled
             title="준비중"
@@ -75,6 +77,7 @@ export default function LoginChoiceModal({
           </button>
 
           <button
+            type="button"
             className="socialButton socialButton--kakao"
             onClick={loginWithKakao}
           >
@@ -82,7 +85,7 @@ export default function LoginChoiceModal({
             Kakao로 계속하기
           </button>
 
-          <button className="emailLoginButton" onClick={onEmailLogin}>
+          <button className="emailLoginButton" type="button" onClick={onEmailLogin}>
             이메일로 로그인
           </button>
         </div>
