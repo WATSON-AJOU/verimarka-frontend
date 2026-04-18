@@ -88,7 +88,7 @@ export default function HistoryPage({
 
   function extractNetwork(extra: string) {
     const matched = extra.match(/^([^·]+)(?:·|$)/);
-    return matched?.[1]?.trim() || "Sepolia";
+    return matched?.[1]?.trim() || "Polygon";
   }
 
   function getHistoryNetwork(item: HistoryItem) {
@@ -231,7 +231,7 @@ export default function HistoryPage({
         ? "https://polygonscan.com/tx/"
         : networkName.includes("sepolia")
           ? "https://sepolia.etherscan.io/tx/"
-          : "https://sepolia.etherscan.io/tx/";
+          : "https://polygonscan.com/tx/";
     const targetUrl = rawTxHash && rawTxHash !== "-" ? `${baseUrl}${rawTxHash}` : `${window.location.origin}/history?entry=${item.id}`;
     await navigator.clipboard.writeText(targetUrl);
     onOpenToast("URL 복사가 완료되었습니다.");

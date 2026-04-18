@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 import { createConfig, http } from "wagmi";
-import { sepolia } from "wagmi/chains";
+import { polygon } from "wagmi/chains";
 import { injected, walletConnect } from "wagmi/connectors";
 
 const METAMASK_CONNECTOR_IDS = new Set([
@@ -23,8 +23,8 @@ const TRUST_WALLET_CONNECTOR_IDS = new Set([
   "com.trustwallet.app",
 ]);
 
-const defaultSepoliaRpcUrl =
-  import.meta.env.VITE_SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com";
+const defaultPolygonRpcUrl =
+  import.meta.env.VITE_POLYGON_RPC_URL || "https://polygon-rpc.com";
 export const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "";
 const walletConnectEnabled = walletConnectProjectId.trim().length > 0;
 
@@ -220,11 +220,11 @@ const connectors = [
 ];
 
 export const walletConfig = createConfig({
-  chains: [sepolia],
+  chains: [polygon],
   connectors,
   transports: {
-    [sepolia.id]: http(defaultSepoliaRpcUrl),
+    [polygon.id]: http(defaultPolygonRpcUrl),
   },
 });
 
-export { METAMASK_CONNECTOR_IDS, sepolia, walletConnectEnabled };
+export { METAMASK_CONNECTOR_IDS, polygon as walletChain, walletConnectEnabled };
