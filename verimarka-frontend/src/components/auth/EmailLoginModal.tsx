@@ -41,7 +41,7 @@ export default function EmailLoginModal({
   return (
     <div className="modalOverlay">
       <div className="modalCard authCard" onClick={(e) => e.stopPropagation()}>
-        <button className="modalClose" onClick={onClose}>
+        <button className="modalClose" type="button" onClick={onClose}>
           닫기
         </button>
 

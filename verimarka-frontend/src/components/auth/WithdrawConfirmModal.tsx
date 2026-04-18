@@ -16,7 +16,7 @@ export default function WithdrawConfirmModal({
   return (
     <div className="modalOverlay">
       <div className="modalCard authCard withdrawCard" onClick={(event) => event.stopPropagation()}>
-        <button className="modalClose" onClick={onClose}>
+        <button className="modalClose" type="button" onClick={onClose}>
           닫기
         </button>
         <h2 className="authTitle authTitle--tight">회원 탈퇴</h2>

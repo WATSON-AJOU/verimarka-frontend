@@ -35,7 +35,7 @@ export default function PhoneVerificationModal({
   return (
     <div className="modalOverlay">
       <div className="modalCard authCard identityCard" onClick={(event) => event.stopPropagation()}>
-        <button className="modalClose" onClick={onClose}>
+        <button className="modalClose" type="button" onClick={onClose}>
           닫기
         </button>
         <h2 className="authTitle authTitle--tight">휴대폰 인증</h2>

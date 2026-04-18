@@ -116,7 +116,7 @@ export default function ProfileEditModal({
   return (
     <div className="modalOverlay">
       <div className="modalCard authCard profileEditCard" onClick={(event) => event.stopPropagation()}>
-        <button className="modalClose" onClick={onClose}>
+        <button className="modalClose" type="button" onClick={onClose}>
           닫기
         </button>
 
