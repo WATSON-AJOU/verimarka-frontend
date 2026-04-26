@@ -122,11 +122,9 @@ jobs:
             rollback_executed=1
             echo "Deployment failed. Restoring previous frontend build."
 
-            rm -rf "${DEPLOY_PATH}"
+            mkdir -p "${DEPLOY_PATH}"
             if [ -d "${BACKUP_PATH}" ]; then
-              mv "${BACKUP_PATH}" "${DEPLOY_PATH}"
-            else
-              mkdir -p "${DEPLOY_PATH}"
+              rsync -a --delete "${BACKUP_PATH}/" "${DEPLOY_PATH}/"
             fi
 
             rm -rf "${STAGING_PATH}"
@@ -136,11 +134,11 @@ jobs:
           trap 'status=$?; rollback; exit "${status}"' ERR
 
           rm -rf "${BACKUP_PATH}"
-          if [ -d "${DEPLOY_PATH}" ]; then
-            mv "${DEPLOY_PATH}" "${BACKUP_PATH}"
-          fi
+          mkdir -p "${DEPLOY_PATH}" "${BACKUP_PATH}"
+          rsync -a --delete "${DEPLOY_PATH}/" "${BACKUP_PATH}/"
 
-          mv "${STAGING_PATH}" "${DEPLOY_PATH}"
+          rsync -a --delete "${STAGING_PATH}/" "${DEPLOY_PATH}/"
+          rm -rf "${STAGING_PATH}"
           reload_server
           run_healthcheck
 
