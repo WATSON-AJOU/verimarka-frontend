@@ -3,4 +3,7 @@ Allow: /
 Disallow: /auth/google/callback
 Disallow: /auth/kakao/callback
 
+User-agent: Yeti
+Allow: /
+
 Sitemap: https://verimarka.com/sitemap.xml
