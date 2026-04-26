@@ -14,9 +14,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: verimarka-frontend
 
     steps:
       - name: Checkout
@@ -30,9 +27,11 @@ jobs:
           cache-dependency-path: verimarka-frontend/package-lock.json
 
       - name: Install dependencies
+        working-directory: verimarka-frontend
         run: npm ci
 
       - name: Create production env file
+        working-directory: verimarka-frontend
         run: |
           cat > .env.production <<'EOF'
           VITE_APP_NAME=${{ secrets.VITE_APP_NAME }}
@@ -44,6 +43,7 @@ jobs:
           EOF
 
       - name: Build
+        working-directory: verimarka-frontend
         run: npm run build
 
       - name: Setup SSH agent
@@ -68,7 +68,7 @@ jobs:
           ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" "rm -rf '${STAGING_PATH}' && mkdir -p '${STAGING_PATH}'"
           rsync -az --delete \
             -e "ssh -p ${DEPLOY_PORT:-22}" \
-            dist/ "${DEPLOY_USER}@${DEPLOY_HOST}:${STAGING_PATH}/"
+            verimarka-frontend/dist/ "${DEPLOY_USER}@${DEPLOY_HOST}:${STAGING_PATH}/"
 
       - name: Activate deployment with rollback
         env:
