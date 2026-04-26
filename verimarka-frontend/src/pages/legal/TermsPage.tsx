@@ -1,6 +1,14 @@
 import LegalPageLayout from "../../components/legal/LegalPageLayout";
+import { useSeo } from "../../lib/seo";
 
 export default function TermsPage() {
+  useSeo({
+    title: "Verimarka 이용약관",
+    description: "Verimarka 서비스 이용약관입니다. 콘텐츠 등록, 검증, 계정 이용, 서비스 운영 정책 관련 기본 조건을 안내합니다.",
+    path: "/terms",
+    locale: "ko-KR",
+  });
+
   return (
     <LegalPageLayout title="Verimarka 이용약관" updatedAt="2026년 3월">
       <section>
