@@ -28,7 +28,7 @@ jobs:
 
       - name: Install dependencies
         working-directory: verimarka-frontend
-        run: npm ci
+        run: npm install --no-audit --no-fund
 
       - name: Create production env file
         working-directory: verimarka-frontend
