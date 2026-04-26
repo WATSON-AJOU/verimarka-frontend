@@ -63,17 +63,87 @@ jobs:
           DEPLOY_PORT: ${{ secrets.FRONTEND_DEPLOY_PORT }}
           DEPLOY_USER: ${{ secrets.FRONTEND_DEPLOY_USER }}
           DEPLOY_PATH: ${{ secrets.FRONTEND_DEPLOY_PATH }}
+          STAGING_PATH: ${{ secrets.FRONTEND_DEPLOY_PATH }}.__staging
         run: |
+          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" "rm -rf '${STAGING_PATH}' && mkdir -p '${STAGING_PATH}'"
           rsync -az --delete \
             -e "ssh -p ${DEPLOY_PORT:-22}" \
-            dist/ "${DEPLOY_USER}@${DEPLOY_HOST}:${DEPLOY_PATH}/"
+            dist/ "${DEPLOY_USER}@${DEPLOY_HOST}:${STAGING_PATH}/"
 
-      - name: Reload nginx container
+      - name: Activate deployment with rollback
         env:
           DEPLOY_HOST: ${{ secrets.FRONTEND_DEPLOY_HOST }}
           DEPLOY_PORT: ${{ secrets.FRONTEND_DEPLOY_PORT }}
           DEPLOY_USER: ${{ secrets.FRONTEND_DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.FRONTEND_DEPLOY_PATH }}
+          STAGING_PATH: ${{ secrets.FRONTEND_DEPLOY_PATH }}.__staging
+          BACKUP_PATH: ${{ secrets.FRONTEND_DEPLOY_PATH }}.__backup
           RELOAD_COMMAND: ${{ secrets.FRONTEND_RELOAD_COMMAND }}
+          HEALTHCHECK_URL: ${{ secrets.FRONTEND_HEALTHCHECK_URL }}
+          HEALTHCHECK_RETRIES: ${{ secrets.FRONTEND_HEALTHCHECK_RETRIES }}
+          HEALTHCHECK_INTERVAL_SECONDS: ${{ secrets.FRONTEND_HEALTHCHECK_INTERVAL_SECONDS }}
         run: |
-          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" "${RELOAD_COMMAND:-cd /opt/verimarka/verimarka-BACKEND && docker compose -f docker-compose.prod.yml exec -T verimarka-nginx nginx -s reload}"
+          ssh -p "${DEPLOY_PORT:-22}" "${DEPLOY_USER}@${DEPLOY_HOST}" "export DEPLOY_PATH='${DEPLOY_PATH}' STAGING_PATH='${STAGING_PATH}' BACKUP_PATH='${BACKUP_PATH}' RELOAD_COMMAND='${RELOAD_COMMAND}' HEALTHCHECK_URL='${HEALTHCHECK_URL:-https://verimarka.com/health/}' HEALTHCHECK_RETRIES='${HEALTHCHECK_RETRIES:-10}' HEALTHCHECK_INTERVAL_SECONDS='${HEALTHCHECK_INTERVAL_SECONDS:-5}'; bash -s" <<'EOF'
+          set -euo pipefail
+
+          rollback_executed=0
+
+          reload_server() {
+            local command="${RELOAD_COMMAND:-cd /opt/verimarka/verimarka-BACKEND && docker compose -f docker-compose.prod.yml exec -T verimarka-nginx nginx -s reload}"
+            sh -lc "${command}"
+          }
+
+          run_healthcheck() {
+            if [ -z "${HEALTHCHECK_URL}" ]; then
+              return 0
+            fi
+
+            local retries="${HEALTHCHECK_RETRIES:-10}"
+            local interval="${HEALTHCHECK_INTERVAL_SECONDS:-5}"
+            local attempt
+
+            for attempt in $(seq 1 "${retries}"); do
+              if curl -fsS --max-time 10 "${HEALTHCHECK_URL}" >/dev/null; then
+                echo "Healthcheck passed on attempt ${attempt}/${retries}"
+                return 0
+              fi
+              echo "Healthcheck failed on attempt ${attempt}/${retries}"
+              sleep "${interval}"
+            done
+
+            return 1
+          }
+
+          rollback() {
+            if [ "${rollback_executed}" -eq 1 ]; then
+              return
+            fi
+
+            rollback_executed=1
+            echo "Deployment failed. Restoring previous frontend build."
+
+            rm -rf "${DEPLOY_PATH}"
+            if [ -d "${BACKUP_PATH}" ]; then
+              mv "${BACKUP_PATH}" "${DEPLOY_PATH}"
+            else
+              mkdir -p "${DEPLOY_PATH}"
+            fi
+
+            rm -rf "${STAGING_PATH}"
+            reload_server
+          }
+
+          trap 'status=$?; rollback; exit "${status}"' ERR
+
+          rm -rf "${BACKUP_PATH}"
+          if [ -d "${DEPLOY_PATH}" ]; then
+            mv "${DEPLOY_PATH}" "${BACKUP_PATH}"
+          fi
+
+          mv "${STAGING_PATH}" "${DEPLOY_PATH}"
+          reload_server
+          run_healthcheck
+
+          rm -rf "${BACKUP_PATH}"
+          EOF
         working-directory: .
