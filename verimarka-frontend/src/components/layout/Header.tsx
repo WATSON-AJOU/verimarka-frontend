@@ -1,4 +1,6 @@
 import type { TabName } from "../../types/app";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface HeaderTab {
   key: TabName;
@@ -30,6 +32,19 @@ export default function Header({
   onOpenSignup,
   onLogout,
 }: HeaderProps) {
+  const { t, i18n } = useTranslation();
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const languages = useMemo(
+    () => [
+      { code: "ko", label: t("language.ko") },
+      { code: "en", label: t("language.en") },
+      { code: "ja", label: t("language.ja") },
+      { code: "zh-CN", label: t("language.zhCN") },
+    ],
+    [t],
+  );
+  const currentLanguageLabel = languages.find((language) => language.code === i18n.language)?.label || t("language.ko");
+
   return (
     <header className="site-header">
       <div className="topbar">
@@ -37,7 +52,7 @@ export default function Header({
           <span className="brand-word">VeriMarka</span>
         </button>
 
-        <nav className="tabs" aria-label="주요 메뉴">
+        <nav className="tabs" aria-label={t("header.mainMenu")}>
           {tabs.map((tab) => (
             <button
               key={tab.key}
@@ -45,7 +60,7 @@ export default function Header({
               className={`tab ${activeTab === tab.key ? "is-active" : ""}`}
               onClick={() => onMoveTab(tab.key)}
             >
-              {tab.label}
+              {t(`tabs.${tab.key}`)}
             </button>
           ))}
         </nav>
@@ -54,10 +69,10 @@ export default function Header({
           {!loading && !isLoggedIn ? (
             <div className="guest-actions">
               <button className="auth-text-btn" type="button" onClick={onOpenLogin}>
-                로그인
+                {t("header.login")}
               </button>
               <button className="auth-text-btn signup-link" type="button" onClick={onOpenSignup}>
-                회원가입
+                {t("header.signup")}
               </button>
             </div>
           ) : null}
@@ -65,22 +80,39 @@ export default function Header({
           {!loading && isLoggedIn ? (
             <>
               <button className="user-session" type="button" onClick={() => onMoveTab("mypage")}>
-                <span className="user-nickname">{displayName}님</span>
+                <span className="user-nickname">{t("header.greeting", { name: displayName })}</span>
                 <span className="profile-shortcut">
                   <span className="profile-shortcut-circle">{avatarInitial}</span>
                 </span>
               </button>
               <button className="logout-btn" type="button" onClick={onLogout}>
-                로그아웃
+                {t("header.logout")}
               </button>
             </>
           ) : null}
 
           <div className="lang-switch">
-            <button className="lang-trigger" type="button">
-              Languages
+            <button className="lang-trigger" type="button" onClick={() => setLanguageMenuOpen((current) => !current)}>
+              {currentLanguageLabel}
               <span className="lang-caret">⌄</span>
             </button>
+            {languageMenuOpen ? (
+              <div className="lang-dropdown">
+                {languages.map((language) => (
+                  <button
+                    key={language.code}
+                    type="button"
+                    className={`lang-option ${i18n.language === language.code ? "is-active" : ""}`}
+                    onClick={() => {
+                      void i18n.changeLanguage(language.code);
+                      setLanguageMenuOpen(false);
+                    }}
+                  >
+                    {language.label}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

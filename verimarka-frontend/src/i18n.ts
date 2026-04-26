@@ -1,0 +1,283 @@
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
+
+const LANGUAGE_STORAGE_KEY = "verimarka:language";
+
+const resources = {
+  ko: {
+    translation: {
+      tabs: {
+        home: "홈",
+        add: "저작물 등록",
+        verify: "저작물 검증",
+        history: "분석 기록",
+      },
+      language: {
+        label: "언어",
+        ko: "한국어",
+        en: "English",
+        ja: "日本語",
+        zhCN: "中文",
+      },
+      header: {
+        mainMenu: "주요 메뉴",
+        login: "로그인",
+        signup: "회원가입",
+        logout: "로그아웃",
+        greeting: "{{name}}님",
+      },
+      footer: {
+        terms: "이용약관",
+        privacy: "개인정보처리방침",
+        support: "고객센터",
+        businessInfo: "사업자등록번호: 123-45-67890 | 통신판매업신고번호: 제2026-서울성동-0001 | 전화문의: 1544-5678",
+        address: "주소: 서울특별시 성동구 예시로 100, VeriMarka 그린팩토리, 12345",
+        copyright: "© VeriMarka Corp. All Rights Reserved.",
+      },
+      home: {
+        heroTitle: "디지털 자산 신뢰의 기준을 만듭니다.",
+        heroBody: "비가시 워터마크, AI 유사도 분석, 블록체인 기록을 연결해 창작물 등록부터 검증까지 제공합니다.",
+        register: "저작물 등록하기",
+        verify: "저작물 검증하기",
+        systemTitle: "VeriMarka 신뢰 시스템",
+        systemBody: "기록 가능한 근거를 남기는 3중 검증 구조",
+        activityTitle: "최근 활동",
+        activityBody: "등록과 검토 상태를 빠르게 확인하세요.",
+        noActivityTitle: "최근 활동이 없습니다.",
+        noActivityBody: "활동이 생성되면 이 영역에 최신 6건이 표시됩니다.",
+        reviewTitle: "커뮤니티 검증 투표",
+        reviewSubtitle: "진행 중인 커뮤니티 검증 투표에 바로 참여할 수 있습니다.",
+        uploadedImage: "업로드 이미지",
+        similarity: "유사도",
+        candidate: "유사 후보",
+        candidatePending: "후보 이미지 준비 중",
+        candidateNeedReview: "유사 후보 비교 필요",
+        voteId: "투표 ID",
+        voteDeadline: "마감 예정",
+        participants: "참여 인원",
+        unknownVoteId: "VOTE-UNKNOWN",
+        participantsCount: "{{count}}명",
+        approveRate: "찬성 {{rate}}%",
+        rejectRate: "반대 {{rate}}%",
+        close: "닫기",
+      },
+      systemCards: {
+        AI: {
+          title: "의미 기반 유사도 분석",
+          description: "문맥 특징을 임베딩으로 변환해 실질적 유사도를 판별합니다.",
+        },
+        PX: {
+          title: "픽셀 정밀 비교",
+          description: "미세 편집과 왜곡을 감지해 조작 징후를 정량적으로 확인합니다.",
+        },
+        BC: {
+          title: "블록체인 신뢰 기록",
+          description: "등록·검증 결과를 변경 불가능한 형태로 저장해 추적성을 확보합니다.",
+        },
+      },
+      auth: {
+        close: "닫기",
+        login: "로그인",
+        signup: "회원가입",
+        firstLoginNotice: "최초 로그인 시 자동으로 회원가입이 진행됩니다.",
+        continueWithGoogle: "Google로 계속하기",
+        continueWithApple: "Apple로 계속하기",
+        continueWithKakao: "Kakao로 계속하기",
+        appleSoon: "준비중",
+        emailLogin: "이메일로 로그인",
+        agreePrefix: "회원가입을 진행하면",
+        terms: "이용약관",
+        privacy: "개인정보 처리방침",
+        agreeSuffix: "에 동의하게 됩니다.",
+        notMember: "회원이 아니신가요?",
+        alreadyMember: "이미 회원이신가요?",
+        loginFailed: "로그인에 실패했습니다.",
+        loginSubmitting: "로그인 중...",
+        continueLogin: "로그인 계속하기",
+        email: "이메일",
+        emailPlaceholder: "example@verimarka.com",
+        password: "비밀번호",
+        passwordPlaceholder: "8자 이상 입력",
+        nickname: "닉네임",
+        nicknamePlaceholder: "사용할 닉네임 입력",
+        passwordConfirm: "비밀번호 확인",
+        passwordConfirmPlaceholder: "비밀번호 다시 입력",
+        nicknameChecking: "닉네임 확인 중입니다.",
+        nicknameTooLong: "닉네임은 30자 이하로 입력해주세요.",
+        nicknameInvalid: "닉네임에는 특수문자를 포함할 수 없습니다.",
+        nicknameRequired: "사용 가능한 닉네임인지 확인해주세요.",
+        nicknameDuplicate: "이미 사용 중인 닉네임입니다.",
+        passwordAvailable: "사용 가능한 비밀번호 형식입니다.",
+        passwordRule: "8자 이상, 대문자/소문자/숫자/특수문자를 모두 포함해야 합니다.",
+        passwordMismatch: "비밀번호가 일치하지 않습니다.",
+        signupFailed: "회원가입에 실패했습니다.",
+        signupSubmitting: "가입 진행 중...",
+        continueSignup: "가입 계속하기",
+        agreeAll: "전체 동의",
+        agreeTerms: "이용약관 동의",
+        agreePrivacy: "개인정보 처리방침 동의",
+        mustAgree: "이용약관과 개인정보 처리방침에 모두 동의해주세요.",
+      },
+    },
+  },
+  en: {
+    translation: {
+      tabs: { home: "Home", add: "Register", verify: "Verify", history: "History" },
+      language: { label: "Language", ko: "Korean", en: "English", ja: "Japanese", zhCN: "Chinese" },
+      header: { mainMenu: "Main menu", login: "Log in", signup: "Sign up", logout: "Log out", greeting: "{{name}}" },
+      footer: {
+        terms: "Terms",
+        privacy: "Privacy",
+        support: "Support",
+        businessInfo: "Business No.: 123-45-67890 | E-commerce Reg.: 2026-Seoul-Seongdong-0001 | Phone: 1544-5678",
+        address: "Address: 100 Example-ro, Seongdong-gu, Seoul, VeriMarka Green Factory, 12345",
+        copyright: "© VeriMarka Corp. All Rights Reserved.",
+      },
+      home: {
+        heroTitle: "We define trust for digital assets.",
+        heroBody: "Invisible watermarking, AI similarity analysis, and blockchain records support your workflow from registration to verification.",
+        register: "Register Content",
+        verify: "Verify Content",
+        systemTitle: "VeriMarka Trust System",
+        systemBody: "A three-layer verification structure built on traceable evidence",
+        activityTitle: "Recent Activity",
+        activityBody: "Check registration and review status at a glance.",
+        noActivityTitle: "No recent activity.",
+        noActivityBody: "The latest six items will appear here when activity is created.",
+        reviewTitle: "Community Review Vote",
+        reviewSubtitle: "Join the ongoing community review vote immediately.",
+        uploadedImage: "Uploaded Image",
+        similarity: "Similarity",
+        candidate: "Similar Candidate",
+        candidatePending: "Candidate image pending",
+        candidateNeedReview: "Candidate comparison needed",
+        voteId: "Vote ID",
+        voteDeadline: "Deadline",
+        participants: "Participants",
+        unknownVoteId: "VOTE-UNKNOWN",
+        participantsCount: "{{count}} users",
+        approveRate: "Approve {{rate}}%",
+        rejectRate: "Reject {{rate}}%",
+        close: "Close",
+      },
+      systemCards: {
+        AI: { title: "Semantic Similarity Analysis", description: "Transforms context features into embeddings to judge practical similarity." },
+        PX: { title: "Pixel-Precise Comparison", description: "Detects fine edits and distortions to quantify manipulation signals." },
+        BC: { title: "Blockchain Trust Record", description: "Stores registration and verification results in an immutable format for traceability." },
+      },
+      auth: {
+        close: "Close", login: "Log in", signup: "Sign up", firstLoginNotice: "Your first login will automatically create an account.",
+        continueWithGoogle: "Continue with Google", continueWithApple: "Continue with Apple", continueWithKakao: "Continue with Kakao", appleSoon: "Coming soon",
+        emailLogin: "Log in with email", agreePrefix: "By signing up, you agree to the", terms: "Terms", privacy: "Privacy Policy", agreeSuffix: ".",
+        notMember: "Not a member yet?", alreadyMember: "Already have an account?", loginFailed: "Login failed.", loginSubmitting: "Logging in...", continueLogin: "Continue",
+        email: "Email", emailPlaceholder: "example@verimarka.com", password: "Password", passwordPlaceholder: "Enter at least 8 characters", nickname: "Nickname",
+        nicknamePlaceholder: "Enter your nickname", passwordConfirm: "Confirm password", passwordConfirmPlaceholder: "Re-enter your password", nicknameChecking: "Checking nickname...",
+        nicknameTooLong: "Nickname must be 30 characters or fewer.", nicknameInvalid: "Special characters are not allowed in the nickname.", nicknameRequired: "Please verify nickname availability.",
+        nicknameDuplicate: "This nickname is already in use.", passwordAvailable: "This password format is valid.", passwordRule: "Use 8+ characters with upper/lowercase, number, and symbol.",
+        passwordMismatch: "Passwords do not match.", signupFailed: "Signup failed.", signupSubmitting: "Creating account...", continueSignup: "Create account",
+        agreeAll: "Agree to all", agreeTerms: "Agree to Terms", agreePrivacy: "Agree to Privacy Policy", mustAgree: "You must agree to both the Terms and Privacy Policy.",
+      },
+    },
+  },
+  ja: {
+    translation: {
+      tabs: { home: "ホーム", add: "著作物登録", verify: "著作物検証", history: "履歴" },
+      language: { label: "言語", ko: "韓国語", en: "英語", ja: "日本語", zhCN: "中国語" },
+      header: { mainMenu: "メインメニュー", login: "ログイン", signup: "会員登録", logout: "ログアウト", greeting: "{{name}}さん" },
+      footer: {
+        terms: "利用規約", privacy: "プライバシーポリシー", support: "サポート",
+        businessInfo: "事業者番号: 123-45-67890 | 通販届出番号: 2026-ソウル城東-0001 | 電話: 1544-5678",
+        address: "住所: ソウル特別市 城東区 例示路100, VeriMarka Green Factory, 12345",
+        copyright: "© VeriMarka Corp. All Rights Reserved.",
+      },
+      home: {
+        heroTitle: "デジタル資産の信頼基準をつくります。",
+        heroBody: "不可視ウォーターマーク、AI類似度分析、ブロックチェーン記録を連携し、登録から検証まで支援します。",
+        register: "著作物を登録", verify: "著作物を検証", systemTitle: "VeriMarka 信頼システム", systemBody: "追跡可能な根拠を残す3層の検証構造",
+        activityTitle: "最近の活動", activityBody: "登録とレビュー状況をすばやく確認できます。", noActivityTitle: "最近の活動はありません。", noActivityBody: "活動が作成されると最新6件がここに表示されます。",
+        reviewTitle: "コミュニティ検証投票", reviewSubtitle: "進行中のコミュニティ投票にすぐ参加できます。", uploadedImage: "アップロード画像", similarity: "類似度",
+        candidate: "類似候補", candidatePending: "候補画像を準備中", candidateNeedReview: "候補比較が必要", voteId: "投票ID", voteDeadline: "締切予定", participants: "参加人数",
+        unknownVoteId: "VOTE-UNKNOWN", participantsCount: "{{count}}名", approveRate: "賛成 {{rate}}%", rejectRate: "反対 {{rate}}%", close: "閉じる",
+      },
+      systemCards: {
+        AI: { title: "意味ベース類似度分析", description: "文脈特徴を埋め込みに変換し、実質的な類似度を判定します。" },
+        PX: { title: "ピクセル精密比較", description: "微細な編集や歪みを検知し、改変の兆候を定量的に確認します。" },
+        BC: { title: "ブロックチェーン信頼記録", description: "登録・検証結果を改ざん不能な形で保存し、追跡性を確保します。" },
+      },
+      auth: {
+        close: "閉じる", login: "ログイン", signup: "会員登録", firstLoginNotice: "初回ログイン時に自動で会員登録が進行します。", continueWithGoogle: "Googleで続行",
+        continueWithApple: "Appleで続行", continueWithKakao: "Kakaoで続行", appleSoon: "準備中", emailLogin: "メールでログイン", agreePrefix: "会員登録を進めると",
+        terms: "利用規約", privacy: "個人情報処理方針", agreeSuffix: "に同意したことになります。", notMember: "まだ会員ではありませんか？", alreadyMember: "すでに会員ですか？",
+        loginFailed: "ログインに失敗しました。", loginSubmitting: "ログイン中...", continueLogin: "ログインを続行", email: "メール", emailPlaceholder: "example@verimarka.com",
+        password: "パスワード", passwordPlaceholder: "8文字以上を入力", nickname: "ニックネーム", nicknamePlaceholder: "使用するニックネームを入力", passwordConfirm: "パスワード確認",
+        passwordConfirmPlaceholder: "パスワードを再入力", nicknameChecking: "ニックネーム確認中です。", nicknameTooLong: "ニックネームは30文字以下で入力してください。", nicknameInvalid: "ニックネームに特殊文字は使えません。",
+        nicknameRequired: "使用可能なニックネームか確認してください。", nicknameDuplicate: "すでに使用中のニックネームです。", passwordAvailable: "使用可能なパスワード形式です。",
+        passwordRule: "8文字以上で、大文字・小文字・数字・記号をすべて含めてください。", passwordMismatch: "パスワードが一致しません。", signupFailed: "会員登録に失敗しました。",
+        signupSubmitting: "登録中...", continueSignup: "登録を続行", agreeAll: "すべて同意", agreeTerms: "利用規約に同意", agreePrivacy: "個人情報処理方針に同意", mustAgree: "利用規約と個人情報処理方針の両方に同意してください。",
+      },
+    },
+  },
+  "zh-CN": {
+    translation: {
+      tabs: { home: "首页", add: "作品登记", verify: "作品验证", history: "记录" },
+      language: { label: "语言", ko: "韩语", en: "英语", ja: "日语", zhCN: "中文" },
+      header: { mainMenu: "主菜单", login: "登录", signup: "注册", logout: "退出登录", greeting: "{{name}}" },
+      footer: {
+        terms: "服务条款", privacy: "隐私政策", support: "客服中心",
+        businessInfo: "营业执照号: 123-45-67890 | 电商申报号: 2026-首尔城东-0001 | 电话: 1544-5678",
+        address: "地址: 首尔特别市城东区示例路100, VeriMarka Green Factory, 12345",
+        copyright: "© VeriMarka Corp. 保留所有权利。",
+      },
+      home: {
+        heroTitle: "为数字资产建立可信标准。",
+        heroBody: "通过不可见水印、AI 相似度分析和区块链记录，支持从登记到验证的完整流程。",
+        register: "登记作品", verify: "验证作品", systemTitle: "VeriMarka 可信系统", systemBody: "基于可追踪证据的三层验证结构",
+        activityTitle: "最近活动", activityBody: "快速查看登记和审核状态。", noActivityTitle: "暂无最近活动。", noActivityBody: "产生新活动后，最新 6 条会显示在这里。",
+        reviewTitle: "社区审核投票", reviewSubtitle: "可立即参与正在进行的社区审核投票。", uploadedImage: "上传图片", similarity: "相似度", candidate: "相似候选",
+        candidatePending: "候选图片准备中", candidateNeedReview: "需要候选比较", voteId: "投票 ID", voteDeadline: "截止时间", participants: "参与人数", unknownVoteId: "VOTE-UNKNOWN",
+        participantsCount: "{{count}}人", approveRate: "赞成 {{rate}}%", rejectRate: "反对 {{rate}}%", close: "关闭",
+      },
+      systemCards: {
+        AI: { title: "语义相似度分析", description: "将上下文特征转换为嵌入向量，以判断实际相似度。" },
+        PX: { title: "像素级精确比较", description: "检测细微编辑和扭曲，量化识别篡改迹象。" },
+        BC: { title: "区块链可信记录", description: "以不可篡改的方式保存登记和验证结果，确保可追溯性。" },
+      },
+      auth: {
+        close: "关闭", login: "登录", signup: "注册", firstLoginNotice: "首次登录时将自动完成注册。", continueWithGoogle: "使用 Google 继续", continueWithApple: "使用 Apple 继续",
+        continueWithKakao: "使用 Kakao 继续", appleSoon: "即将推出", emailLogin: "邮箱登录", agreePrefix: "继续注册即表示您同意", terms: "服务条款", privacy: "隐私政策",
+        agreeSuffix: "。", notMember: "还不是会员？", alreadyMember: "已经是会员了吗？", loginFailed: "登录失败。", loginSubmitting: "登录中...", continueLogin: "继续登录",
+        email: "邮箱", emailPlaceholder: "example@verimarka.com", password: "密码", passwordPlaceholder: "请输入至少 8 位", nickname: "昵称", nicknamePlaceholder: "输入昵称",
+        passwordConfirm: "确认密码", passwordConfirmPlaceholder: "再次输入密码", nicknameChecking: "正在检查昵称。", nicknameTooLong: "昵称长度不能超过 30 个字符。", nicknameInvalid: "昵称不能包含特殊字符。",
+        nicknameRequired: "请确认昵称是否可用。", nicknameDuplicate: "该昵称已被使用。", passwordAvailable: "密码格式可用。", passwordRule: "需 8 位以上，并包含大小写字母、数字和特殊字符。",
+        passwordMismatch: "两次输入的密码不一致。", signupFailed: "注册失败。", signupSubmitting: "注册中...", continueSignup: "继续注册", agreeAll: "全部同意", agreeTerms: "同意服务条款",
+        agreePrivacy: "同意隐私政策", mustAgree: "您必须同时同意服务条款和隐私政策。",
+      },
+    },
+  },
+} as const;
+
+function resolveInitialLanguage() {
+  const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  if (stored && stored in resources) return stored;
+
+  const browserLanguage = navigator.language;
+  if (browserLanguage.startsWith("en")) return "en";
+  if (browserLanguage.startsWith("ja")) return "ja";
+  if (browserLanguage.startsWith("zh")) return "zh-CN";
+  return "ko";
+}
+
+void i18n.use(initReactI18next).init({
+  resources,
+  lng: resolveInitialLanguage(),
+  fallbackLng: "ko",
+  interpolation: {
+    escapeValue: false,
+  },
+});
+
+void i18n.on("languageChanged", (language) => {
+  window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+});
+
+export default i18n;

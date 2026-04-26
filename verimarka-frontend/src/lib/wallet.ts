@@ -2,6 +2,7 @@ import { QueryClient } from "@tanstack/react-query";
 import { createConfig, http } from "wagmi";
 import { polygon } from "wagmi/chains";
 import { injected, walletConnect } from "wagmi/connectors";
+import { appLogger } from "./logger";
 
 const METAMASK_CONNECTOR_IDS = new Set([
   "metaMask",
@@ -164,7 +165,7 @@ export function logConnectorProviderSnapshot(connectorId?: string) {
 
   const providers = getInjectedProviders(window);
   const ethereum = (window as Window & { ethereum?: { request?: unknown } }).ethereum;
-  console.info("wallet.provider.snapshot", {
+  appLogger.info("wallet.provider.snapshot", {
     connectorId: connectorId ?? null,
     normalizedConnectorId: normalizeWalletConnectorId(connectorId) ?? null,
     hasWindowEthereum: typeof ethereum !== "undefined",
