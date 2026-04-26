@@ -216,6 +216,49 @@ img {
   padding: 0;
 }
 
+.lang-trigger,
+.footer-lang,
+.lang-option {
+  cursor: pointer;
+}
+
+.lang-dropdown {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 140px;
+  display: grid;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid #d3dbea;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 18px 36px rgba(23, 42, 86, 0.14);
+  z-index: 50;
+}
+
+.lang-option {
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #33456a;
+  font-size: 0.92rem;
+  font-weight: 700;
+  text-align: left;
+  padding: 10px 12px;
+  transition: background 0.18s ease, color 0.18s ease;
+}
+
+.lang-option:hover {
+  background: #edf3ff;
+  color: #1f4a97;
+}
+
+.lang-option.is-active {
+  background: #e3edff;
+  color: #1f4a97;
+}
+
 .lang-caret {
   display: inline-block;
   line-height: 1;

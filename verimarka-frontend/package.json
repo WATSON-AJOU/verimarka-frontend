@@ -12,8 +12,10 @@
   "dependencies": {
     "@tanstack/react-query": "^5.95.2",
     "@walletconnect/ethereum-provider": "^2.23.9",
+    "i18next": "^26.0.8",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-i18next": "^17.0.4",
     "react-router-dom": "^7.13.1",
     "viem": "^2.47.6",
     "wagmi": "^3.6.0"

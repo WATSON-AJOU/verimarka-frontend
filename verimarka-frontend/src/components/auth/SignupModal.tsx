@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { apiRequest } from "../../lib/api";
 
 interface Props {
@@ -20,6 +21,7 @@ export default function SignupModal({
   onSubmit,
   onLogin,
 }: Props) {
+  const { t } = useTranslation();
   const passwordRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
   const nicknameRule = /^[A-Za-z0-9가-힣 ]+$/;
   const [nicknameStatus, setNicknameStatus] = useState<"idle" | "checking" | "available" | "duplicate">("idle");
@@ -38,15 +40,15 @@ export default function SignupModal({
     !password
       ? { tone: "idle", message: "" }
       : passwordRule.test(password)
-        ? { tone: "available", message: "사용 가능한 비밀번호 형식입니다." }
-        : { tone: "duplicate", message: "8자 이상, 대문자/소문자/숫자/특수문자를 모두 포함해야 합니다." };
+        ? { tone: "available", message: t("auth.passwordAvailable") }
+        : { tone: "duplicate", message: t("auth.passwordRule") };
 
   const passwordConfirmStatus =
     !passwordConfirm
       ? { tone: "idle", message: "" }
       : password === passwordConfirm
-        ? { tone: "available", message: "비밀번호가 일치합니다." }
-        : { tone: "duplicate", message: "비밀번호가 일치하지 않습니다." };
+        ? { tone: "available", message: t("auth.passwordAvailable") }
+        : { tone: "duplicate", message: t("auth.passwordMismatch") };
 
   useEffect(() => {
     if (!open) return;
@@ -60,18 +62,18 @@ export default function SignupModal({
 
     if (trimmed.length > 30) {
       setNicknameStatus("duplicate");
-      setNicknameMessage("닉네임은 30자 이하로 입력해주세요.");
+      setNicknameMessage(t("auth.nicknameTooLong"));
       return;
     }
 
     if (!nicknameRule.test(trimmed)) {
       setNicknameStatus("duplicate");
-      setNicknameMessage("닉네임에는 특수문자를 포함할 수 없습니다.");
+      setNicknameMessage(t("auth.nicknameInvalid"));
       return;
     }
 
     setNicknameStatus("checking");
-    setNicknameMessage("닉네임 확인 중입니다.");
+    setNicknameMessage(t("auth.nicknameChecking"));
 
     const timer = window.setTimeout(async () => {
       try {
@@ -87,7 +89,7 @@ export default function SignupModal({
     }, 350);
 
     return () => window.clearTimeout(timer);
-  }, [open, nickname]);
+  }, [open, nickname, t]);
 
   async function checkNicknameAvailability(rawValue: string) {
     const trimmed = rawValue.trim();
@@ -100,18 +102,18 @@ export default function SignupModal({
 
     if (trimmed.length > 30) {
       setNicknameStatus("duplicate");
-      setNicknameMessage("닉네임은 30자 이하로 입력해주세요.");
+      setNicknameMessage(t("auth.nicknameTooLong"));
       return false;
     }
 
     if (!nicknameRule.test(trimmed)) {
       setNicknameStatus("duplicate");
-      setNicknameMessage("닉네임에는 특수문자를 포함할 수 없습니다.");
+      setNicknameMessage(t("auth.nicknameInvalid"));
       return false;
     }
 
     setNicknameStatus("checking");
-    setNicknameMessage("닉네임 확인 중입니다.");
+    setNicknameMessage(t("auth.nicknameChecking"));
 
     try {
       const response = await apiRequest<{ available: boolean; message: string }>(
@@ -135,28 +137,28 @@ export default function SignupModal({
     if (nicknameStatus !== "available") {
       const available = await checkNicknameAvailability(nickname);
       if (!available) {
-        setErrorMessage("사용 가능한 닉네임인지 확인해주세요.");
+        setErrorMessage(t("auth.nicknameRequired"));
         return;
       }
     }
 
     if (nicknameStatus === "duplicate") {
-      setErrorMessage("이미 사용 중인 닉네임입니다.");
+      setErrorMessage(t("auth.nicknameDuplicate"));
       return;
     }
 
     if (!passwordRule.test(password)) {
-      setErrorMessage("비밀번호는 8자 이상이며 대문자, 소문자, 숫자, 특수문자를 모두 포함해야 합니다.");
+      setErrorMessage(t("auth.passwordRule"));
       return;
     }
 
     if (!agreeTerms || !agreePrivacy) {
-      setErrorMessage("이용약관과 개인정보 처리방침에 모두 동의해주세요.");
+      setErrorMessage(t("auth.mustAgree"));
       return;
     }
 
     if (password !== passwordConfirm) {
-      setErrorMessage("비밀번호가 일치하지 않습니다.");
+      setErrorMessage(t("auth.passwordMismatch"));
       return;
     }
 
@@ -176,7 +178,7 @@ export default function SignupModal({
       setAgreePrivacy(false);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "회원가입에 실패했습니다.";
+        error instanceof Error ? error.message : t("auth.signupFailed");
       setErrorMessage(message);
     } finally {
       setSubmitting(false);
@@ -187,18 +189,18 @@ export default function SignupModal({
     <div className="modalOverlay">
       <div className="modalCard authCard" onClick={(e) => e.stopPropagation()}>
         <button className="modalClose" type="button" onClick={onClose}>
-          닫기
+          {t("auth.close")}
         </button>
 
-        <h2 className="authTitle authTitle--tight">회원가입</h2>
+        <h2 className="authTitle authTitle--tight">{t("auth.signup")}</h2>
 
         <form className="authForm signupFormModal" onSubmit={handleSubmit}>
           <label className="fieldLabel">
-            이메일
+            {t("auth.email")}
             <input
               className="fieldInput"
               type="email"
-              placeholder="example@verimarka.com"
+              placeholder={t("auth.emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -206,11 +208,11 @@ export default function SignupModal({
           </label>
 
           <label className="fieldLabel">
-            닉네임
+            {t("auth.nickname")}
             <input
               className="fieldInput"
               type="text"
-              placeholder="사용할 닉네임 입력"
+              placeholder={t("auth.nicknamePlaceholder")}
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               onBlur={() => {
@@ -226,16 +228,16 @@ export default function SignupModal({
           </label>
 
           <label className="fieldLabel">
-            비밀번호
+            {t("auth.password")}
             <input
               className="fieldInput"
               type="password"
-              placeholder="대소문자, 숫자, 특수문자 포함 8자 이상"
+              placeholder={t("auth.passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
             />
-            <span className="fieldHelp">8자 이상, 대문자/소문자/숫자/특수문자를 모두 포함해야 합니다.</span>
+            <span className="fieldHelp">{t("auth.passwordRule")}</span>
             {passwordStatus.message ? (
               <span className={`fieldHelp passwordHelp passwordHelp--${passwordStatus.tone}`}>
                 {passwordStatus.message}
@@ -244,11 +246,11 @@ export default function SignupModal({
           </label>
 
           <label className="fieldLabel">
-            비밀번호 확인
+            {t("auth.passwordConfirm")}
             <input
               className="fieldInput"
               type="password"
-              placeholder="비밀번호를 다시 입력"
+              placeholder={t("auth.passwordConfirmPlaceholder")}
               value={passwordConfirm}
               onChange={(e) => setPasswordConfirm(e.target.value)}
               required
@@ -272,7 +274,7 @@ export default function SignupModal({
                   setAgreePrivacy(nextValue);
                 }}
               />
-              <span>전체 동의</span>
+              <span>{t("auth.agreeAll")}</span>
             </label>
 
             <label className="agreementRow">
@@ -286,10 +288,10 @@ export default function SignupModal({
                     setAgreeAll(nextValue && agreePrivacy);
                   }}
                 />
-                <span>[필수] 이용약관에 동의합니다</span>
+                <span>{t("auth.agreeTerms")}</span>
               </div>
               <a className="agreementLink" href="/terms" target="_blank" rel="noreferrer">
-                보기
+                {t("auth.terms")}
               </a>
             </label>
 
@@ -304,10 +306,10 @@ export default function SignupModal({
                     setAgreeAll(agreeTerms && nextValue);
                   }}
                 />
-                <span>[필수] 개인정보 처리방침에 동의합니다</span>
+                <span>{t("auth.agreePrivacy")}</span>
               </div>
               <a className="agreementLink" href="/privacy" target="_blank" rel="noreferrer">
-                보기
+                {t("auth.privacy")}
               </a>
             </label>
           </div>
@@ -315,14 +317,14 @@ export default function SignupModal({
           {errorMessage && <p className="formError">{errorMessage}</p>}
 
           <button className="primaryButton" type="submit" disabled={submitting}>
-            {submitting ? "가입 중..." : "회원가입 계속하기"}
+            {submitting ? t("auth.signupSubmitting") : t("auth.continueSignup")}
           </button>
         </form>
 
         <p className="authSwitch authSwitch--center">
-          이미 회원이신가요?{" "}
+          {t("auth.alreadyMember")}{" "}
           <button type="button" className="textLink" onClick={onLogin}>
-            로그인
+            {t("auth.login")}
           </button>
         </p>
       </div>

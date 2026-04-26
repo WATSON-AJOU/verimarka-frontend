@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   open: boolean;
@@ -13,6 +14,7 @@ export default function EmailLoginModal({
   onSubmit,
   onSignup,
 }: Props) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -31,7 +33,7 @@ export default function EmailLoginModal({
       setPassword("");
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "로그인에 실패했습니다.";
+        error instanceof Error ? error.message : t("auth.loginFailed");
       setErrorMessage(message);
     } finally {
       setSubmitting(false);
@@ -42,18 +44,18 @@ export default function EmailLoginModal({
     <div className="modalOverlay">
       <div className="modalCard authCard" onClick={(e) => e.stopPropagation()}>
         <button className="modalClose" type="button" onClick={onClose}>
-          닫기
+          {t("auth.close")}
         </button>
 
-        <h2 className="authTitle authTitle--tight">로그인</h2>
+        <h2 className="authTitle authTitle--tight">{t("auth.login")}</h2>
 
         <form className="authForm" onSubmit={handleSubmit}>
           <label className="fieldLabel">
-            이메일
+            {t("auth.email")}
             <input
               className="fieldInput"
               type="email"
-              placeholder="example@verimarka.com"
+              placeholder={t("auth.emailPlaceholder")}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -61,11 +63,11 @@ export default function EmailLoginModal({
           </label>
 
           <label className="fieldLabel">
-            비밀번호
+            {t("auth.password")}
             <input
               className="fieldInput"
               type="password"
-              placeholder="8자 이상 입력"
+              placeholder={t("auth.passwordPlaceholder")}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -75,14 +77,14 @@ export default function EmailLoginModal({
           {errorMessage && <p className="formError">{errorMessage}</p>}
 
           <button className="primaryButton" type="submit" disabled={submitting}>
-            {submitting ? "로그인 중..." : "로그인 계속하기"}
+            {submitting ? t("auth.loginSubmitting") : t("auth.continueLogin")}
           </button>
         </form>
 
         <p className="authSwitch">
-          회원이 아니신가요?{" "}
+          {t("auth.notMember")}{" "}
           <button type="button" className="textLink" onClick={onSignup}>
-            회원가입
+            {t("auth.signup")}
           </button>
         </p>
       </div>

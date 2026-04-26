@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import type { ActivityItem, HistoryItem } from "../../types/app";
+import { useTranslation } from "react-i18next";
 
 interface SystemCard {
   icon: string;
@@ -39,6 +40,7 @@ export default function HomePage({
   onCastReviewVote,
   reviewVoteSubmitting = false,
 }: HomePageProps) {
+  const { t } = useTranslation();
   const [selectedReviewActivityId, setSelectedReviewActivityId] = useState<string | null>(null);
   const selectedReviewActivity = useMemo(
     () => activities.find((item) => item.id === selectedReviewActivityId && item.status === "REVIEW") ?? null,
@@ -66,29 +68,29 @@ export default function HomePage({
     <section id="page-home" className="app-page is-active">
       <div className="home-scroll">
         <section className="home-panel home-hero-panel reveal">
-          <h1>디지털 자산 신뢰의 기준을 만듭니다.</h1>
-          <p>비가시 워터마크, AI 유사도 분석, 블록체인 기록을 연결해 창작물 등록부터 검증까지 제공합니다.</p>
+          <h1>{t("home.heroTitle")}</h1>
+          <p>{t("home.heroBody")}</p>
           <div className="home-hero-actions">
             <button className="btn btn-primary" type="button" onClick={() => onMoveTab("add")}>
-              저작물 등록하기
+              {t("home.register")}
             </button>
             <button className="btn btn-secondary" type="button" onClick={() => onMoveTab("verify")}>
-              저작물 검증하기
+              {t("home.verify")}
             </button>
           </div>
         </section>
 
         <section className="home-panel home-system-panel reveal">
           <div className="home-panel-header">
-            <h2>VeriMarka 신뢰 시스템</h2>
-            <p>기록 가능한 근거를 남기는 3중 검증 구조</p>
+            <h2>{t("home.systemTitle")}</h2>
+            <p>{t("home.systemBody")}</p>
           </div>
           <div className="home-system-grid">
             {systemCards.map((card) => (
               <article key={card.title} className="glass-feature">
                 <span>{card.icon}</span>
-                <h3>{card.title}</h3>
-                <p>{card.description}</p>
+                <h3>{t(`systemCards.${card.icon}.title`)}</h3>
+                <p>{t(`systemCards.${card.icon}.description`)}</p>
               </article>
             ))}
           </div>
@@ -96,14 +98,14 @@ export default function HomePage({
 
         <section className="home-panel home-activity-panel reveal">
           <div className="home-panel-header">
-            <h2>최근 활동</h2>
-            <p>등록과 검토 상태를 빠르게 확인하세요.</p>
+            <h2>{t("home.activityTitle")}</h2>
+            <p>{t("home.activityBody")}</p>
           </div>
           <div className="home-activity-grid">
             {activities.length === 0 ? (
               <article className="glass-activity-card">
-                <h3>최근 활동이 없습니다.</h3>
-                <p>활동이 생성되면 이 영역에 최신 6건이 표시됩니다.</p>
+                <h3>{t("home.noActivityTitle")}</h3>
+                <p>{t("home.noActivityBody")}</p>
               </article>
             ) : null}
             {activities.map((activity) => {
@@ -150,15 +152,15 @@ export default function HomePage({
         <div className="modal-backdrop" onClick={() => setSelectedReviewActivityId(null)}>
           <div className="modal-shell review-vote-modal" onClick={(event) => event.stopPropagation()}>
             <button type="button" className="modal-close" onClick={() => setSelectedReviewActivityId(null)}>
-              닫기
+              {t("home.close")}
             </button>
             <span className="review-vote-modal-tag">REVIEW</span>
-            <h3 className="review-vote-modal-title">커뮤니티 검증 투표</h3>
-            <p className="review-vote-modal-subtitle">진행 중인 커뮤니티 검증 투표에 바로 참여할 수 있습니다.</p>
+            <h3 className="review-vote-modal-title">{t("home.reviewTitle")}</h3>
+            <p className="review-vote-modal-subtitle">{t("home.reviewSubtitle")}</p>
 
             <div className="review-vote-modal-compare-grid">
               <section className="review-vote-modal-panel">
-                <h4>업로드 이미지</h4>
+                <h4>{t("home.uploadedImage")}</h4>
                 <div
                   className={`review-vote-modal-image ${!selectedReviewActivity.previewUrl ? "is-placeholder" : ""}`}
                   style={
@@ -175,7 +177,7 @@ export default function HomePage({
               </section>
 
               <div className="review-vote-modal-bubble">
-                <span>유사도</span>
+                <span>{t("home.similarity")}</span>
                 <strong>
                   {typeof selectedReviewActivity.blockchain?.vote?.similarity_percent === "number"
                     ? `${selectedReviewActivity.blockchain.vote.similarity_percent.toFixed(1)}%`
@@ -184,36 +186,36 @@ export default function HomePage({
               </div>
 
               <section className="review-vote-modal-panel">
-                <h4>유사 후보</h4>
+                <h4>{t("home.candidate")}</h4>
                 <div className="review-vote-modal-image is-candidate-placeholder">
-                  <span>후보 이미지 준비 중</span>
+                  <span>{t("home.candidatePending")}</span>
                 </div>
-                <strong>유사 후보 비교 필요</strong>
+                <strong>{t("home.candidateNeedReview")}</strong>
               </section>
             </div>
 
             <div className="review-vote-modal-stat-grid">
               <article className="review-vote-modal-stat">
-                <span>투표 ID</span>
-                <strong>{selectedReviewActivity.blockchain?.vote?.vote_id || "VOTE-UNKNOWN"}</strong>
+                <span>{t("home.voteId")}</span>
+                <strong>{selectedReviewActivity.blockchain?.vote?.vote_id || t("home.unknownVoteId")}</strong>
               </article>
               <article className="review-vote-modal-stat">
-                <span>마감 예정</span>
+                <span>{t("home.voteDeadline")}</span>
                 <strong>{selectedReviewMeta.deadline}</strong>
               </article>
               <article className="review-vote-modal-stat">
-                <span>참여 인원</span>
-                <strong>{selectedReviewMeta.total}명</strong>
+                <span>{t("home.participants")}</span>
+                <strong>{t("home.participantsCount", { count: selectedReviewMeta.total })}</strong>
               </article>
             </div>
 
             <div className="review-vote-modal-bar">
               <div className="review-vote-modal-bar-track">
                 <div className="review-vote-modal-bar-fill is-yes" style={{ width: `${selectedReviewMeta.yesRate}%` }}>
-                  찬성 {selectedReviewMeta.yesRate}%
+                  {t("home.approveRate", { rate: selectedReviewMeta.yesRate })}
                 </div>
                 <div className="review-vote-modal-bar-fill is-no" style={{ width: `${selectedReviewMeta.noRate}%` }}>
-                  반대 {selectedReviewMeta.noRate}%
+                  {t("home.rejectRate", { rate: selectedReviewMeta.noRate })}
                 </div>
               </div>
             </div>

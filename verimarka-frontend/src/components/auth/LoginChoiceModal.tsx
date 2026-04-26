@@ -1,6 +1,7 @@
 import appleLogo from "../../assets/applelogo.svg";
 import googleLogo from "../../assets/googlelogo.svg";
 import kakaoLogo from "../../assets/kakaologo.svg";
+import { useTranslation } from "react-i18next";
 
 interface Props {
   open: boolean;
@@ -15,6 +16,8 @@ export default function LoginChoiceModal({
   onEmailLogin,
   onSignup,
 }: Props) {
+  const { t } = useTranslation();
+
   function loginWithGoogle() {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
     const redirectUri = `${window.location.origin}/auth/google/callback`;
@@ -49,12 +52,12 @@ export default function LoginChoiceModal({
     <div className="modalOverlay">
       <div className="modalCard authCard" onClick={(e) => e.stopPropagation()}>
         <button className="modalClose" type="button" onClick={onClose}>
-          닫기
+          {t("auth.close")}
         </button>
 
-        <h2 className="authTitle">로그인</h2>
+        <h2 className="authTitle">{t("auth.login")}</h2>
 
-        <p className="authHint authHint--center">최초 로그인 시 자동으로 회원가입이 진행됩니다.</p>
+        <p className="authHint authHint--center">{t("auth.firstLoginNotice")}</p>
 
         <div className="authActions">
           <button
@@ -63,17 +66,17 @@ export default function LoginChoiceModal({
             onClick={loginWithGoogle}
           >
             <img className="socialButton__icon" src={googleLogo} alt="" aria-hidden="true" />
-            Google로 계속하기
+            {t("auth.continueWithGoogle")}
           </button>
 
           <button
             type="button"
             className="socialButton socialButton--apple"
             disabled
-            title="준비중"
+            title={t("auth.appleSoon")}
           >
             <img className="socialButton__icon socialButton__icon--apple" src={appleLogo} alt="" aria-hidden="true" />
-            Apple로 계속하기
+            {t("auth.continueWithApple")}
           </button>
 
           <button
@@ -82,31 +85,31 @@ export default function LoginChoiceModal({
             onClick={loginWithKakao}
           >
             <img className="socialButton__icon" src={kakaoLogo} alt="" aria-hidden="true" />
-            Kakao로 계속하기
+            {t("auth.continueWithKakao")}
           </button>
 
           <button className="emailLoginButton" type="button" onClick={onEmailLogin}>
-            이메일로 로그인
+            {t("auth.emailLogin")}
           </button>
         </div>
 
         <p className="oauthAgreementText">
-          회원가입을 진행하면{" "}
+          {t("auth.agreePrefix")}{" "}
           <a href="/terms" target="_blank" rel="noreferrer">
-            이용약관
+            {t("auth.terms")}
           </a>
           {" "}및
           <br />
           <a href="/privacy" target="_blank" rel="noreferrer">
-            개인정보 처리방침
+            {t("auth.privacy")}
           </a>
-          에 동의하게 됩니다.
+          {t("auth.agreeSuffix")}
         </p>
 
         <p className="authSwitch authSwitch--center">
-          회원이 아니신가요?{" "}
+          {t("auth.notMember")}{" "}
           <button type="button" className="textLink" onClick={onSignup}>
-            회원가입
+            {t("auth.signup")}
           </button>
         </p>
       </div>
