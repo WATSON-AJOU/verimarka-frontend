@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /auth/google/callback
+Disallow: /auth/kakao/callback
+
+Sitemap: https://verimarka.com/sitemap.xml

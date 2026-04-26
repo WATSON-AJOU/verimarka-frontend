@@ -1,6 +1,14 @@
 import LegalPageLayout from "../../components/legal/LegalPageLayout";
+import { useSeo } from "../../lib/seo";
 
 export default function PrivacyPage() {
+  useSeo({
+    title: "Verimarka 개인정보 처리방침",
+    description: "Verimarka 개인정보 처리방침입니다. 수집 항목, 이용 목적, 보관 기간, 보호 조치, 이용자 권리를 확인할 수 있습니다.",
+    path: "/privacy",
+    locale: "ko-KR",
+  });
+
   return (
     <LegalPageLayout title="Verimarka 개인정보 처리방침" updatedAt="2026년 3월">
       <section>

@@ -1,0 +1,25 @@
+# VeriMarka
+
+VeriMarka is a web service for image copyright registration, watermark insertion, blockchain proof issuance, and authenticity verification.
+
+## Core pages
+- Home: https://verimarka.com/
+- Register content: https://verimarka.com/register
+- Verify content: https://verimarka.com/verify
+- Support and FAQ: https://verimarka.com/support
+- Terms: https://verimarka.com/terms
+- Privacy: https://verimarka.com/privacy
+
+## What the service does
+- Upload image-based content for similarity analysis
+- Insert a watermark into approved content
+- Record issuance data on blockchain
+- Verify whether an image contains watermark evidence and registration history
+
+## Audience
+- Creators
+- Copyright owners
+- Review and trust teams
+
+## Contact
+- Support email: emfpdlzj@gmail.com
