@@ -2,6 +2,8 @@ type LogLevel = "debug" | "info" | "warn" | "error";
 
 type LogContext = Record<string, unknown>;
 
+const isConsoleLoggingEnabled = import.meta.env.DEV || import.meta.env.VITE_ENABLE_CLIENT_LOGS === "true";
+
 function redactValue(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => redactValue(item));
@@ -51,6 +53,10 @@ export function createClientRequestId() {
 }
 
 export function logEvent(level: LogLevel, event: string, context?: LogContext) {
+  if (!isConsoleLoggingEnabled) {
+    return;
+  }
+
   const payload = buildPayload(context);
   const logger = console[level] ?? console.log;
 

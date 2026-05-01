@@ -25,6 +25,7 @@ import Header from "./components/layout/Header";
 import { useAuth } from "./hooks/useAuth";
 import { resultConfig, systemCards, tabs } from "./lib/mockData";
 import { AUTH_REFRESH_FAILED_EVENT, AUTH_REFRESH_SUCCESS_EVENT, apiRequest, authenticatedFetch } from "./lib/api";
+import { appLogger } from "./lib/logger";
 import { getDefaultOrganizationSchema, getDefaultWebsiteSchema, useSeo } from "./lib/seo";
 import { isMetaMaskConnectorId, logConnectorProviderSnapshot, normalizeWalletConnectorId, walletChain, waitForConnectorProvider, walletConnectEnabled } from "./lib/wallet";
 import { getAccessToken } from "./lib/token";
@@ -428,7 +429,7 @@ export default function App() {
   }, [connectedConnector?.id, connectedWalletAddress, currentWalletChainId]);
 
   useEffect(() => {
-    console.info("wallet.state_changed", {
+    appLogger.info("wallet.state_changed", {
       isConnected,
       connectedWalletAddress: connectedWalletAddress ?? null,
       connectorId: connectedConnector?.id ?? null,
@@ -543,13 +544,13 @@ export default function App() {
         transport: custom(provider as EIP1193Provider),
       });
       fallbackWalletClientRef.current = client;
-      console.info("wallet.fallback_client_created", {
+      appLogger.info("wallet.fallback_client_created", {
         connectorId: connector.id,
         account,
       });
       return client;
     } catch (error) {
-      console.warn("wallet.fallback_client_failed", {
+      appLogger.warn("wallet.fallback_client_failed", {
         connectorId: connector.id,
         account,
         error,
@@ -584,7 +585,7 @@ export default function App() {
 
       return null;
     } catch (error) {
-      console.warn("wallet.resolve_chain_id_failed", {
+      appLogger.warn("wallet.resolve_chain_id_failed", {
         connectorId: targetConnector.id,
         error,
       });
@@ -605,7 +606,7 @@ export default function App() {
       }
       return provider as EIP1193Provider;
     } catch (error) {
-      console.warn("wallet.resolve_provider_failed", {
+      appLogger.warn("wallet.resolve_provider_failed", {
         connectorId: targetConnector.id,
         error,
       });
@@ -1537,7 +1538,7 @@ export default function App() {
         signerSessionMissing ||
         (normalizedRequestedConnectorId && normalizedConnectedConnectorId !== normalizedRequestedConnectorId);
 
-      console.info("wallet.connect.start", {
+      appLogger.info("wallet.connect.start", {
         requestedConnectorId: connectorId ?? null,
         normalizedRequestedConnectorId: normalizedRequestedConnectorId ?? null,
         isConnected,
@@ -1568,7 +1569,7 @@ export default function App() {
           throw new Error("사용 가능한 지갑 연결 방식을 찾을 수 없습니다.");
         }
 
-        console.info("wallet.connect.reconnect_required", {
+        appLogger.info("wallet.connect.reconnect_required", {
           targetConnectorId: targetConnector.id,
           targetConnectorName: targetConnector.name,
           signerSessionMissing,
@@ -1578,7 +1579,7 @@ export default function App() {
           const providerResolved = await waitForConnectorProvider(targetConnector.id);
           logConnectorProviderSnapshot(targetConnector.id);
           if (!providerResolved) {
-            console.warn("wallet.connect.provider_precheck_failed", {
+            appLogger.warn("wallet.connect.provider_precheck_failed", {
               requestedConnectorId: connectorId ?? null,
               targetConnectorId: targetConnector.id,
             });
@@ -1588,12 +1589,12 @@ export default function App() {
         if (isConnected) {
           try {
             await disconnectAsync();
-            console.info("wallet.connect.disconnected_existing_session", {
+            appLogger.info("wallet.connect.disconnected_existing_session", {
               previousConnectorId: connectedConnector?.id ?? null,
               previousAddress: connectedWalletAddress ?? null,
             });
           } catch (disconnectError) {
-            console.warn("wallet.reconnect_disconnect_failed", disconnectError);
+            appLogger.warn("wallet.reconnect_disconnect_failed", { error: disconnectError });
           }
         }
 
@@ -1602,7 +1603,7 @@ export default function App() {
         walletType = normalizeWalletConnectorId(targetConnector.id) || targetConnector.id || targetConnector.name;
         const providerChainId = await resolveConnectorChainId(targetConnector);
         walletChainId = providerChainId ?? result.chainId ?? currentWalletChainId ?? walletChain.id;
-        console.info("wallet.connect.connected", {
+        appLogger.info("wallet.connect.connected", {
           walletAddress,
           walletType,
           walletChainId,
@@ -1617,7 +1618,7 @@ export default function App() {
         );
 
         const clientState = await waitForWalletClients();
-        console.info("wallet.connect.client_wait_completed", {
+        appLogger.info("wallet.connect.client_wait_completed", {
           walletAddress,
           hasWalletClient: Boolean(clientState.walletClient),
           hasPublicClient: Boolean(clientState.publicClient),
@@ -1634,13 +1635,13 @@ export default function App() {
 
       const verifiedChainId = (await resolveConnectorChainId()) ?? walletChainId;
       walletChainId = verifiedChainId;
-      console.info("wallet.connect.chain_resolved", {
+      appLogger.info("wallet.connect.chain_resolved", {
         walletAddress,
         walletChainId,
       });
 
       if (walletChainId !== walletChain.id) {
-        console.warn("wallet.connect.unsupported_chain", {
+        appLogger.warn("wallet.connect.unsupported_chain", {
           walletAddress,
           walletChainId,
           expectedChainId: walletChain.id,
@@ -1649,7 +1650,7 @@ export default function App() {
         try {
           await switchChainAsync({ chainId: walletChain.id });
         } catch (switchError) {
-          console.warn("wallet.connect.switch_chain_failed", {
+          appLogger.warn("wallet.connect.switch_chain_failed", {
             walletAddress,
             walletChainId,
             expectedChainId: walletChain.id,
@@ -1659,7 +1660,7 @@ export default function App() {
 
         const switchedChainId = (await resolveConnectorChainId()) ?? walletChainId;
         walletChainId = switchedChainId;
-        console.info("wallet.connect.chain_rechecked", {
+        appLogger.info("wallet.connect.chain_rechecked", {
           walletAddress,
           walletChainId,
         });
@@ -1680,14 +1681,14 @@ export default function App() {
         body: { address: walletAddress },
       });
 
-      console.info("wallet.connect.challenge_created", {
+      appLogger.info("wallet.connect.challenge_created", {
         walletAddress,
         expiresAt: challenge.expires_at,
       });
 
       const signature = await signMessageAsync({ message: challenge.message });
 
-      console.info("wallet.connect.signed", {
+      appLogger.info("wallet.connect.signed", {
         walletAddress,
         signatureLength: signature.length,
       });
@@ -1703,7 +1704,7 @@ export default function App() {
         },
       });
 
-      console.info("wallet.connect.verified", {
+      appLogger.info("wallet.connect.verified", {
         walletAddress,
         walletType,
         walletChainId,
@@ -2174,7 +2175,7 @@ export default function App() {
       throw new Error("Connected wallet does not match linked wallet.");
     }
 
-    console.info("vote.submit_attempt", {
+    appLogger.info("vote.submit_attempt", {
       itemId: publicId,
       choice: options.choice,
       isConnected,
@@ -2197,7 +2198,7 @@ export default function App() {
     try {
       const providerChainId = (await resolveConnectorChainId()) ?? currentWalletChainId ?? null;
       if (providerChainId !== options.chainId) {
-        console.info("vote.switch_chain", {
+        appLogger.info("vote.switch_chain", {
           fromChainId: providerChainId,
           toChainId: options.chainId,
         });
@@ -2209,7 +2210,7 @@ export default function App() {
         auth: true,
       });
 
-      console.info("vote.signing_context_loaded", {
+      appLogger.info("vote.signing_context_loaded", {
         itemId: publicId,
         tokenId: signing.token_id,
         nonce: signing.nonce,
@@ -2219,7 +2220,7 @@ export default function App() {
 
       const signature = await requestReviewVoteSignature(signing, options.choice);
 
-      console.info("vote.signature_created", {
+      appLogger.info("vote.signature_created", {
         itemId: publicId,
         tokenId: signing.token_id,
         signatureLength: signature.length,
@@ -2235,7 +2236,7 @@ export default function App() {
         },
       });
 
-      console.info("vote.relay_submitted", {
+      appLogger.info("vote.relay_submitted", {
         itemId: publicId,
         tokenId: signing.token_id,
         txHash: response.tx_hash ?? null,
@@ -2256,7 +2257,7 @@ export default function App() {
               : message.includes("Invalid signature")
                 ? "지갑 서명 검증에 실패했습니다. 다시 시도해주세요."
                 : message;
-      console.error("vote.submit_failed", {
+      appLogger.error("vote.submit_failed", {
         itemId: publicId,
         choice: options.choice,
         tokenId: options.tokenId ?? null,
