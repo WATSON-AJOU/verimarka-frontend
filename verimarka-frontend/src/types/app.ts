@@ -113,6 +113,7 @@ export interface HistoryAllowResumePayload {
 export interface RegisteredContentResponse {
   id: number;
   public_id: string;
+  content_type: "image" | "document";
   status: "pending" | "allow" | "review" | "block" | "failed";
   original_filename: string;
   original_storage_key: string;
@@ -242,6 +243,7 @@ export interface VerifyResultResponse {
     model?: string | null;
     model_version?: string | null;
     status_label?: string;
+    best_page?: number | null;
   };
   blockchain?: {
     token_id?: number | string | null;

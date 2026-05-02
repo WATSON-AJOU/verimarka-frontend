@@ -1,6 +1,19 @@
 import grapeImage from "../../assets/verimarka.png";
 import type { AnalysisStage, RegisterResultConfig, RegisteredContentResponse, UploadHistoryItem } from "../../types/app";
 
+function isImageMimeType(mimeType: string | null | undefined) {
+  return (mimeType || "").startsWith("image/");
+}
+
+function getFileKindLabel(mimeType: string | null | undefined) {
+  const normalized = (mimeType || "").toLowerCase();
+  if (normalized === "application/pdf") return "PDF 문서";
+  if (normalized === "application/msword") return "DOC 문서";
+  if (normalized === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "DOCX 문서";
+  if (normalized.startsWith("image/")) return "이미지";
+  return "파일";
+}
+
 function getStepClass(progress: number, index: number, total: number) {
   const normalized = Math.max(0, Math.min(progress, 100));
   const segment = 100 / total;
@@ -132,6 +145,8 @@ export default function RegisterPage({
   const hasSelectedContent = Boolean(selectedFile || contentResult);
   const selectedFileName = selectedFile?.name || contentResult?.original_filename || "-";
   const selectedFileSize = selectedFile?.size ?? contentResult?.file_size ?? 0;
+  const selectedMimeType = selectedFile?.type || contentResult?.mime_type || "";
+  const watermarkedMimeType = contentResult?.content_type === "document" ? "application/pdf" : selectedMimeType;
   const uploadTimestampLabel = formatDisplayDateTime(selectedFile?.lastModified || contentResult?.blockchain?.minted_at || null);
   const originalPreviewUrl = previewUrl || contentResult?.file_url || grapeImage;
   const candidatePreviewUrl = contentResult?.top_match?.preview_url || grapeImage;
@@ -176,12 +191,16 @@ export default function RegisterPage({
     ? "토큰 발행이 완료되었습니다."
     : isWatermarkedStage
       ? "워터마크 삽입이 완료되었습니다."
-      : "원본 이미지를 등록하세요.";
+      : "원본 파일을 등록하세요.";
   const pageHeaderSubtitle = isMintedStage
     ? "콘텐츠가 블록체인에 안전하게 기록되었습니다."
     : isWatermarkedStage
-      ? "워터마크 이미지가 준비되었습니다. NFT 토큰 발행을 진행할 수 있습니다."
-      : "이미지를 업로드하면 등록 절차가 시작됩니다.";
+      ? (
+          contentResult?.content_type === "document"
+            ? "워터마크 PDF가 준비되었습니다. NFT 토큰 발행을 진행할 수 있습니다."
+            : "워터마크 이미지가 준비되었습니다. NFT 토큰 발행을 진행할 수 있습니다."
+        )
+      : "이미지 또는 문서를 업로드하면 등록 절차가 시작됩니다.";
   const resultBadgeLabel = isMintedStage ? "MINTED" : isWatermarkedStage ? "WATERMARKED" : registerResult?.badge ?? "";
   const resultTitle = isMintedStage
     ? "토큰 발행이 완료되었습니다."
@@ -195,6 +214,16 @@ export default function RegisterPage({
       : registerResult?.subtitle ?? "";
   const resultNote = registerResult?.note ?? "";
   const shouldRenderResultNote = resultNote.trim() !== "" && resultNote.trim() !== resultSubtitle.trim();
+  const renderFilePreview = (src: string, alt: string, mimeType: string) => {
+    if (src && isImageMimeType(mimeType)) {
+      return <img src={src} alt={alt} />;
+    }
+    return (
+      <div className="verify-placeholder-frame">
+        {getFileKindLabel(mimeType)}
+      </div>
+    );
+  };
 
   return (
     <section className="register-layout">
@@ -208,7 +237,7 @@ export default function RegisterPage({
           ref={uploadInputRef}
           className="upload-input"
           type="file"
-          accept="image/png,image/jpeg"
+          accept="image/png,image/jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={onPickFile}
         />
 
@@ -217,8 +246,8 @@ export default function RegisterPage({
             <div className="upload-empty">
               <div>
                 <div className="upload-icon">↑</div>
-                <p className="upload-title">이미지를 드래그하거나 클릭하여 업로드하세요.</p>
-                <p className="upload-desc">지원 포맷: JPG, PNG / 최대 20MB</p>
+                <p className="upload-title">파일을 드래그하거나 클릭하여 업로드하세요.</p>
+                <p className="upload-desc">지원 포맷: JPG, PNG, PDF, DOC, DOCX / 최대 20MB</p>
               </div>
             </div>
           </button>
@@ -228,7 +257,7 @@ export default function RegisterPage({
               {analysisStage === "ready" ? (
                 <>
                   <span className="upload-success-chip">Success</span>
-                  <h3 className="upload-success-title">이미지가 정상적으로 업로드되었습니다.</h3>
+                  <h3 className="upload-success-title">파일이 정상적으로 업로드되었습니다.</h3>
                   <p className="upload-success-subtitle">등록 가능 여부를 확인하세요.</p>
 
                   <div className="upload-result-layout">
@@ -237,7 +266,7 @@ export default function RegisterPage({
                         다시 선택
                       </button>
                       <div className="upload-image-frame">
-                        <img src={previewUrl} alt={selectedFileName} />
+                        {renderFilePreview(previewUrl, selectedFileName, selectedMimeType)}
                       </div>
                       <div className="upload-file-info">
                         <strong>{selectedFileName}</strong>
@@ -277,7 +306,7 @@ export default function RegisterPage({
 
                   <div className="analysis-running-layout">
                     <div className="analysis-preview-card">
-                      <img src={originalPreviewUrl} alt={selectedFileName} />
+                      {renderFilePreview(originalPreviewUrl, selectedFileName, selectedMimeType)}
                       <div className="analysis-progress-overlay">
                         <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(analysisProgress)) }}>
                           <span>{Math.round(analysisProgress)}%</span>
@@ -326,7 +355,7 @@ export default function RegisterPage({
                     <div className="analysis-preview-card review-starting-preview">
                       <div className="review-starting-compare">
                         <div className="review-starting-frame">
-                          <img src={originalPreviewUrl} alt={selectedFileName} />
+                          {renderFilePreview(originalPreviewUrl, selectedFileName, selectedMimeType)}
                         </div>
                         <div className="review-starting-frame">
                           <img src={candidatePreviewUrl} alt={candidateLabel} />
@@ -367,7 +396,7 @@ export default function RegisterPage({
 
                   <div className="analysis-running-layout">
                     <div className="analysis-preview-card">
-                      <img src={originalPreviewUrl} alt={selectedFileName} />
+                      {renderFilePreview(originalPreviewUrl, selectedFileName, selectedMimeType)}
                       <div className="analysis-progress-overlay">
                         <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(watermarkProgress)) }}>
                           <span>{Math.round(watermarkProgress)}%</span>
@@ -403,7 +432,7 @@ export default function RegisterPage({
 
                   <div className="analysis-running-layout">
                     <div className="analysis-preview-card">
-                      <img src={watermarkedPreviewUrl} alt={`${selectedFileName} 워터마크 결과`} />
+                      {renderFilePreview(watermarkedPreviewUrl, `${selectedFileName} 워터마크 결과`, watermarkedMimeType)}
                       <div className="analysis-progress-overlay">
                         <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(mintProgress)) }}>
                           <span>{Math.round(mintProgress)}%</span>
@@ -448,7 +477,7 @@ export default function RegisterPage({
                               <span className="watermark-compare-chip">Watermarked</span>
                             </div>
                             <div className="watermark-compare-frame">
-                              <img src={watermarkedPreviewUrl} alt={`${selectedFileName} 워터마크`} />
+                              {renderFilePreview(watermarkedPreviewUrl, `${selectedFileName} 워터마크`, watermarkedMimeType)}
                             </div>
                           </div>
                         </div>
@@ -485,7 +514,7 @@ export default function RegisterPage({
                           <div className="mint-complete-card">
                             <h4>저작물 정보</h4>
                             <div className="mint-complete-frame">
-                              <img src={watermarkedPreviewUrl} alt={`${selectedFileName} 민팅 결과`} />
+                              {renderFilePreview(watermarkedPreviewUrl, `${selectedFileName} 민팅 결과`, watermarkedMimeType)}
                             </div>
                             <div className="mint-file-meta">
                               <div className="mint-file-row">
@@ -559,7 +588,7 @@ export default function RegisterPage({
                               <span className="watermark-compare-chip">Original</span>
                             </div>
                             <div className="watermark-compare-frame">
-                              <img src={originalPreviewUrl} alt={`${selectedFileName} 원본`} />
+                              {renderFilePreview(originalPreviewUrl, `${selectedFileName} 원본`, selectedMimeType)}
                             </div>
                           </div>
 
@@ -569,7 +598,7 @@ export default function RegisterPage({
                               <span className="watermark-compare-chip">Watermarked</span>
                             </div>
                             <div className="watermark-compare-frame">
-                              <img src={watermarkedPreviewUrl} alt={`${selectedFileName} 워터마크`} />
+                              {renderFilePreview(watermarkedPreviewUrl, `${selectedFileName} 워터마크`, watermarkedMimeType)}
                             </div>
                           </div>
                         </div>
@@ -600,7 +629,7 @@ export default function RegisterPage({
                           <div className="mint-complete-card">
                             <h4>업로드 이미지</h4>
                             <div className="mint-complete-frame">
-                              <img src={originalPreviewUrl} alt={selectedFileName} />
+                              {renderFilePreview(originalPreviewUrl, selectedFileName, selectedMimeType)}
                             </div>
                             <div className="mint-file-meta">
                               <div className="mint-file-row">
