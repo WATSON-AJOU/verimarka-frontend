@@ -1,5 +1,18 @@
 import type { VerifyHistoryItem, VerifyResultResponse } from "../../types/app";
 
+function isImageMimeType(mimeType: string | null | undefined) {
+  return (mimeType || "").startsWith("image/");
+}
+
+function getFileKindLabel(mimeType: string | null | undefined) {
+  const normalized = (mimeType || "").toLowerCase();
+  if (normalized === "application/pdf") return "PDF 문서";
+  if (normalized === "application/msword") return "DOC 문서";
+  if (normalized === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "DOCX 문서";
+  if (normalized.startsWith("image/")) return "이미지";
+  return "파일";
+}
+
 function getStepClass(progress: number, index: number, total: number) {
   const normalized = Math.max(0, Math.min(progress, 100));
   const segment = 100 / total;
@@ -71,20 +84,27 @@ export default function VerifyPage({
 }: VerifyPageProps) {
   const uploadedPreview = previewUrl || null;
   const verifyRequestedAtLabel = formatDisplayDateTime(verifyRequestedAt);
+  const selectedMimeType = selectedFile?.type || "";
+  const renderFilePreview = (src: string | null, alt: string, mimeType: string) => {
+    if (src && isImageMimeType(mimeType)) {
+      return <img src={src} alt={alt} />;
+    }
+    return <div className="verify-placeholder-frame">{getFileKindLabel(mimeType)}</div>;
+  };
 
   return (
     <section className="verify-layout">
       <article className="register-card">
         <div className="register-header">
           <h2>저작물 검증</h2>
-          <p>워터마크 검출을 우선 수행하고, 실패 시 유사 이미지 탐색으로 검증을 이어갑니다.</p>
+          <p>워터마크 검출을 우선 수행하고, 필요 시 추가 확인 단계로 검증을 이어갑니다.</p>
         </div>
 
         <input
           ref={uploadInputRef}
           className="upload-input"
           type="file"
-          accept="image/png,image/jpeg"
+          accept="image/png,image/jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           onChange={onPickFile}
         />
 
@@ -93,16 +113,16 @@ export default function VerifyPage({
             <div className="upload-empty">
               <div>
                 <div className="verify-dropzone-icon">✓</div>
-                <p className="upload-title">검증할 이미지를 드래그하거나 클릭하여 업로드하세요.</p>
-                <p className="upload-desc">지원 포맷: JPG, PNG / 최대 20MB</p>
+                <p className="upload-title">검증할 파일을 드래그하거나 클릭하여 업로드하세요.</p>
+                <p className="upload-desc">지원 포맷: JPG, PNG, PDF, DOC, DOCX / 최대 20MB</p>
               </div>
             </div>
           </button>
         ) : verifyRunning ? (
           <div className="verify-shell">
-            <div className="analysis-running-layout">
-              <div className="analysis-preview-card">
-                {uploadedPreview ? <img src={uploadedPreview} alt={selectedFile.name} /> : null}
+              <div className="analysis-running-layout">
+                <div className="analysis-preview-card">
+                  {renderFilePreview(uploadedPreview, selectedFile.name, selectedMimeType)}
                 <div className="analysis-progress-overlay">
                   <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(verifyProgress)) }}>
                     <span>{Math.round(verifyProgress)}%</span>
@@ -145,9 +165,9 @@ export default function VerifyPage({
                 {verifyResult.outcome === "verified" ? (
                   <div className="analysis-result-layout verify-result-layout verify-result-layout-success">
                     <div className="result-preview-card verify-preview-card">
-                      <h4>검증 이미지</h4>
+                      <h4>검증 파일</h4>
                       <div className="verify-result-frame">
-                        {uploadedPreview ? <img src={uploadedPreview} alt={selectedFile.name} /> : null}
+                        {renderFilePreview(uploadedPreview, selectedFile.name, selectedMimeType)}
                       </div>
                     </div>
                     <div className="result-summary-card verify-summary-card">
@@ -189,12 +209,12 @@ export default function VerifyPage({
                     <div className="analysis-result-layout verify-result-layout">
                       <div className="result-preview-card verify-preview-card">
                         <h4>업로드 이미지</h4>
-                        <div className="verify-result-frame">
-                          {uploadedPreview ? <img src={uploadedPreview} alt={selectedFile.name} /> : null}
-                        </div>
+                      <div className="verify-result-frame">
+                        {renderFilePreview(uploadedPreview, selectedFile.name, selectedMimeType)}
+                      </div>
                       </div>
                       <div className="result-summary-card verify-summary-card">
-                        <h4>유사 이미지 후보</h4>
+                        <h4>확인 대상 정보</h4>
                         <div className="verify-result-frame">
                           {verifyResult.candidate?.preview_url ? (
                             <img src={verifyResult.candidate.preview_url} alt={verifyResult.candidate.file_name || "유사 이미지 후보"} />
@@ -225,19 +245,19 @@ export default function VerifyPage({
                         <div className="verify-metric-value">{verifyResult.detect.status_label || "실패"}</div>
                       </div>
                       <div className="verify-metric-card">
-                        <h4>유사도(코사인)</h4>
+                        <h4>검출 신뢰도</h4>
                         <div className="verify-metric-value">
-                          {typeof verifyResult.candidate?.cosine === "number"
-                            ? `${verifyResult.candidate.cosine.toFixed(4)} (${(verifyResult.candidate.cosine * 100).toFixed(1)}%)`
-                            : "-"}
+                          {typeof verifyResult.detect.confidence === "number"
+                            ? `${(verifyResult.detect.confidence * 100).toFixed(1)}%`
+                            : typeof verifyResult.candidate?.cosine === "number"
+                              ? `${verifyResult.candidate.cosine.toFixed(4)} (${(verifyResult.candidate.cosine * 100).toFixed(1)}%)`
+                              : "-"}
                         </div>
                       </div>
                       <div className="verify-metric-card">
-                        <h4>pHash Distance</h4>
+                        <h4>검출 페이지</h4>
                         <div className="verify-metric-value">
-                          {typeof verifyResult.candidate?.phash_dist === "number"
-                            ? `${verifyResult.candidate.phash_dist} / Threshold ${verifyResult.candidate.threshold ?? 8}`
-                            : "-"}
+                          {verifyResult.detect.best_page ? `${verifyResult.detect.best_page}페이지` : "-"}
                         </div>
                       </div>
                       <div className="verify-metric-card">

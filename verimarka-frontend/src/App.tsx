@@ -131,7 +131,20 @@ function getMimeTypeFromFileName(fileName: string) {
   if (lower.endsWith(".png")) return "image/png";
   if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
   if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".pdf")) return "application/pdf";
+  if (lower.endsWith(".doc")) return "application/msword";
+  if (lower.endsWith(".docx")) return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
   return "application/octet-stream";
+}
+
+function isSupportedUploadMimeType(mimeType: string) {
+  return [
+    "image/jpeg",
+    "image/png",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ].includes(mimeType);
 }
 
 function formatReviewVoteEndAt(baseTime: number) {
@@ -1892,8 +1905,8 @@ export default function App() {
   function handlePickFile(event: React.ChangeEvent<HTMLInputElement>) {
     const nextFile = event.target.files?.[0];
     if (!nextFile) return;
-    if (!/^image\/(jpeg|png)$/.test(nextFile.type)) {
-      window.alert("JPG 또는 PNG 파일만 업로드할 수 있습니다.");
+    if (!isSupportedUploadMimeType(nextFile.type)) {
+      window.alert("JPG, PNG, PDF, DOC, DOCX 파일만 업로드할 수 있습니다.");
       return;
     }
     if (nextFile.size > 20 * 1024 * 1024) {
@@ -1903,7 +1916,7 @@ export default function App() {
     setSelectedFile(nextFile);
     setContentResult(null);
     setMintErrorMessage("");
-    openToast("이미지 업로드가 완료되었습니다.");
+    openToast("파일 업로드가 완료되었습니다.");
   }
 
   function triggerFilePicker() {
@@ -1942,7 +1955,7 @@ export default function App() {
 
   async function startAnalysis() {
     if (!selectedFile) {
-      window.alert("먼저 업로드할 이미지를 선택해주세요.");
+      window.alert("먼저 업로드할 파일을 선택해주세요.");
       return;
     }
     if (!phoneVerified) {
@@ -1984,8 +1997,8 @@ export default function App() {
   function handlePickVerifyFile(event: React.ChangeEvent<HTMLInputElement>) {
     const nextFile = event.target.files?.[0];
     if (!nextFile) return;
-    if (!/^image\/(jpeg|png)$/.test(nextFile.type)) {
-      window.alert("JPG 또는 PNG 파일만 업로드할 수 있습니다.");
+    if (!isSupportedUploadMimeType(nextFile.type)) {
+      window.alert("JPG, PNG, PDF, DOC, DOCX 파일만 업로드할 수 있습니다.");
       return;
     }
     if (nextFile.size > 20 * 1024 * 1024) {
@@ -1995,12 +2008,12 @@ export default function App() {
     setVerifyFile(nextFile);
     setVerifyResult(null);
     setVerifyRequestedAt(Date.now());
-    openToast("검증 이미지 업로드가 완료되었습니다.");
+    openToast("검증 파일 업로드가 완료되었습니다.");
   }
 
   async function startVerify() {
     if (!verifyFile) {
-      window.alert("먼저 검증할 이미지를 선택해주세요.");
+      window.alert("먼저 검증할 파일을 선택해주세요.");
       return;
     }
     if (!phoneVerified) {
@@ -2386,6 +2399,7 @@ export default function App() {
     return {
       id: 0,
       public_id: item.id,
+      content_type: "image",
       status: "allow",
       original_filename: item.fileName,
       original_storage_key: "",
