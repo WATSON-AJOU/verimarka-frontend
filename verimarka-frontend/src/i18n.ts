@@ -86,6 +86,7 @@ const resources = {
         appleSoon: "준비중",
         emailLogin: "이메일로 로그인",
         agreePrefix: "회원가입을 진행하면",
+        agreeJoiner: "및",
         terms: "이용약관",
         privacy: "개인정보 처리방침",
         agreeSuffix: "에 동의하게 됩니다.",
@@ -168,7 +169,7 @@ const resources = {
       auth: {
         close: "Close", login: "Log in", signup: "Sign up", firstLoginNotice: "Your first login will automatically create an account.",
         continueWithGoogle: "Continue with Google", continueWithApple: "Continue with Apple", continueWithKakao: "Continue with Kakao", appleSoon: "Coming soon",
-        emailLogin: "Log in with email", agreePrefix: "By signing up, you agree to the", terms: "Terms", privacy: "Privacy Policy", agreeSuffix: ".",
+        emailLogin: "Log in with email", agreePrefix: "By signing up, you agree to the", agreeJoiner: "and", terms: "Terms", privacy: "Privacy Policy", agreeSuffix: ".",
         notMember: "Not a member yet?", alreadyMember: "Already have an account?", loginFailed: "Login failed.", loginSubmitting: "Logging in...", continueLogin: "Continue",
         email: "Email", emailPlaceholder: "example@verimarka.com", password: "Password", passwordPlaceholder: "Enter at least 8 characters", nickname: "Nickname",
         nicknamePlaceholder: "Enter your nickname", passwordConfirm: "Confirm password", passwordConfirmPlaceholder: "Re-enter your password", nicknameChecking: "Checking nickname...",
@@ -207,7 +208,7 @@ const resources = {
       auth: {
         close: "閉じる", login: "ログイン", signup: "会員登録", firstLoginNotice: "初回ログイン時に自動で会員登録が進行します。", continueWithGoogle: "Googleで続行",
         continueWithApple: "Appleで続行", continueWithKakao: "Kakaoで続行", appleSoon: "準備中", emailLogin: "メールでログイン", agreePrefix: "会員登録を進めると",
-        terms: "利用規約", privacy: "個人情報処理方針", agreeSuffix: "に同意したことになります。", notMember: "まだ会員ではありませんか？", alreadyMember: "すでに会員ですか？",
+        agreeJoiner: "および", terms: "利用規約", privacy: "個人情報処理方針", agreeSuffix: "に同意したことになります。", notMember: "まだ会員ではありませんか？", alreadyMember: "すでに会員ですか？",
         loginFailed: "ログインに失敗しました。", loginSubmitting: "ログイン中...", continueLogin: "ログインを続行", email: "メール", emailPlaceholder: "example@verimarka.com",
         password: "パスワード", passwordPlaceholder: "8文字以上を入力", nickname: "ニックネーム", nicknamePlaceholder: "使用するニックネームを入力", passwordConfirm: "パスワード確認",
         passwordConfirmPlaceholder: "パスワードを再入力", nicknameChecking: "ニックネーム確認中です。", nicknameTooLong: "ニックネームは30文字以下で入力してください。", nicknameInvalid: "ニックネームに特殊文字は使えません。",
@@ -244,7 +245,7 @@ const resources = {
       },
       auth: {
         close: "关闭", login: "登录", signup: "注册", firstLoginNotice: "首次登录时将自动完成注册。", continueWithGoogle: "使用 Google 继续", continueWithApple: "使用 Apple 继续",
-        continueWithKakao: "使用 Kakao 继续", appleSoon: "即将推出", emailLogin: "邮箱登录", agreePrefix: "继续注册即表示您同意", terms: "服务条款", privacy: "隐私政策",
+        continueWithKakao: "使用 Kakao 继续", appleSoon: "即将推出", emailLogin: "邮箱登录", agreePrefix: "继续注册即表示您同意", agreeJoiner: "和", terms: "服务条款", privacy: "隐私政策",
         agreeSuffix: "。", notMember: "还不是会员？", alreadyMember: "已经是会员了吗？", loginFailed: "登录失败。", loginSubmitting: "登录中...", continueLogin: "继续登录",
         email: "邮箱", emailPlaceholder: "example@verimarka.com", password: "密码", passwordPlaceholder: "请输入至少 8 位", nickname: "昵称", nicknamePlaceholder: "输入昵称",
         passwordConfirm: "确认密码", passwordConfirmPlaceholder: "再次输入密码", nicknameChecking: "正在检查昵称。", nicknameTooLong: "昵称长度不能超过 30 个字符。", nicknameInvalid: "昵称不能包含特殊字符。",

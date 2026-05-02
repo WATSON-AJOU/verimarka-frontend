@@ -117,7 +117,7 @@ export default function LoginChoiceModal({
           <a href="/terms" target="_blank" rel="noreferrer">
             {t("auth.terms")}
           </a>
-          {" "}및
+          {" "}{t("auth.agreeJoiner")}
           <br />
           <a href="/privacy" target="_blank" rel="noreferrer">
             {t("auth.privacy")}
