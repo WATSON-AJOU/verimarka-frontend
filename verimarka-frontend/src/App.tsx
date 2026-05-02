@@ -614,6 +614,96 @@ export default function App() {
     }
   }
 
+  async function promptWatchMintedAsset(response: RegisteredContentResponse) {
+    const blockchain = response.blockchain;
+    if (!blockchain?.minted || blockchain.mint_kind !== "content") {
+      return false;
+    }
+
+    const contractAddress = blockchain.contract_address?.trim();
+    const tokenIdValue = blockchain.token_id;
+    const tokenId =
+      typeof tokenIdValue === "number"
+        ? String(tokenIdValue)
+        : typeof tokenIdValue === "string"
+          ? tokenIdValue.trim()
+          : "";
+    const targetChainId = blockchain.chain_id ?? walletChain.id;
+    const targetAddress = (blockchain.recipient_address || blockchain.owner_address || "").trim().toLowerCase();
+    const connectedAddress = connectedWalletAddress?.trim().toLowerCase() || "";
+
+    if (!contractAddress || !tokenId) {
+      appLogger.info("wallet.watch_asset.skipped_missing_metadata", {
+        publicId: response.public_id,
+        contractAddress: contractAddress ?? null,
+        tokenId: tokenId || null,
+      });
+      return false;
+    }
+
+    if (!connectedAddress || (targetAddress && targetAddress !== connectedAddress)) {
+      appLogger.info("wallet.watch_asset.skipped_wallet_mismatch", {
+        publicId: response.public_id,
+        targetAddress: targetAddress || null,
+        connectedAddress: connectedAddress || null,
+      });
+      return false;
+    }
+
+    const providerChainId = (await resolveConnectorChainId()) ?? currentWalletChainId ?? null;
+    if (providerChainId !== targetChainId) {
+      appLogger.info("wallet.watch_asset.skipped_chain_mismatch", {
+        publicId: response.public_id,
+        providerChainId,
+        targetChainId,
+      });
+      return false;
+    }
+
+    const provider = await getConnectedWalletProvider();
+    if (!provider) {
+      appLogger.info("wallet.watch_asset.skipped_provider_missing", {
+        publicId: response.public_id,
+      });
+      return false;
+    }
+
+    try {
+      const providerRequest = provider.request as (args: {
+        method: string;
+        params?: unknown[] | Record<string, unknown>;
+      }) => Promise<unknown>;
+      const result = await providerRequest({
+        method: "wallet_watchAsset",
+        params: {
+          type: "ERC721",
+          options: {
+            address: contractAddress,
+            tokenId,
+          },
+        },
+      });
+      const accepted = result === true;
+
+      appLogger.info("wallet.watch_asset.completed", {
+        publicId: response.public_id,
+        contractAddress,
+        tokenId,
+        accepted,
+      });
+
+      return accepted;
+    } catch (error) {
+      appLogger.warn("wallet.watch_asset.failed", {
+        publicId: response.public_id,
+        contractAddress,
+        tokenId,
+        error,
+      });
+      return false;
+    }
+  }
+
   async function requestReviewVoteSignature(
     signing: ReviewVoteSigningResponse,
     choice: "yes" | "no",
@@ -2115,6 +2205,7 @@ export default function App() {
         },
       );
       setContentResult(response);
+      await promptWatchMintedAsset(response);
       setMintProgress(100);
       setAnalysisStage("minted");
       await refreshWalletSummary({ silent: true });
