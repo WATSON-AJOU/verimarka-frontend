@@ -4336,3 +4336,414 @@ body.modal-open {
     font-size: 0.86rem;
   }
 }
+
+@media (max-width: 1180px) {
+  main {
+    --main-pad-top: 22px;
+    --main-pad-x: 24px;
+    padding-bottom: 28px;
+  }
+
+  .topbar {
+    padding-inline: 24px;
+  }
+
+  .topbar-panel {
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .tabs {
+    margin-left: 0;
+  }
+
+  .auth-slot {
+    gap: 12px;
+  }
+
+  .home-scroll {
+    gap: 52px;
+  }
+
+  .register-layout,
+  .verify-layout,
+  .mypage-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .register-history,
+  .verify-history-panel {
+    position: static;
+    top: auto;
+  }
+
+  .history-scroll,
+  .history-list {
+    max-height: none;
+  }
+
+  .upload-result-layout,
+  .analysis-running-layout,
+  .analysis-result-layout,
+  .verify-result-layout-success,
+  .token-status-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .home-system-grid,
+  .home-activity-grid,
+  .review-vote-metrics,
+  .review-live-stat-grid,
+  .watermark-complete-actions,
+  .result-reject-metrics,
+  .mint-complete-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .history-shell {
+    width: 100%;
+  }
+
+  .history-allow-detail-card h2,
+  .mint-complete-card h4,
+  .history-expand-card h4 {
+    font-size: 1.8rem;
+  }
+
+  .verify-scenario-panel h5,
+  .history-allow-panel h3 {
+    font-size: 1.4rem;
+  }
+
+  .review-live-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 840px) {
+  .topbar {
+    display: block;
+    padding: 12px 16px;
+  }
+
+  .topbar-main {
+    width: 100%;
+  }
+
+  .topbar-menu-toggle {
+    display: inline-flex;
+  }
+
+  .topbar-panel {
+    display: none;
+    width: 100%;
+    margin-top: 12px;
+    padding: 14px;
+    border: 1px solid #dbe4f4;
+    border-radius: 18px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(246, 249, 255, 0.98) 100%);
+    box-shadow: 0 16px 36px rgba(20, 42, 84, 0.08);
+  }
+
+  .topbar-panel.is-open {
+    display: grid;
+    gap: 14px;
+  }
+
+  .tabs {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .tab {
+    min-height: 44px;
+    font-size: 0.94rem;
+    padding: 10px 12px;
+  }
+
+  .auth-slot,
+  .guest-actions,
+  .lang-switch {
+    width: 100%;
+  }
+
+  .auth-slot {
+    margin-left: 0;
+    justify-content: stretch;
+    align-items: stretch;
+  }
+
+  .guest-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .auth-text-btn,
+  .logout-btn,
+  .lang-trigger {
+    min-height: 44px;
+    border: 1px solid #d6deee;
+    border-radius: 12px;
+    padding: 0 14px;
+    background: #fff;
+  }
+
+  .auth-text-btn {
+    justify-content: center;
+  }
+
+  .user-session {
+    width: 100%;
+    justify-content: space-between;
+    border: 1px solid #d6deee;
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: #fff;
+  }
+
+  .user-nickname {
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .lang-trigger {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  main {
+    --main-pad-top: 18px;
+    --main-pad-x: 16px;
+    padding-bottom: 22px;
+  }
+
+  .home-scroll {
+    gap: 42px;
+  }
+
+  .home-hero-panel p,
+  .home-panel-header p,
+  .register-header p,
+  .history-header p,
+  .mypage-header p {
+    text-wrap: pretty;
+  }
+
+  .history-log-main,
+  .history-log-expand,
+  .history-allow-detail-grid,
+  .history-allow-actions,
+  .review-vote-compare-grid,
+  .review-live-compare-grid,
+  .review-starting-compare,
+  .verify-ready-grid,
+  .verify-result-grid,
+  .verify-metric-grid,
+  .mint-complete-grid,
+  .review-consent-row {
+    grid-template-columns: 1fr;
+  }
+
+  .history-compare-frame,
+  .wallet-brief-grid,
+  .result-file-row,
+  .review-vote-modal-stat-grid,
+  .review-vote-modal-actions,
+  .phoneRequiredActions,
+  .profileEditActions {
+    grid-template-columns: 1fr;
+  }
+
+  .history-allow-meta div,
+  .history-allow-chain-meta div,
+  .verify-token-row,
+  .verify-ready-table div,
+  .mint-file-row {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+
+  .wallet-actions {
+    justify-content: stretch;
+  }
+
+  .wallet-actions .btn,
+  .wallet-disconnect-link,
+  .review-consent-guide {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .wallet-disconnect-link {
+    margin-left: 0;
+    text-align: center;
+  }
+
+  .modal-backdrop,
+  .modalOverlay {
+    padding: 14px;
+  }
+
+  .modal-shell,
+  .review-vote-modal,
+  .review-consent-modal,
+  .modalCard,
+  .walletConnectCard,
+  .identityCard,
+  .phoneRequiredCard,
+  .profileEditCard,
+  .withdrawCard {
+    width: min(100%, calc(100vw - 28px));
+  }
+
+  .review-vote-modal-compare-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 560px) {
+  .brand-word {
+    font-size: 1.34rem;
+  }
+
+  .tabs,
+  .guest-actions,
+  .home-system-grid,
+  .home-activity-grid,
+  .review-vote-metrics,
+  .review-live-stat-grid,
+  .watermark-complete-actions,
+  .result-reject-metrics,
+  .review-live-actions {
+    grid-template-columns: 1fr;
+  }
+
+  .home-hero-actions,
+  .upload-bottom-actions,
+  .analysis-running-actions,
+  .result-summary-actions,
+  .mypage-actions,
+  .wallet-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .home-hero-actions .btn,
+  .upload-bottom-actions .btn,
+  .analysis-running-actions .btn,
+  .result-summary-actions .btn,
+  .mypage-actions .btn,
+  .wallet-actions .btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .register-card,
+  .analysis-running-view,
+  .analysis-result-view,
+  .mypage-card,
+  .mypage-profile-card,
+  .history-list-view,
+  .history-allow-detail-card,
+  .legal-card,
+  .verify-shell,
+  .modalCard,
+  .modal-shell {
+    border-radius: 18px;
+  }
+
+  .register-card,
+  .analysis-running-view,
+  .analysis-result-view,
+  .mypage-card,
+  .mypage-profile-card,
+  .history-list-view,
+  .verify-shell,
+  .legal-card {
+    padding: 14px;
+  }
+
+  .history-header,
+  .history-allow-detail-view {
+    padding-inline: 0;
+  }
+
+  .home-hero-panel h1,
+  .register-header h2,
+  .history-header h2,
+  .mypage-header h2,
+  .legal-card h1 {
+    font-size: 1.6rem;
+  }
+
+  .upload-title,
+  .analysis-running-title,
+  .result-title,
+  .upload-success-title {
+    font-size: 1.24rem;
+  }
+
+  .upload-desc,
+  .analysis-running-subtitle,
+  .result-subtitle,
+  .upload-success-subtitle,
+  .legal-content section p,
+  .legal-content section li {
+    font-size: 0.9rem;
+  }
+
+  .verify-dropzone,
+  .upload-dropzone {
+    min-height: 220px;
+  }
+
+  .analysis-preview-card,
+  .review-starting-preview,
+  .review-vote-frame img,
+  .review-live-image-frame img,
+  .reject-image-frame img,
+  .result-image-frame img {
+    min-height: 180px;
+  }
+
+  .analysis-preview-card img,
+  .review-starting-frame img,
+  .review-vote-frame img,
+  .review-live-image-frame img,
+  .reject-image-frame img,
+  .result-image-frame img {
+    height: 180px;
+  }
+
+  .analysis-progress-ring {
+    width: 120px;
+    height: 120px;
+  }
+
+  .analysis-progress-ring::before {
+    width: 90px;
+    height: 90px;
+  }
+
+  .analysis-progress-ring span,
+  .review-live-similarity-bubble strong,
+  .review-vote-modal-bubble strong {
+    font-size: 1.5rem;
+  }
+
+  .review-live-similarity-bubble,
+  .review-vote-modal-bubble {
+    width: 108px;
+    height: 108px;
+  }
+
+  .toast {
+    right: 12px;
+    left: 12px;
+    bottom: 12px;
+    width: auto;
+  }
+}
