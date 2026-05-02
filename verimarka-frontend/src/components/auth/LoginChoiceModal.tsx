@@ -10,6 +10,8 @@ interface Props {
   onSignup: () => void;
 }
 
+const APPLE_OAUTH_STATE_KEY = "verimarka:oauth:apple:state";
+
 export default function LoginChoiceModal({
   open,
   onClose,
@@ -46,6 +48,24 @@ export default function LoginChoiceModal({
     window.location.href = url;
   }
 
+  function loginWithApple() {
+    const clientId = import.meta.env.VITE_APPLE_CLIENT_ID;
+    const redirectUri = `${window.location.origin}/auth/apple/callback`;
+    const state = crypto.randomUUID();
+    window.sessionStorage.setItem(APPLE_OAUTH_STATE_KEY, state);
+
+    const url =
+      "https://appleid.apple.com/auth/authorize" +
+      "?response_type=code" +
+      "&response_mode=query" +
+      `&client_id=${encodeURIComponent(clientId)}` +
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      "&scope=name%20email" +
+      `&state=${encodeURIComponent(state)}`;
+
+    window.location.href = url;
+  }
+
   if (!open) return null;
 
   return (
@@ -72,8 +92,7 @@ export default function LoginChoiceModal({
           <button
             type="button"
             className="socialButton socialButton--apple"
-            disabled
-            title={t("auth.appleSoon")}
+            onClick={loginWithApple}
           >
             <img className="socialButton__icon socialButton__icon--apple" src={appleLogo} alt="" aria-hidden="true" />
             {t("auth.continueWithApple")}
