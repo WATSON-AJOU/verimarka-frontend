@@ -9,6 +9,7 @@ import App from "./App";
 import { walletConfig, walletQueryClient } from "./lib/wallet";
 import { appLogger } from "./lib/logger";
 import { initSentry } from "./lib/sentry";
+import AppleCallback from "./pages/auth/AppleCallback";
 import GoogleCallback from "./pages/auth/GoogleCallback";
 import KakaoCallback from "./pages/auth/KakaoCallback";
 import PrivacyPage from "./pages/legal/PrivacyPage";
@@ -40,6 +41,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <BrowserRouter>
           <Routes>
             <Route path="/*" element={<App />} />
+            <Route path="/auth/apple/callback" element={<AppleCallback />} />
             <Route path="/auth/google/callback" element={<GoogleCallback />} />
             <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
             <Route path="/terms" element={<TermsPage />} />
