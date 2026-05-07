@@ -16,7 +16,9 @@ export default function KakaoCallback() {
       const params = new URLSearchParams(window.location.search)
       const code = params.get("code")
 
-      const redirect_uri = `${window.location.origin}/auth/kakao/callback`
+      const redirect_uri =
+        import.meta.env.VITE_KAKAO_REDIRECT_URI ||
+        `${window.location.origin}/auth/kakao/callback`
 
       const data = await apiRequest<OAuthTokenResponse>("/accounts/auth/oauth/kakao/", {
         method: "POST",

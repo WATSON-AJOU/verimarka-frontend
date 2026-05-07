@@ -16,7 +16,9 @@ export default function GoogleCallback() {
       const params = new URLSearchParams(window.location.search)
       const code = params.get("code")
 
-      const redirect_uri = `${window.location.origin}/auth/google/callback`
+      const redirect_uri =
+        import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
+        `${window.location.origin}/auth/google/callback`
 
       const data = await apiRequest<OAuthTokenResponse>("/accounts/auth/oauth/google/", {
         method: "POST",

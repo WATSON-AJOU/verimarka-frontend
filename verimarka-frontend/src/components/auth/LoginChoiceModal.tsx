@@ -22,7 +22,9 @@ export default function LoginChoiceModal({
 
   function loginWithGoogle() {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/auth/google/callback`;
+    const redirectUri =
+      import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
+      `${window.location.origin}/auth/google/callback`;
 
     const url =
       "https://accounts.google.com/o/oauth2/v2/auth" +
@@ -37,7 +39,9 @@ export default function LoginChoiceModal({
 
   function loginWithKakao() {
     const clientId = import.meta.env.VITE_KAKAO_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/auth/kakao/callback`;
+    const redirectUri =
+      import.meta.env.VITE_KAKAO_REDIRECT_URI ||
+      `${window.location.origin}/auth/kakao/callback`;
 
     const url =
       "https://kauth.kakao.com/oauth/authorize" +
