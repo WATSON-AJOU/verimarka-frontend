@@ -1,5 +1,3 @@
-import { useTranslation } from "react-i18next";
-
 interface MyPageProps {
   displayName: string;
   profileEmail: string;
@@ -55,8 +53,6 @@ export default function MyPage({
   onConnectWallet,
   onDisconnectWallet,
 }: MyPageProps) {
-  const { t } = useTranslation();
-
   return (
     <section className="mypage-shell">
       <div className="mypage-header">
@@ -76,10 +72,10 @@ export default function MyPage({
           </button>
 
           <div className="mypage-quick-links">
-            <a href="#!" onClick={(event) => { event.preventDefault(); onLogout(); }}>{t("header.logout")}</a>
-            <a href="/terms">{t("footer.terms")}</a>
-            <a href="/privacy">{t("footer.privacy")}</a>
-            <a href="/support">{t("footer.support")}</a>
+            <a href="#!" onClick={(event) => { event.preventDefault(); onLogout(); }}>로그아웃</a>
+            <a href="/terms">이용약관</a>
+            <a href="/privacy">개인정보처리방침</a>
+            <a href="/support">고객센터</a>
             <button className="mypage-withdraw-link" type="button" onClick={onOpenWithdraw}>
               회원 탈퇴
             </button>

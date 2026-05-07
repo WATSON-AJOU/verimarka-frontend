@@ -308,11 +308,6 @@ img {
   z-index: 50;
 }
 
-.lang-switch-footer .lang-dropdown {
-  top: auto;
-  bottom: calc(100% + 10px);
-}
-
 .lang-option {
   border: 0;
   border-radius: 10px;
