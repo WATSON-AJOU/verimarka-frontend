@@ -1,9 +1,10 @@
 import { useEffect, useRef } from "react"
 import { apiRequest } from "../../lib/api"
 import { clearTokens, setTokens } from "../../lib/token"
-
-const POST_LOGOUT_TOAST_KEY = "verimarka:post-logout-toast"
-const SUSPENDED_ACCOUNT_MESSAGE = "정지된 계정입니다."
+import {
+  POST_LOGOUT_TOAST_KEY,
+  SUSPENDED_ACCOUNT_MESSAGE,
+} from "../../lib/app-utils"
 const APPLE_OAUTH_CODE_KEY = "verimarka:oauth:apple:last-code"
 const APPLE_OAUTH_STATE_KEY = "verimarka:oauth:apple:state"
 

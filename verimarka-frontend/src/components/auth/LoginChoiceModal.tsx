@@ -11,6 +11,7 @@ interface Props {
 }
 
 const APPLE_OAUTH_STATE_KEY = "verimarka:oauth:apple:state";
+const DEFAULT_APPLE_CLIENT_ID = "com.verimarka.web.login";
 
 export default function LoginChoiceModal({
   open,
@@ -53,7 +54,7 @@ export default function LoginChoiceModal({
   }
 
   function loginWithApple() {
-    const clientId = import.meta.env.VITE_APPLE_CLIENT_ID;
+    const clientId = import.meta.env.VITE_APPLE_CLIENT_ID || DEFAULT_APPLE_CLIENT_ID;
     if (!clientId) {
       window.alert("Apple 로그인 설정이 누락되었습니다.");
       return;
