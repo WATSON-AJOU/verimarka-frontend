@@ -50,7 +50,13 @@ export default function LoginChoiceModal({
 
   function loginWithApple() {
     const clientId = import.meta.env.VITE_APPLE_CLIENT_ID;
-    const redirectUri = `${window.location.origin}/auth/apple/callback`;
+    if (!clientId) {
+      window.alert("Apple 로그인 설정이 누락되었습니다.");
+      return;
+    }
+    const redirectUri =
+      import.meta.env.VITE_APPLE_REDIRECT_URI ||
+      `${window.location.origin}/auth/apple/callback`;
     const state = crypto.randomUUID();
     window.sessionStorage.setItem(APPLE_OAUTH_STATE_KEY, state);
 

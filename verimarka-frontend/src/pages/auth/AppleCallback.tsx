@@ -39,7 +39,9 @@ export default function AppleCallback() {
       window.sessionStorage.setItem(APPLE_OAUTH_CODE_KEY, code)
       window.sessionStorage.removeItem(APPLE_OAUTH_STATE_KEY)
 
-      const redirect_uri = `${window.location.origin}/auth/apple/callback`
+      const redirect_uri =
+        import.meta.env.VITE_APPLE_REDIRECT_URI ||
+        `${window.location.origin}/auth/apple/callback`
 
       const data = await apiRequest<OAuthTokenResponse>("/accounts/auth/oauth/apple/", {
         method: "POST",
