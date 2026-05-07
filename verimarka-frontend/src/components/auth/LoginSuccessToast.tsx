@@ -18,12 +18,12 @@ export default function LoginSuccessToast({
   const [progress, setProgress] = useState(100);
 
   useEffect(() => {
-    if (!open) {
-      setProgress(100);
-      return;
-    }
+    if (!open) return;
 
     const startedAt = Date.now();
+    const reset = window.setTimeout(() => {
+      setProgress(100);
+    }, 0);
 
     const interval = window.setInterval(() => {
       const elapsed = Date.now() - startedAt;
@@ -36,6 +36,7 @@ export default function LoginSuccessToast({
     }, duration);
 
     return () => {
+      window.clearTimeout(reset);
       window.clearInterval(interval);
       window.clearTimeout(timeout);
     };
