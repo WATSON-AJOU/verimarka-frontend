@@ -7,6 +7,7 @@ import {
 } from "../../lib/app-utils"
 
 const KAKAO_OAUTH_CODE_KEY = "verimarka:oauth:kakao:last-code"
+const KAKAO_OAUTH_PENDING_CODE_KEY = "verimarka:oauth:kakao:pending-code"
 
 interface OAuthTokenResponse {
   access: string
@@ -33,7 +34,12 @@ export default function KakaoCallback() {
         window.location.replace("/")
         return
       }
-      window.sessionStorage.setItem(KAKAO_OAUTH_CODE_KEY, code)
+
+      const pendingCode = window.sessionStorage.getItem(KAKAO_OAUTH_PENDING_CODE_KEY)
+      if (pendingCode === code) {
+        return
+      }
+      window.sessionStorage.setItem(KAKAO_OAUTH_PENDING_CODE_KEY, code)
 
       const redirect_uri =
         import.meta.env.VITE_KAKAO_REDIRECT_URI ||
@@ -45,10 +51,13 @@ export default function KakaoCallback() {
       })
 
       setTokens(data.access, data.refresh)
+      window.sessionStorage.setItem(KAKAO_OAUTH_CODE_KEY, code)
+      window.sessionStorage.removeItem(KAKAO_OAUTH_PENDING_CODE_KEY)
       window.location.replace("/")
     }
 
     login().catch((error) => {
+      window.sessionStorage.removeItem(KAKAO_OAUTH_PENDING_CODE_KEY)
       const message =
         error instanceof Error ? error.message : "Kakao 로그인에 실패했습니다."
       if (
