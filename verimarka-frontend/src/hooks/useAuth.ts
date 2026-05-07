@@ -49,7 +49,7 @@ interface UpdateProfilePayload {
 
 export function useAuth() {
   const [user, setUser] = useState<MeResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !!getAccessToken());
 
   async function fetchMe() {
     try {
@@ -67,11 +67,15 @@ export function useAuth() {
 
   useEffect(() => {
     const token = getAccessToken();
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-    void fetchMe();
+    if (!token) return;
+
+    const timeout = window.setTimeout(() => {
+      void fetchMe();
+    }, 0);
+
+    return () => {
+      window.clearTimeout(timeout);
+    };
   }, []);
 
   async function login(email: string, password: string) {
