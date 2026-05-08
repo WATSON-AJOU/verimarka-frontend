@@ -74,6 +74,12 @@ function getDefaultWalletSummary(user?: MeResponse | null): WalletSummaryRespons
   };
 }
 
+function getJobProgress(response: AnalysisJobStatusResponse, fallback = 0) {
+  if (response.status === "success") return 100;
+  if (typeof response.progress !== "number" || Number.isNaN(response.progress)) return fallback;
+  return Math.max(0, Math.min(response.progress, 100));
+}
+
 export function useAppController() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -117,7 +123,7 @@ export function useAppController() {
   const [previewUrl, setPreviewUrl] = useState("");
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>("idle");
   const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [analysisRequestPending, setAnalysisRequestPending] = useState(false);
+  const [, setAnalysisRequestPending] = useState(false);
   const [analysisJobId, setAnalysisJobId] = useState<string | null>(null);
   const [reviewVoteProgress, setReviewVoteProgress] = useState(0);
   const [reviewVoteRequestPending, setReviewVoteRequestPending] = useState(false);
@@ -133,7 +139,7 @@ export function useAppController() {
     votedChoice: "yes" | "no" | null;
   } | null>(null);
   const [watermarkProgress, setWatermarkProgress] = useState(0);
-  const [watermarkRequestPending, setWatermarkRequestPending] = useState(false);
+  const [, setWatermarkRequestPending] = useState(false);
   const [watermarkJobId, setWatermarkJobId] = useState<string | null>(null);
   const [mintProgress, setMintProgress] = useState(0);
   const [mintRequestPending, setMintRequestPending] = useState(false);
@@ -908,6 +914,8 @@ export function useAppController() {
         });
         if (cancelled) return;
 
+        setAnalysisProgress((current) => getJobProgress(response, current));
+
         if (response.status === "success" && response.content) {
           const resolvedContent = response.content;
           const decision =
@@ -966,6 +974,8 @@ export function useAppController() {
         });
         if (cancelled) return;
 
+        setWatermarkProgress((current) => getJobProgress(response, current));
+
         if (response.status === "success" && response.content) {
           setContentResult(response.content);
           setWatermarkProgress(100);
@@ -1012,6 +1022,8 @@ export function useAppController() {
         });
         if (cancelled) return;
 
+        setVerifyProgress((current) => getJobProgress(response, current));
+
         if (response.status === "success" && response.result) {
           setVerifyResult(response.result);
           setVerifyProgress(100);
@@ -1044,17 +1056,6 @@ export function useAppController() {
   }, [verifyRunning, verifyJobId]);
 
   useEffect(() => {
-    if (analysisStage !== "running" || !analysisRequestPending) return;
-    const startedAt = Date.now();
-    const intervalId = window.setInterval(() => {
-      const elapsed = Date.now() - startedAt;
-      const next = Math.min(LOADING_RING_MAX_PENDING_PROGRESS, (elapsed / LOADING_RING_DURATION_MS) * LOADING_RING_MAX_PENDING_PROGRESS);
-      setAnalysisProgress(next);
-    }, 50);
-    return () => window.clearInterval(intervalId);
-  }, [analysisStage, analysisRequestPending]);
-
-  useEffect(() => {
     if (analysisStage !== "reviewStarting" || !reviewVoteRequestPending) return;
     const startedAt = Date.now();
     const intervalId = window.setInterval(() => {
@@ -1064,17 +1065,6 @@ export function useAppController() {
     }, 50);
     return () => window.clearInterval(intervalId);
   }, [analysisStage, reviewVoteRequestPending]);
-
-  useEffect(() => {
-    if (analysisStage !== "watermarking" || !watermarkRequestPending) return;
-    const startedAt = Date.now();
-    const intervalId = window.setInterval(() => {
-      const elapsed = Date.now() - startedAt;
-      const next = Math.min(LOADING_RING_MAX_PENDING_PROGRESS, (elapsed / LOADING_RING_DURATION_MS) * LOADING_RING_MAX_PENDING_PROGRESS);
-      setWatermarkProgress(next);
-    }, 50);
-    return () => window.clearInterval(intervalId);
-  }, [analysisStage, watermarkRequestPending]);
 
   useEffect(() => {
     if (analysisStage !== "minting" || !mintRequestPending) return;
@@ -1096,17 +1086,6 @@ export function useAppController() {
     }, 30000);
     return () => window.clearInterval(intervalId);
   }, [analysisStage, contentResult?.public_id, contentResult?.blockchain?.vote?.status]);
-
-  useEffect(() => {
-    if (!verifyRunning) return;
-    const startedAt = Date.now();
-    const intervalId = window.setInterval(() => {
-      const elapsed = Date.now() - startedAt;
-      const next = Math.min(LOADING_RING_MAX_PENDING_PROGRESS, (elapsed / LOADING_RING_DURATION_MS) * LOADING_RING_MAX_PENDING_PROGRESS);
-      setVerifyProgress(next);
-    }, 50);
-    return () => window.clearInterval(intervalId);
-  }, [verifyRunning]);
 
   useEffect(() => {
     let cancelled = false;

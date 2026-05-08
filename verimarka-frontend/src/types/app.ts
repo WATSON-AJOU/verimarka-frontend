@@ -284,18 +284,24 @@ export interface WalletSummaryResponse {
 export interface AsyncContentJobResponse {
   job_id: string;
   status: "queued" | "running" | "success" | "failure";
+  progress?: number;
+  progress_message?: string;
   content?: RegisteredContentResponse | null;
 }
 
 export interface AsyncVerifyJobResponse {
   job_id: string;
   status: "queued" | "running" | "success" | "failure";
+  progress?: number;
+  progress_message?: string;
 }
 
 export interface AnalysisJobStatusResponse {
   job_id: string;
   job_type: "register" | "verify" | "watermark";
   status: "queued" | "running" | "success" | "failure";
+  progress?: number;
+  progress_message?: string;
   content?: RegisteredContentResponse | null;
   result?: VerifyResultResponse | null;
   error_code?: string | null;
