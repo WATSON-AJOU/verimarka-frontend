@@ -4,6 +4,8 @@ import { useLocation } from "react-router-dom";
 import { apiRequest } from "../../lib/api";
 import { getLocaleFromPathname, withLocalePath } from "../../lib/locales";
 
+const NICKNAME_RULE = /^[A-Za-z0-9가-힣 ]+$/;
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -27,7 +29,6 @@ export default function SignupModal({
   const location = useLocation();
   const currentLocale = getLocaleFromPathname(location.pathname) || "ko";
   const passwordRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
-  const nicknameRule = /^[A-Za-z0-9가-힣 ]+$/;
   const [nicknameStatus, setNicknameStatus] = useState<"idle" | "checking" | "available" | "duplicate">("idle");
   const [nicknameMessage, setNicknameMessage] = useState("");
   const [email, setEmail] = useState("");
@@ -56,30 +57,30 @@ export default function SignupModal({
 
   useEffect(() => {
     if (!open) return;
-    const trimmed = nickname.trim();
-
-    if (!trimmed) {
-      setNicknameStatus("idle");
-      setNicknameMessage("");
-      return;
-    }
-
-    if (trimmed.length > 30) {
-      setNicknameStatus("duplicate");
-      setNicknameMessage(t("auth.nicknameTooLong"));
-      return;
-    }
-
-    if (!nicknameRule.test(trimmed)) {
-      setNicknameStatus("duplicate");
-      setNicknameMessage(t("auth.nicknameInvalid"));
-      return;
-    }
-
-    setNicknameStatus("checking");
-    setNicknameMessage(t("auth.nicknameChecking"));
-
     const timer = window.setTimeout(async () => {
+      const trimmed = nickname.trim();
+
+      if (!trimmed) {
+        setNicknameStatus("idle");
+        setNicknameMessage("");
+        return;
+      }
+
+      if (trimmed.length > 30) {
+        setNicknameStatus("duplicate");
+        setNicknameMessage(t("auth.nicknameTooLong"));
+        return;
+      }
+
+      if (!NICKNAME_RULE.test(trimmed)) {
+        setNicknameStatus("duplicate");
+        setNicknameMessage(t("auth.nicknameInvalid"));
+        return;
+      }
+
+      setNicknameStatus("checking");
+      setNicknameMessage(t("auth.nicknameChecking"));
+
       try {
         const response = await apiRequest<{ available: boolean; message: string }>(
           `/accounts/nickname-availability/?nickname=${encodeURIComponent(trimmed)}`,
@@ -110,7 +111,7 @@ export default function SignupModal({
       return false;
     }
 
-    if (!nicknameRule.test(trimmed)) {
+    if (!NICKNAME_RULE.test(trimmed)) {
       setNicknameStatus("duplicate");
       setNicknameMessage(t("auth.nicknameInvalid"));
       return false;

@@ -189,7 +189,8 @@ export default function HistoryPage({
 
   useEffect(() => {
     if (initialExpandedId && items.some((item) => item.id === initialExpandedId)) {
-      setExpandedId(initialExpandedId);
+      const timer = window.setTimeout(() => setExpandedId(initialExpandedId), 0);
+      return () => window.clearTimeout(timer);
     }
   }, [initialExpandedId, items]);
 
@@ -197,9 +198,12 @@ export default function HistoryPage({
     if (!initialExpandedId || !initialDetailType) return;
     if (!items.some((item) => item.id === initialExpandedId && item.type === initialDetailType)) return;
 
-    if (initialDetailType === "allow") setAllowDetailId(initialExpandedId);
-    if (initialDetailType === "review") setReviewDetailId(initialExpandedId);
-    if (initialDetailType === "block") setBlockDetailId(initialExpandedId);
+    const timer = window.setTimeout(() => {
+      if (initialDetailType === "allow") setAllowDetailId(initialExpandedId);
+      if (initialDetailType === "review") setReviewDetailId(initialExpandedId);
+      if (initialDetailType === "block") setBlockDetailId(initialExpandedId);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [initialExpandedId, initialDetailType, items]);
 
   const allowDetailItem = allowDetailId
@@ -214,7 +218,8 @@ export default function HistoryPage({
 
   useEffect(() => {
     if (!reviewDetailItem) {
-      setReviewVoteModalOpen(false);
+      const timer = window.setTimeout(() => setReviewVoteModalOpen(false), 0);
+      return () => window.clearTimeout(timer);
     }
   }, [reviewDetailItem]);
 
@@ -224,7 +229,10 @@ export default function HistoryPage({
     if (closedReviewNoticeIds.includes(reviewDetailItem.id)) return;
 
     onOpenToast("투표가 종료되었습니다.");
-    setClosedReviewNoticeIds((current) => [...current, reviewDetailItem.id]);
+    const timer = window.setTimeout(() => {
+      setClosedReviewNoticeIds((current) => [...current, reviewDetailItem.id]);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [closedReviewNoticeIds, onOpenToast, reviewDetailItem]);
 
   async function handleCopyBlockchainUrl(item: HistoryItem) {

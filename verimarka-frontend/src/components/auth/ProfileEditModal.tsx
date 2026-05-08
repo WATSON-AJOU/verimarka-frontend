@@ -25,10 +25,13 @@ export default function ProfileEditModal({
 
   useEffect(() => {
     if (!open) return;
-    setDisplayName(initialDisplayName);
-    setErrorMessage("");
-    setDisplayNameStatus("idle");
-    setDisplayNameMessage("");
+    const timer = window.setTimeout(() => {
+      setDisplayName(initialDisplayName);
+      setErrorMessage("");
+      setDisplayNameStatus("idle");
+      setDisplayNameMessage("");
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [initialDisplayName, open]);
 
   if (!open) return null;

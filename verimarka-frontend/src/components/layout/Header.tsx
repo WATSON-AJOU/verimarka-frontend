@@ -65,7 +65,8 @@ export default function Header({
   }
 
   useEffect(() => {
-    setMobileMenuOpen(false);
+    const timer = window.setTimeout(() => setMobileMenuOpen(false), 0);
+    return () => window.clearTimeout(timer);
   }, [activeTab, isLoggedIn, loading]);
 
   return (

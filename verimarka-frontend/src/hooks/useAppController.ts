@@ -680,8 +680,11 @@ export function useAppController() {
 
   useEffect(() => {
     if (!phoneVerificationModalOpen && !emailVerificationModalOpen) return;
-    setPhoneInput(user?.phone ?? "");
-    setEmailInput(user?.email ?? "");
+    const timer = window.setTimeout(() => {
+      setPhoneInput(user?.phone ?? "");
+      setEmailInput(user?.email ?? "");
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [phoneVerificationModalOpen, emailVerificationModalOpen, user?.phone, user?.email]);
 
   useEffect(() => {
@@ -689,7 +692,8 @@ export function useAppController() {
     if (!postLogoutToast) return;
 
     window.sessionStorage.removeItem(POST_LOGOUT_TOAST_KEY);
-    openToast(postLogoutToast, 3000);
+    const timer = window.setTimeout(() => openToast(postLogoutToast, 3000), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -771,51 +775,61 @@ export function useAppController() {
 
   useEffect(() => {
     if (!selectedFile) {
-      setPreviewUrl("");
-      setAnalysisStage("idle");
-      setAnalysisProgress(0);
-      setAnalysisJobId(null);
-      setReviewVoteProgress(0);
-      setReviewVoteModalOpen(false);
-      setReviewVoteDraft(null);
-      setWatermarkProgress(0);
-      setRegisterFlowError(null);
-      setMintProgress(0);
-      setContentResult(null);
-      return;
+      const timer = window.setTimeout(() => {
+        setPreviewUrl("");
+        setAnalysisStage("idle");
+        setAnalysisProgress(0);
+        setAnalysisJobId(null);
+        setReviewVoteProgress(0);
+        setReviewVoteModalOpen(false);
+        setReviewVoteDraft(null);
+        setWatermarkProgress(0);
+        setRegisterFlowError(null);
+        setMintProgress(0);
+        setContentResult(null);
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
 
     const objectUrl = URL.createObjectURL(selectedFile);
-    setPreviewUrl(objectUrl);
-    setAnalysisStage("ready");
-    setAnalysisProgress(0);
-    setReviewVoteProgress(0);
-    setWatermarkProgress(0);
-    setMintProgress(0);
-    setRegisterFlowError(null);
+    const timer = window.setTimeout(() => {
+      setPreviewUrl(objectUrl);
+      setAnalysisStage("ready");
+      setAnalysisProgress(0);
+      setReviewVoteProgress(0);
+      setWatermarkProgress(0);
+      setMintProgress(0);
+      setRegisterFlowError(null);
+    }, 0);
 
-    return () => URL.revokeObjectURL(objectUrl);
+    return () => {
+      window.clearTimeout(timer);
+      URL.revokeObjectURL(objectUrl);
+    };
   }, [selectedFile]);
 
   useEffect(() => {
     if (!contentResult?.public_id || contentResult.decision !== "review") {
-      setReviewVoteModalOpen(false);
-      return;
+      const timer = window.setTimeout(() => setReviewVoteModalOpen(false), 0);
+      return () => window.clearTimeout(timer);
     }
 
-    setReviewVoteDraft((current) => {
-      if (current && current.contentId === contentResult.public_id) {
-        return current;
-      }
+    const timer = window.setTimeout(() => {
+      setReviewVoteDraft((current) => {
+        if (current && current.contentId === contentResult.public_id) {
+          return current;
+        }
 
-      return {
-        contentId: contentResult.public_id,
-        upvotes: contentResult.blockchain?.vote?.upvotes ?? 0,
-        downvotes: contentResult.blockchain?.vote?.downvotes ?? 0,
-        participantCount: contentResult.blockchain?.vote?.participant_count ?? 0,
-        votedChoice: null,
-      };
-    });
+        return {
+          contentId: contentResult.public_id,
+          upvotes: contentResult.blockchain?.vote?.upvotes ?? 0,
+          downvotes: contentResult.blockchain?.vote?.downvotes ?? 0,
+          participantCount: contentResult.blockchain?.vote?.participant_count ?? 0,
+          votedChoice: null,
+        };
+      });
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [
     contentResult?.public_id,
     contentResult?.decision,
@@ -826,25 +840,57 @@ export function useAppController() {
 
   useEffect(() => {
     if (!verifyFile) {
-      setVerifyPreviewUrl("");
-      setVerifyProgress(0);
-      setVerifyRunning(false);
-      setVerifyJobId(null);
-      setVerifyResult(null);
-      setVerifyRequestedAt(null);
-      setVerifyFlowError("");
-      return;
+      const timer = window.setTimeout(() => {
+        setVerifyPreviewUrl("");
+        setVerifyProgress(0);
+        setVerifyRunning(false);
+        setVerifyJobId(null);
+        setVerifyResult(null);
+        setVerifyRequestedAt(null);
+        setVerifyFlowError("");
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
 
     const objectUrl = URL.createObjectURL(verifyFile);
-    setVerifyPreviewUrl(objectUrl);
-    setVerifyProgress(0);
-    setVerifyRunning(false);
-    setVerifyResult(null);
-    setVerifyFlowError("");
+    const timer = window.setTimeout(() => {
+      setVerifyPreviewUrl(objectUrl);
+      setVerifyProgress(0);
+      setVerifyRunning(false);
+      setVerifyResult(null);
+      setVerifyFlowError("");
+    }, 0);
 
-    return () => URL.revokeObjectURL(objectUrl);
+    return () => {
+      window.clearTimeout(timer);
+      URL.revokeObjectURL(objectUrl);
+    };
   }, [verifyFile]);
+
+  useEffect(() => {
+    if (!hasAuthSession) {
+      const timer = window.setTimeout(() => {
+        setWalletSummary({
+          connected: false,
+          address: null,
+          chain_id: null,
+          wallet_type: "",
+          network_name: "Polygon",
+          nft_count: null,
+          vote_minimum: 3,
+          vote_eligible: false,
+          lookup_status: "not_connected",
+          lookup_error: null,
+        });
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
+
+    const timer = window.setTimeout(() => {
+      void refreshWalletSummary();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [hasAuthSession, user?.wallet_address]);
 
   useEffect(() => {
     if (!hasAuthSession || (activeTab !== "add" && activeTab !== "verify")) return;
@@ -897,26 +943,6 @@ export function useAppController() {
       cancelled = true;
     };
   }, [activeTab, hasAuthSession]);
-
-  useEffect(() => {
-    if (!hasAuthSession) {
-      setWalletSummary({
-        connected: false,
-        address: null,
-        chain_id: null,
-        wallet_type: "",
-        network_name: "Polygon",
-        nft_count: null,
-        vote_minimum: 3,
-        vote_eligible: false,
-        lookup_status: "not_connected",
-        lookup_error: null,
-      });
-      return;
-    }
-
-    void refreshWalletSummary();
-  }, [hasAuthSession, user?.wallet_address]);
 
   useEffect(() => {
     if (analysisStage !== "running" || !analysisJobId) return;
