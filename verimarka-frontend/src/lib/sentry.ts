@@ -12,6 +12,24 @@ declare global {
 }
 
 const SENTRY_BROWSER_BUNDLE_URL = "https://browser.sentry-cdn.com/9.18.0/bundle.tracing.min.js";
+const SENSITIVE_KEY_PATTERN = /address|authorization|cookie|email|name|password|phone|secret|signature|token/i;
+
+function sanitizeSentryValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => sanitizeSentryValue(item));
+  }
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => {
+        if (SENSITIVE_KEY_PATTERN.test(key)) {
+          return [key, "***REDACTED***"];
+        }
+        return [key, sanitizeSentryValue(item)];
+      }),
+    );
+  }
+  return value;
+}
 
 function loadScript(src: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -60,7 +78,7 @@ export async function initSentry() {
       environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || import.meta.env.MODE,
       release: import.meta.env.VITE_SENTRY_RELEASE || undefined,
       tracesSampleRate: Number(import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE || "0"),
-      sendDefaultPii: true,
+      sendDefaultPii: false,
     });
 
     appLogger.info("sentry.frontend_initialized", {
@@ -75,5 +93,5 @@ export async function initSentry() {
 
 export function captureSentryMessage(message: string, context?: Record<string, unknown>) {
   if (!window.Sentry?.captureMessage) return;
-  window.Sentry.captureMessage(message, context);
+  window.Sentry.captureMessage(message, sanitizeSentryValue(context) as Record<string, unknown>);
 }
