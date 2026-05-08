@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
 import { apiRequest } from "../../lib/api";
+import { getLocaleFromPathname, withLocalePath } from "../../lib/locales";
 
 interface Props {
   open: boolean;
@@ -22,6 +24,8 @@ export default function SignupModal({
   onLogin,
 }: Props) {
   const { t } = useTranslation();
+  const location = useLocation();
+  const currentLocale = getLocaleFromPathname(location.pathname) || "ko";
   const passwordRule = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/;
   const nicknameRule = /^[A-Za-z0-9가-힣 ]+$/;
   const [nicknameStatus, setNicknameStatus] = useState<"idle" | "checking" | "available" | "duplicate">("idle");
@@ -290,7 +294,7 @@ export default function SignupModal({
                 />
                 <span>{t("auth.agreeTerms")}</span>
               </div>
-              <a className="agreementLink" href="/terms" target="_blank" rel="noreferrer">
+              <a className="agreementLink" href={withLocalePath("/terms", currentLocale)} target="_blank" rel="noreferrer">
                 {t("auth.terms")}
               </a>
             </label>
@@ -308,7 +312,7 @@ export default function SignupModal({
                 />
                 <span>{t("auth.agreePrivacy")}</span>
               </div>
-              <a className="agreementLink" href="/privacy" target="_blank" rel="noreferrer">
+              <a className="agreementLink" href={withLocalePath("/privacy", currentLocale)} target="_blank" rel="noreferrer">
                 {t("auth.privacy")}
               </a>
             </label>

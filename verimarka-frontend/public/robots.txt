@@ -2,7 +2,9 @@ User-agent: *
 Allow: /
 Disallow: /auth/
 Disallow: /history
+Disallow: /*/history
 Disallow: /mypage
+Disallow: /*/mypage
 Disallow: /403
 Disallow: /404
 
@@ -10,7 +12,9 @@ User-agent: Yeti
 Allow: /
 Disallow: /auth/
 Disallow: /history
+Disallow: /*/history
 Disallow: /mypage
+Disallow: /*/mypage
 Disallow: /403
 Disallow: /404
 

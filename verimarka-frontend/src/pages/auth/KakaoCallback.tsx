@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 import { apiRequest } from "../../lib/api"
 import { clearTokens, setTokens } from "../../lib/token"
 import {
+  buildTabPath,
   POST_LOGOUT_TOAST_KEY,
   SUSPENDED_ACCOUNT_MESSAGE,
 } from "../../lib/app-utils"
@@ -37,7 +38,7 @@ export default function KakaoCallback() {
 
       const lastHandledCode = window.sessionStorage.getItem(KAKAO_OAUTH_CODE_KEY)
       if (lastHandledCode === code) {
-        window.location.replace("/")
+        window.location.replace(buildTabPath("home"))
         return
       }
 
@@ -59,7 +60,7 @@ export default function KakaoCallback() {
       setTokens(data.access)
       window.sessionStorage.setItem(KAKAO_OAUTH_CODE_KEY, code)
       window.sessionStorage.removeItem(KAKAO_OAUTH_PENDING_CODE_KEY)
-      window.location.replace("/")
+      window.location.replace(buildTabPath("home"))
     }
 
     login().catch((error) => {
@@ -72,11 +73,11 @@ export default function KakaoCallback() {
       ) {
         clearTokens()
         window.sessionStorage.setItem(POST_LOGOUT_TOAST_KEY, SUSPENDED_ACCOUNT_MESSAGE)
-        window.location.replace("/")
+        window.location.replace(buildTabPath("home"))
         return
       }
       window.alert(message)
-      window.location.replace("/")
+      window.location.replace(buildTabPath("home"))
     })
   }, [])
 

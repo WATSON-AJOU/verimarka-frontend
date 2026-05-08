@@ -1,4 +1,5 @@
 import { normalizeWalletConnectorId, walletChain } from "./wallet";
+import { getLocaleFromPathname, getPreferredLocale, stripLocaleFromPathname, type SupportedLocale } from "./locales";
 import type { TabName } from "../types/app";
 
 export const TAB_PATHS: Record<TabName, string> = {
@@ -78,15 +79,25 @@ export function getWalletInstallMessage(connectorId?: string) {
 }
 
 export function getTabFromPath(pathname: string): TabName {
-  if (pathname === "/register") return "add";
-  if (pathname === "/verify") return "verify";
-  if (pathname === "/history") return "history";
-  if (pathname === "/mypage") return "mypage";
+  const pathWithoutLocale = stripLocaleFromPathname(pathname);
+  if (pathWithoutLocale === "/register") return "add";
+  if (pathWithoutLocale === "/verify") return "verify";
+  if (pathWithoutLocale === "/history") return "history";
+  if (pathWithoutLocale === "/mypage") return "mypage";
   return "home";
 }
 
-export function buildTabPath(nextTab: TabName, options?: { search?: string }) {
-  return `${TAB_PATHS[nextTab]}${options?.search ?? ""}`;
+export function getCurrentLocale(pathname?: string): SupportedLocale {
+  if (pathname) return getLocaleFromPathname(pathname) || getPreferredLocale();
+  if (typeof window !== "undefined") return getLocaleFromPathname(window.location.pathname) || getPreferredLocale();
+  return getPreferredLocale();
+}
+
+export function buildTabPath(nextTab: TabName, options?: { search?: string; locale?: SupportedLocale }) {
+  const locale = options?.locale ?? getCurrentLocale();
+  const tabPath = TAB_PATHS[nextTab];
+  const localizedPath = tabPath === "/" ? `/${locale}` : `/${locale}${tabPath}`;
+  return `${localizedPath}${options?.search ?? ""}`;
 }
 
 export function buildWatermarkedFileName(fileName: string) {

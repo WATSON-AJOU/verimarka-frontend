@@ -1,6 +1,8 @@
 import type { TabName } from "../../types/app";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate } from "react-router-dom";
+import { withLocalePath, type SupportedLocale } from "../../lib/locales";
 
 interface HeaderTab {
   key: TabName;
@@ -33,18 +35,34 @@ export default function Header({
   onLogout,
 }: HeaderProps) {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const languages = useMemo(
     () => [
-      { code: "ko", label: t("language.ko") },
-      { code: "en", label: t("language.en") },
-      { code: "ja", label: t("language.ja") },
-      { code: "zh-CN", label: t("language.zhCN") },
+      { code: "ko" as const, label: t("language.ko") },
+      { code: "en" as const, label: t("language.en") },
+      { code: "ja" as const, label: t("language.ja") },
+      { code: "zh-CN" as const, label: t("language.zhCN") },
     ],
     [t],
   );
   const currentLanguageLabel = languages.find((language) => language.code === i18n.language)?.label || t("language.ko");
+
+  function changeLanguage(language: SupportedLocale) {
+    void i18n.changeLanguage(language);
+    navigate(
+      {
+        pathname: withLocalePath(location.pathname, language),
+        search: location.search,
+        hash: location.hash,
+      },
+      { replace: true },
+    );
+    setLanguageMenuOpen(false);
+    setMobileMenuOpen(false);
+  }
 
   useEffect(() => {
     setMobileMenuOpen(false);
@@ -144,11 +162,7 @@ export default function Header({
                       key={language.code}
                       type="button"
                       className={`lang-option ${i18n.language === language.code ? "is-active" : ""}`}
-                      onClick={() => {
-                        void i18n.changeLanguage(language.code);
-                        setLanguageMenuOpen(false);
-                        setMobileMenuOpen(false);
-                      }}
+                      onClick={() => changeLanguage(language.code)}
                     >
                       {language.label}
                     </button>

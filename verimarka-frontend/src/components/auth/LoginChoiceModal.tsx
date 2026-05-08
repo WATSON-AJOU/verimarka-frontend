@@ -2,6 +2,8 @@ import appleLogo from "../../assets/applelogo.svg";
 import googleLogo from "../../assets/googlelogo.svg";
 import kakaoLogo from "../../assets/kakaologo.svg";
 import { useTranslation } from "react-i18next";
+import { useLocation } from "react-router-dom";
+import { getLocaleFromPathname, withLocalePath } from "../../lib/locales";
 
 interface Props {
   open: boolean;
@@ -22,6 +24,8 @@ export default function LoginChoiceModal({
   onSignup,
 }: Props) {
   const { t } = useTranslation();
+  const location = useLocation();
+  const currentLocale = getLocaleFromPathname(location.pathname) || "ko";
 
   function loginWithGoogle() {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
@@ -135,12 +139,12 @@ export default function LoginChoiceModal({
 
         <p className="oauthAgreementText">
           {t("auth.agreePrefix")}{" "}
-          <a href="/terms" target="_blank" rel="noreferrer">
+          <a href={withLocalePath("/terms", currentLocale)} target="_blank" rel="noreferrer">
             {t("auth.terms")}
           </a>
           {" "}{t("auth.agreeJoiner")}
           <br />
-          <a href="/privacy" target="_blank" rel="noreferrer">
+          <a href={withLocalePath("/privacy", currentLocale)} target="_blank" rel="noreferrer">
             {t("auth.privacy")}
           </a>
           {t("auth.agreeSuffix")}

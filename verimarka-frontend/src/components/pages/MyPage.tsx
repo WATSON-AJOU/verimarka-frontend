@@ -1,3 +1,6 @@
+import { useLocation } from "react-router-dom";
+import { getLocaleFromPathname, withLocalePath } from "../../lib/locales";
+
 interface MyPageProps {
   displayName: string;
   profileEmail: string;
@@ -53,6 +56,9 @@ export default function MyPage({
   onConnectWallet,
   onDisconnectWallet,
 }: MyPageProps) {
+  const location = useLocation();
+  const currentLocale = getLocaleFromPathname(location.pathname) || "ko";
+
   return (
     <section className="mypage-shell">
       <div className="mypage-header">
@@ -73,9 +79,9 @@ export default function MyPage({
 
           <div className="mypage-quick-links">
             <a href="#!" onClick={(event) => { event.preventDefault(); onLogout(); }}>로그아웃</a>
-            <a href="/terms">이용약관</a>
-            <a href="/privacy">개인정보처리방침</a>
-            <a href="/support">고객센터</a>
+            <a href={withLocalePath("/terms", currentLocale)}>이용약관</a>
+            <a href={withLocalePath("/privacy", currentLocale)}>개인정보처리방침</a>
+            <a href={withLocalePath("/support", currentLocale)}>고객센터</a>
             <button className="mypage-withdraw-link" type="button" onClick={onOpenWithdraw}>
               회원 탈퇴
             </button>

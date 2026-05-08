@@ -1,18 +1,36 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useLocation, useNavigate } from "react-router-dom";
+import { getLocaleFromPathname, withLocalePath, type SupportedLocale } from "../../lib/locales";
 
 export default function Footer() {
   const { t, i18n } = useTranslation();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const currentLocale = getLocaleFromPathname(location.pathname) || "ko";
   const languages = useMemo(
     () => [
-      { code: "ko", label: t("language.ko") },
-      { code: "en", label: t("language.en") },
-      { code: "ja", label: t("language.ja") },
-      { code: "zh-CN", label: t("language.zhCN") },
+      { code: "ko" as const, label: t("language.ko") },
+      { code: "en" as const, label: t("language.en") },
+      { code: "ja" as const, label: t("language.ja") },
+      { code: "zh-CN" as const, label: t("language.zhCN") },
     ],
     [t],
   );
+
+  function changeLanguage(language: SupportedLocale) {
+    void i18n.changeLanguage(language);
+    navigate(
+      {
+        pathname: withLocalePath(location.pathname, language),
+        search: location.search,
+        hash: location.hash,
+      },
+      { replace: true },
+    );
+    setLanguageMenuOpen(false);
+  }
 
   return (
     <footer className="site-footer">
@@ -21,9 +39,9 @@ export default function Footer() {
           <div className="footer-topline">
             <h2 className="footer-logo">VeriMarka</h2>
             <div className="footer-links">
-              <a href="/terms">{t("footer.terms")}</a>
-              <a href="/privacy">{t("footer.privacy")}</a>
-              <a href="/support">{t("footer.support")}</a>
+              <a href={withLocalePath("/terms", currentLocale)}>{t("footer.terms")}</a>
+              <a href={withLocalePath("/privacy", currentLocale)}>{t("footer.privacy")}</a>
+              <a href={withLocalePath("/support", currentLocale)}>{t("footer.support")}</a>
             </div>
           </div>
 
@@ -52,10 +70,7 @@ export default function Footer() {
                   key={language.code}
                   type="button"
                   className={`lang-option ${i18n.language === language.code ? "is-active" : ""}`}
-                  onClick={() => {
-                    void i18n.changeLanguage(language.code);
-                    setLanguageMenuOpen(false);
-                  }}
+                  onClick={() => changeLanguage(language.code)}
                 >
                   {language.label}
                 </button>

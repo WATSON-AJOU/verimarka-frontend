@@ -16,6 +16,7 @@ import PrivacyPage from "./pages/legal/PrivacyPage";
 import SupportPage from "./pages/legal/SupportPage";
 import TermsPage from "./pages/legal/TermsPage";
 import ErrorPage from "./pages/ErrorPage";
+import { LegacyRouteRedirect, LocaleRoute, LocalizedApp } from "./components/routing/LocaleRoutes";
 
 void initSentry();
 
@@ -41,19 +42,28 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={walletQueryClient}>
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<App />} />
-            <Route path="/register" element={<App />} />
-            <Route path="/verify" element={<App />} />
-            <Route path="/history" element={<App />} />
-            <Route path="/mypage" element={<App />} />
             <Route path="/auth/apple/callback" element={<AppleCallback />} />
             <Route path="/auth/google/callback" element={<GoogleCallback />} />
             <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
-            <Route path="/terms" element={<TermsPage />} />
-            <Route path="/privacy" element={<PrivacyPage />} />
-            <Route path="/support" element={<SupportPage />} />
+            <Route path="/" element={<LegacyRouteRedirect />} />
+            <Route path="/register" element={<LegacyRouteRedirect />} />
+            <Route path="/verify" element={<LegacyRouteRedirect />} />
+            <Route path="/history" element={<LegacyRouteRedirect />} />
+            <Route path="/mypage" element={<LegacyRouteRedirect />} />
+            <Route path="/terms" element={<LegacyRouteRedirect />} />
+            <Route path="/privacy" element={<LegacyRouteRedirect />} />
+            <Route path="/support" element={<LegacyRouteRedirect />} />
+            <Route path="/:locale" element={<LocalizedApp><App /></LocalizedApp>} />
+            <Route path="/:locale/register" element={<LocalizedApp><App /></LocalizedApp>} />
+            <Route path="/:locale/verify" element={<LocalizedApp><App /></LocalizedApp>} />
+            <Route path="/:locale/history" element={<LocalizedApp><App /></LocalizedApp>} />
+            <Route path="/:locale/mypage" element={<LocalizedApp><App /></LocalizedApp>} />
+            <Route path="/:locale/terms" element={<LocaleRoute><TermsPage /></LocaleRoute>} />
+            <Route path="/:locale/privacy" element={<LocaleRoute><PrivacyPage /></LocaleRoute>} />
+            <Route path="/:locale/support" element={<LocaleRoute><SupportPage /></LocaleRoute>} />
             <Route path="/403" element={<ErrorPage statusCode={403} />} />
             <Route path="/404" element={<ErrorPage statusCode={404} />} />
+            <Route path="/:locale/*" element={<LocaleRoute><ErrorPage statusCode={404} /></LocaleRoute>} />
             <Route path="*" element={<ErrorPage statusCode={404} />} />
           </Routes>
         </BrowserRouter>

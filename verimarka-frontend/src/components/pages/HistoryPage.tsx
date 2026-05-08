@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { authenticatedFetch } from "../../lib/api";
+import { buildTabPath, getCurrentLocale } from "../../lib/app-utils";
 import type { HistoryAllowResumePayload, HistoryItem } from "../../types/app";
 
 interface HistoryPageProps {
@@ -25,6 +27,8 @@ export default function HistoryPage({
   initialExpandedId,
   initialDetailType,
 }: HistoryPageProps) {
+  const location = useLocation();
+  const currentLocale = getCurrentLocale(location.pathname);
   function buildWatermarkedFileName(fileName: string) {
     const trimmed = fileName.trim();
     if (!trimmed) return "watermarked_VM";
@@ -232,7 +236,9 @@ export default function HistoryPage({
         : networkName.includes("sepolia")
           ? "https://sepolia.etherscan.io/tx/"
           : "https://polygonscan.com/tx/";
-    const targetUrl = rawTxHash && rawTxHash !== "-" ? `${baseUrl}${rawTxHash}` : `${window.location.origin}/history?entry=${item.id}`;
+    const targetUrl = rawTxHash && rawTxHash !== "-"
+      ? `${baseUrl}${rawTxHash}`
+      : `${window.location.origin}${buildTabPath("history", { locale: currentLocale, search: `?entry=${item.id}` })}`;
     await navigator.clipboard.writeText(targetUrl);
     onOpenToast("URL 복사가 완료되었습니다.");
   }

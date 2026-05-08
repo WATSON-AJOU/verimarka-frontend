@@ -18,6 +18,7 @@ import {
   formatLastLogin,
   formatPhoneNumber,
   formatReviewVoteEndAt,
+  getCurrentLocale,
   formatWalletAddress,
   getInitial,
   getMimeTypeFromFileName,
@@ -29,7 +30,6 @@ import {
   LOADING_RING_MAX_PENDING_PROGRESS,
   POST_LOGOUT_TOAST_KEY,
   SUSPENDED_ACCOUNT_MESSAGE,
-  TAB_PATHS,
 } from "../lib/app-utils";
 import { getAccessToken } from "../lib/token";
 import {
@@ -186,6 +186,7 @@ export function useAppController() {
   const publicClientRef = useRef(publicClient);
   const fallbackWalletClientRef = useRef<WalletClient | null>(null);
 
+  const routeLocale = useMemo(() => getCurrentLocale(location.pathname), [location.pathname]);
   const phoneVerified = Boolean(user?.phone_verified);
   const emailVerified = Boolean(user?.email_verified);
   const activeTab = useMemo(() => getTabFromPath(location.pathname), [location.pathname]);
@@ -237,7 +238,7 @@ export function useAppController() {
   function navigateToTab(nextTab: TabName, options?: { replace?: boolean; search?: string }) {
     navigate(
       {
-        pathname: TAB_PATHS[nextTab],
+        pathname: buildTabPath(nextTab, { locale: routeLocale }),
         search: options?.search ?? "",
       },
       { replace: options?.replace ?? false },
@@ -245,7 +246,7 @@ export function useAppController() {
   }
 
   function hardNavigateToTab(nextTab: TabName, options?: { search?: string }) {
-    const nextPath = buildTabPath(nextTab, options);
+    const nextPath = buildTabPath(nextTab, { ...options, locale: routeLocale });
     const currentPath = `${window.location.pathname}${window.location.search}`;
 
     if (currentPath === nextPath) {

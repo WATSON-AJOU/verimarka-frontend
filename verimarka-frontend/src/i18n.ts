@@ -1,7 +1,6 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-
-const LANGUAGE_STORAGE_KEY = "verimarka:language";
+import { getLocaleFromPathname, getPreferredLocale, LANGUAGE_STORAGE_KEY } from "./lib/locales";
 
 const resources = {
   ko: {
@@ -258,14 +257,7 @@ const resources = {
 } as const;
 
 function resolveInitialLanguage() {
-  const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-  if (stored && stored in resources) return stored;
-
-  const browserLanguage = navigator.language;
-  if (browserLanguage.startsWith("en")) return "en";
-  if (browserLanguage.startsWith("ja")) return "ja";
-  if (browserLanguage.startsWith("zh")) return "zh-CN";
-  return "ko";
+  return getLocaleFromPathname(window.location.pathname) || getPreferredLocale();
 }
 
 void i18n.use(initReactI18next).init({

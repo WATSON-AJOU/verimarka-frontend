@@ -1,11 +1,16 @@
+import { useLocation } from "react-router-dom";
 import LegalPageLayout from "../../components/legal/LegalPageLayout";
+import { getLocaleFromPathname, withLocalePath } from "../../lib/locales";
 import { useSeo } from "../../lib/seo";
 
 export default function SupportPage() {
+  const location = useLocation();
+  const currentLocale = getLocaleFromPathname(location.pathname) || "ko";
+
   useSeo({
     title: "Verimarka 고객센터 및 저작권 등록 가이드",
     description: "Verimarka 고객센터, 자주 묻는 질문, 워터마크 등록 및 저작물 검증 가이드를 확인하세요.",
-    path: "/support",
+    path: location.pathname,
     locale: "ko-KR",
     structuredData: {
       "@context": "https://schema.org",
@@ -117,12 +122,12 @@ export default function SupportPage() {
       <section>
         <h2>바로가기</h2>
         <ul>
-          <li><a href="/">메인 페이지</a></li>
-          <li><a href="/register">저작물 등록</a></li>
-          <li><a href="/verify">저작물 검증</a></li>
-          <li><a href="/history">분석 기록</a></li>
-          <li><a href="/terms">이용약관</a></li>
-          <li><a href="/privacy">개인정보 처리방침</a></li>
+          <li><a href={withLocalePath("/", currentLocale)}>메인 페이지</a></li>
+          <li><a href={withLocalePath("/register", currentLocale)}>저작물 등록</a></li>
+          <li><a href={withLocalePath("/verify", currentLocale)}>저작물 검증</a></li>
+          <li><a href={withLocalePath("/history", currentLocale)}>분석 기록</a></li>
+          <li><a href={withLocalePath("/terms", currentLocale)}>이용약관</a></li>
+          <li><a href={withLocalePath("/privacy", currentLocale)}>개인정보 처리방침</a></li>
         </ul>
       </section>
     </LegalPageLayout>
