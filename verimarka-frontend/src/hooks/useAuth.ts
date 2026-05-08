@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { apiRequest } from "../lib/api";
-import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "../lib/token";
+import { apiRequest, refreshAccessToken } from "../lib/api";
+import { clearTokens, getAccessToken, setTokens } from "../lib/token";
 
 export interface MeResponse {
   id: number;
@@ -22,7 +22,6 @@ export interface MeResponse {
 
 interface AuthTokens {
   access: string;
-  refresh: string;
 }
 
 interface LoginResponse extends AuthTokens {
@@ -49,7 +48,7 @@ interface UpdateProfilePayload {
 
 export function useAuth() {
   const [user, setUser] = useState<MeResponse | null>(null);
-  const [loading, setLoading] = useState(() => !!getAccessToken());
+  const [loading, setLoading] = useState(true);
 
   async function fetchMe() {
     try {
@@ -66,14 +65,25 @@ export function useAuth() {
   }
 
   useEffect(() => {
-    const token = getAccessToken();
-    if (!token) return;
+    let cancelled = false;
 
     const timeout = window.setTimeout(() => {
-      void fetchMe();
+      void (async () => {
+        let token = getAccessToken();
+        if (!token) {
+          token = await refreshAccessToken({ dispatchEvents: false });
+        }
+        if (cancelled) return;
+        if (token) {
+          await fetchMe();
+          return;
+        }
+        setLoading(false);
+      })();
     }, 0);
 
     return () => {
+      cancelled = true;
       window.clearTimeout(timeout);
     };
   }, []);
@@ -84,7 +94,7 @@ export function useAuth() {
       body: { email, password },
     });
 
-    setTokens(data.access, data.refresh);
+    setTokens(data.access);
     setUser(data.user);
     return data.user;
   }
@@ -95,20 +105,16 @@ export function useAuth() {
       body: payload,
     });
 
-    setTokens(data.access, data.refresh);
+    setTokens(data.access);
     setUser(data.user);
     return data.user;
   }
 
   async function logout() {
-    const refresh = getRefreshToken();
     try {
-      if (refresh) {
-        await apiRequest("/accounts/logout/", {
-          method: "POST",
-          body: { refresh },
-        });
-      }
+      await apiRequest("/accounts/logout/", {
+        method: "POST",
+      });
     } finally {
       clearTokens();
       setUser(null);
@@ -127,11 +133,9 @@ export function useAuth() {
   }
 
   async function withdraw() {
-    const refresh = getRefreshToken();
     await apiRequest<{ message: string }>("/accounts/withdraw/", {
       method: "DELETE",
       auth: true,
-      body: { refresh },
     });
     clearTokens();
     setUser(null);

@@ -12,7 +12,6 @@ const KAKAO_OAUTH_STATE_KEY = "verimarka:oauth:kakao:state"
 
 interface OAuthTokenResponse {
   access: string
-  refresh: string
 }
 
 export default function KakaoCallback() {
@@ -57,7 +56,7 @@ export default function KakaoCallback() {
         body: { code, redirect_uri },
       })
 
-      setTokens(data.access, data.refresh)
+      setTokens(data.access)
       window.sessionStorage.setItem(KAKAO_OAUTH_CODE_KEY, code)
       window.sessionStorage.removeItem(KAKAO_OAUTH_PENDING_CODE_KEY)
       window.location.replace("/")

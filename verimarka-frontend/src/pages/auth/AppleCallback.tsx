@@ -10,7 +10,6 @@ const APPLE_OAUTH_STATE_KEY = "verimarka:oauth:apple:state"
 
 interface OAuthTokenResponse {
   access: string
-  refresh: string
 }
 
 export default function AppleCallback() {
@@ -49,7 +48,7 @@ export default function AppleCallback() {
         body: { code, redirect_uri },
       })
 
-      setTokens(data.access, data.refresh)
+      setTokens(data.access)
       window.location.replace("/")
     }
 

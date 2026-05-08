@@ -12,7 +12,6 @@ const GOOGLE_OAUTH_STATE_KEY = "verimarka:oauth:google:state"
 
 interface OAuthTokenResponse {
   access: string
-  refresh: string
 }
 
 export default function GoogleCallback() {
@@ -57,7 +56,7 @@ export default function GoogleCallback() {
         body: { code, redirect_uri },
       })
 
-      setTokens(data.access, data.refresh)
+      setTokens(data.access)
       window.sessionStorage.setItem(GOOGLE_OAUTH_CODE_KEY, code)
       window.sessionStorage.removeItem(GOOGLE_OAUTH_PENDING_CODE_KEY)
       window.location.replace("/")

@@ -1,4 +1,4 @@
-import { clearTokens, getAccessToken, getRefreshToken, setAccessToken, setTokens } from "./token";
+import { clearTokens, getAccessToken, setAccessToken } from "./token";
 import { appLogger, createClientRequestId } from "./logger";
 import { captureSentryMessage } from "./sentry";
 
@@ -17,7 +17,6 @@ interface RequestOptions {
 
 interface RefreshResponse {
   access: string;
-  refresh?: string;
 }
 
 export class ApiRequestError extends Error {
@@ -66,16 +65,11 @@ function redactSensitiveBody(value: unknown): unknown {
   );
 }
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(options: { dispatchEvents?: boolean } = {}): Promise<string | null> {
+  const dispatchEvents = options.dispatchEvents ?? true;
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = (async () => {
-    const refresh = getRefreshToken();
-    if (!refresh) {
-      clearTokens();
-      return null;
-    }
-
     const requestId = createClientRequestId();
     appLogger.info("api.refresh.request", {
       request_id: requestId,
@@ -89,7 +83,7 @@ async function refreshAccessToken(): Promise<string | null> {
         "Content-Type": "application/json",
         "X-Request-Id": requestId,
       },
-      body: JSON.stringify({ refresh }),
+      credentials: "include",
     });
 
     const responseRequestId = response.headers.get("X-Request-Id");
@@ -111,17 +105,17 @@ async function refreshAccessToken(): Promise<string | null> {
 
     if (!response.ok || !data.access) {
       clearTokens();
-      window.dispatchEvent(new CustomEvent(AUTH_REFRESH_FAILED_EVENT));
+      if (dispatchEvents) {
+        window.dispatchEvent(new CustomEvent(AUTH_REFRESH_FAILED_EVENT));
+      }
       return null;
     }
 
-    if (data.refresh) {
-      setTokens(data.access, data.refresh);
-    } else {
-      setAccessToken(data.access);
-    }
+    setAccessToken(data.access);
 
-    window.dispatchEvent(new CustomEvent(AUTH_REFRESH_SUCCESS_EVENT));
+    if (dispatchEvents) {
+      window.dispatchEvent(new CustomEvent(AUTH_REFRESH_SUCCESS_EVENT));
+    }
     return data.access;
   })();
 
@@ -155,6 +149,7 @@ export async function authenticatedFetch(
   const response = await fetch(input, {
     ...init,
     headers,
+    credentials: init.credentials ?? "include",
   });
 
   appLogger.info("api.fetch.response", {
@@ -175,6 +170,7 @@ export async function authenticatedFetch(
       return fetch(input, {
         ...init,
         headers: retryHeaders,
+        credentials: init.credentials ?? "include",
       });
     }
   }
@@ -217,6 +213,7 @@ export async function apiRequest<T>(
     method,
     headers,
     body: body ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
+    credentials: "include",
   });
 
   const responseRequestId = response.headers.get("X-Request-Id") || requestId;
