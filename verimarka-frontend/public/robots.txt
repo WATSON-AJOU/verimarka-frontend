@@ -1,9 +1,17 @@
 User-agent: *
 Allow: /
-Disallow: /auth/google/callback
-Disallow: /auth/kakao/callback
+Disallow: /auth/
+Disallow: /history
+Disallow: /mypage
+Disallow: /403
+Disallow: /404
 
 User-agent: Yeti
 Allow: /
+Disallow: /auth/
+Disallow: /history
+Disallow: /mypage
+Disallow: /403
+Disallow: /404
 
 Sitemap: https://verimarka.com/sitemap.xml
