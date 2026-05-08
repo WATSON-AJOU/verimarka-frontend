@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAccount, useChainId, useConnect, useDisconnect, usePublicClient, useSignMessage, useSwitchChain, useWalletClient } from "wagmi";
@@ -135,6 +135,7 @@ export function useAppController() {
   const [reviewConsentModalOpen, setReviewConsentModalOpen] = useState(false);
   const [reviewConsentNotifyByEmail, setReviewConsentNotifyByEmail] = useState(false);
   const [reviewConsentOpenedAt, setReviewConsentOpenedAt] = useState<number | null>(null);
+  const [reviewConsentFallbackOpenedAt] = useState(() => Date.now());
   const [reviewVoteDraft, setReviewVoteDraft] = useState<{
     contentId: string;
     upvotes: number;
@@ -247,7 +248,7 @@ export function useAppController() {
     });
   }, [connectors]);
 
-  function navigateToTab(nextTab: TabName, options?: { replace?: boolean; search?: string }) {
+  const navigateToTab = useCallback((nextTab: TabName, options?: { replace?: boolean; search?: string }) => {
     navigate(
       {
         pathname: buildTabPath(nextTab, { locale: routeLocale }),
@@ -255,7 +256,7 @@ export function useAppController() {
       },
       { replace: options?.replace ?? false },
     );
-  }
+  }, [navigate, routeLocale]);
 
   function hardNavigateToTab(nextTab: TabName, options?: { search?: string }) {
     const nextPath = buildTabPath(nextTab, { ...options, locale: routeLocale });
@@ -269,14 +270,14 @@ export function useAppController() {
     window.location.assign(nextPath);
   }
 
-  function openToast(message: string, duration = 3000) {
+  const openToast = useCallback((message: string, duration = 3000) => {
     setToast((current) => ({
       id: current.id + 1,
       open: true,
       message,
       duration,
     }));
-  }
+  }, []);
 
   function closeToast() {
     setToast((current) => ({ ...current, open: false }));
@@ -286,7 +287,7 @@ export function useAppController() {
     navigateToTab("history", { search: `?entry=${encodeURIComponent(entryId)}&detail=review` });
   }
 
-  async function refreshWalletSummary(options?: { silent?: boolean }) {
+  const refreshWalletSummary = useCallback(async (options?: { silent?: boolean }) => {
     if (!hasAuthSession) {
       setWalletSummary({
         connected: false,
@@ -320,7 +321,7 @@ export function useAppController() {
         setWalletSummaryLoading(false);
       }
     }
-  }
+  }, [hasAuthSession, user]);
 
   async function createFallbackWalletClient(options?: { connector?: Connector | null; account?: string | null }): Promise<WalletClient | null> {
     const connector = options?.connector ?? connectedConnector;
@@ -694,7 +695,7 @@ export function useAppController() {
     window.sessionStorage.removeItem(POST_LOGOUT_TOAST_KEY);
     const timer = window.setTimeout(() => openToast(postLogoutToast, 3000), 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [openToast]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -706,7 +707,7 @@ export function useAppController() {
       replace: true,
       search: entry ? `?entry=${encodeURIComponent(entry)}` : "",
     });
-  }, [hasAuthSession, location.pathname, location.search]);
+  }, [hasAuthSession, location.pathname, location.search, navigateToTab]);
 
   useEffect(() => {
     function handleRefreshSuccess() {
@@ -725,7 +726,7 @@ export function useAppController() {
       window.removeEventListener(AUTH_REFRESH_SUCCESS_EVENT, handleRefreshSuccess);
       window.removeEventListener(AUTH_REFRESH_FAILED_EVENT, handleRefreshFailure);
     };
-  }, []);
+  }, [navigateToTab, openToast]);
 
   useEffect(() => {
     if (!hasAuthSession) {
@@ -771,7 +772,7 @@ export function useAppController() {
         inactivityTimeoutRef.current = null;
       }
     };
-  }, [hasAuthSession, logout]);
+  }, [hasAuthSession, logout, navigateToTab, openToast]);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -890,7 +891,7 @@ export function useAppController() {
       void refreshWalletSummary();
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [hasAuthSession, user?.wallet_address]);
+  }, [hasAuthSession, refreshWalletSummary]);
 
   useEffect(() => {
     if (!hasAuthSession || (activeTab !== "add" && activeTab !== "verify")) return;
@@ -1019,7 +1020,7 @@ export function useAppController() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [analysisStage, analysisJobId]);
+  }, [analysisStage, analysisJobId, openToast]);
 
   useEffect(() => {
     if (analysisStage !== "watermarking" || !watermarkJobId) return;
@@ -1084,7 +1085,7 @@ export function useAppController() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [analysisStage, watermarkJobId]);
+  }, [analysisStage, watermarkJobId, openToast]);
 
   useEffect(() => {
     if (!verifyRunning || !verifyJobId) return;
@@ -1140,7 +1141,7 @@ export function useAppController() {
       cancelled = true;
       window.clearInterval(intervalId);
     };
-  }, [verifyRunning, verifyJobId]);
+  }, [verifyRunning, verifyJobId, openToast]);
 
   useEffect(() => {
     if (analysisStage !== "reviewStarting" || !reviewVoteRequestPending) return;
@@ -1164,6 +1165,41 @@ export function useAppController() {
     return () => window.clearInterval(intervalId);
   }, [analysisStage, mintRequestPending]);
 
+  const refreshReviewVote = useCallback(async (publicId?: string, options?: { silent?: boolean }) => {
+    const targetPublicId = publicId || contentResult?.public_id;
+    if (!targetPublicId) return;
+
+    try {
+      const response = await apiRequest<RegisteredContentResponse>(`/contents/${targetPublicId}/review-vote/`, {
+        method: "GET",
+        auth: true,
+      });
+      setContentResult(response);
+
+      if (response.decision === "allow" || response.decision === "block") {
+        setReviewVoteModalOpen(false);
+        setAnalysisStage(response.decision);
+        if (!options?.silent) {
+          openToast(response.decision === "allow" ? "커뮤니티 검증이 승인되어 등록 가능 상태로 전환되었습니다." : "커뮤니티 검증이 거절되어 등록 제한 상태로 전환되었습니다.");
+        }
+        return;
+      }
+
+      setAnalysisStage("reviewLive");
+      if (!options?.silent) {
+        openToast("커뮤니티 검증 현황을 새로고침했습니다.");
+      }
+    } catch (error) {
+      if (!options?.silent) {
+        setRegisterFlowError({
+          message: error instanceof Error ? error.message : "커뮤니티 검증 상태를 불러오지 못했습니다.",
+          retryAction: "review",
+        });
+        openToast("커뮤니티 검증 상태를 불러오지 못했습니다.");
+      }
+    }
+  }, [contentResult?.public_id, openToast]);
+
   useEffect(() => {
     if (analysisStage !== "reviewLive" || !contentResult?.public_id) return;
     const voteStatus = contentResult.blockchain?.vote?.status;
@@ -1172,7 +1208,7 @@ export function useAppController() {
       void refreshReviewVote(contentResult.public_id, { silent: true });
     }, 30000);
     return () => window.clearInterval(intervalId);
-  }, [analysisStage, contentResult?.public_id, contentResult?.blockchain?.vote?.status]);
+  }, [analysisStage, contentResult?.public_id, contentResult?.blockchain?.vote?.status, refreshReviewVote]);
 
   useEffect(() => {
     let cancelled = false;
@@ -1222,7 +1258,7 @@ export function useAppController() {
     };
   }, []);
 
-  async function loadHistoryEntries(options?: { silent?: boolean }) {
+  const loadHistoryEntries = useCallback(async (options?: { silent?: boolean }) => {
     if (!hasAuthSession) {
       setHistoryEntries([]);
       return;
@@ -1276,7 +1312,7 @@ export function useAppController() {
         setHistoryEntries([]);
       }
     }
-  }
+  }, [hasAuthSession]);
 
   useEffect(() => {
     if (activeTab !== "history" || !hasAuthSession) return;
@@ -1296,7 +1332,7 @@ export function useAppController() {
     return () => {
       cancelled = true;
     };
-  }, [activeTab, hasAuthSession, historyEntryFromUrl]);
+  }, [activeTab, hasAuthSession, historyEntryFromUrl, loadHistoryEntries]);
 
   const filteredHistory = useMemo(() => {
     if (historyFilter === "all") return historyEntries;
@@ -1869,41 +1905,6 @@ export function useAppController() {
     }
   }
 
-  async function refreshReviewVote(publicId?: string, options?: { silent?: boolean }) {
-    const targetPublicId = publicId || contentResult?.public_id;
-    if (!targetPublicId) return;
-
-    try {
-      const response = await apiRequest<RegisteredContentResponse>(`/contents/${targetPublicId}/review-vote/`, {
-        method: "GET",
-        auth: true,
-      });
-      setContentResult(response);
-
-      if (response.decision === "allow" || response.decision === "block") {
-        setReviewVoteModalOpen(false);
-        setAnalysisStage(response.decision);
-        if (!options?.silent) {
-          openToast(response.decision === "allow" ? "커뮤니티 검증이 승인되어 등록 가능 상태로 전환되었습니다." : "커뮤니티 검증이 거절되어 등록 제한 상태로 전환되었습니다.");
-        }
-        return;
-      }
-
-      setAnalysisStage("reviewLive");
-      if (!options?.silent) {
-        openToast("커뮤니티 검증 현황을 새로고침했습니다.");
-      }
-    } catch (error) {
-      if (!options?.silent) {
-        setRegisterFlowError({
-          message: error instanceof Error ? error.message : "커뮤니티 검증 상태를 불러오지 못했습니다.",
-          retryAction: "review",
-        });
-        openToast("커뮤니티 검증 상태를 불러오지 못했습니다.");
-      }
-    }
-  }
-
   async function startMint() {
     if (!contentResult) {
       window.alert("먼저 워터마크 삽입을 완료해주세요.");
@@ -2361,7 +2362,7 @@ export function useAppController() {
       reviewVoteProgress,
       reviewConsentModalOpen,
       reviewConsentNotifyByEmail,
-      reviewConsentEndAtLabel: formatReviewVoteEndAt(reviewConsentOpenedAt ?? Date.now()),
+      reviewConsentEndAtLabel: formatReviewVoteEndAt(reviewConsentOpenedAt ?? reviewConsentFallbackOpenedAt),
       reviewVoteDraft,
       reviewVoteModalOpen,
       watermarkProgress,
