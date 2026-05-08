@@ -54,6 +54,7 @@ interface VerifyPageProps {
   verifyProgress: number;
   verifyRunning: boolean;
   verifyResult: VerifyResultResponse | null;
+  verifyErrorMessage: string;
   verifierName: string;
   verifyRequestedAt: number | null;
   recentItems: VerifyHistoryItem[];
@@ -64,6 +65,7 @@ interface VerifyPageProps {
   onTriggerPicker: () => void;
   onStartVerify: () => void;
   onResetVerify: () => void;
+  onClearVerifyError: () => void;
 }
 
 export default function VerifyPage({
@@ -72,6 +74,7 @@ export default function VerifyPage({
   verifyProgress,
   verifyRunning,
   verifyResult,
+  verifyErrorMessage,
   verifierName,
   verifyRequestedAt,
   recentItems,
@@ -82,6 +85,7 @@ export default function VerifyPage({
   onTriggerPicker,
   onStartVerify,
   onResetVerify,
+  onClearVerifyError,
 }: VerifyPageProps) {
   const uploadedPreview = previewUrl || verifyResult?.uploaded.preview_url || null;
   const verifyRequestedAtLabel = formatDisplayDateTime(verifyRequestedAt);
@@ -100,6 +104,23 @@ export default function VerifyPage({
           <h2>저작물 검증</h2>
           <p>워터마크 검출을 우선 수행하고, 필요 시 추가 확인 단계로 검증을 이어갑니다.</p>
         </div>
+
+        {verifyErrorMessage ? (
+          <div className="operation-error-panel" role="alert">
+            <div>
+              <strong>검증을 완료하지 못했습니다.</strong>
+              <p>{verifyErrorMessage}</p>
+            </div>
+            <div className="operation-error-actions">
+              <button className="btn btn-primary" type="button" onClick={onStartVerify}>
+                다시 시도
+              </button>
+              <button className="btn btn-secondary" type="button" onClick={onClearVerifyError}>
+                닫기
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <input
           ref={uploadInputRef}

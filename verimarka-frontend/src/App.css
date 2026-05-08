@@ -719,6 +719,39 @@ main {
   font-size: 1rem;
 }
 
+.operation-error-panel {
+  margin-top: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid #f0c3c3;
+  border-radius: 12px;
+  background: #fff6f6;
+  padding: 14px;
+  color: #7f2d2d;
+}
+
+.operation-error-panel strong {
+  display: block;
+  color: #6f2424;
+  font-size: 1rem;
+}
+
+.operation-error-panel p {
+  margin: 4px 0 0;
+  color: #874343;
+  font-size: 0.92rem;
+}
+
+.operation-error-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  flex-shrink: 0;
+}
+
 .upload-input {
   position: absolute;
   width: 1px;

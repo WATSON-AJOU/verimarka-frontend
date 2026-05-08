@@ -6,6 +6,7 @@ interface PhoneVerificationModalProps {
   sendingPhone: boolean;
   verifyingPhone: boolean;
   phoneVerified: boolean;
+  errorMessage: string;
   onPhoneChange: (value: string) => void;
   onPhoneCodeChange: (value: string) => void;
   onClose: () => void;
@@ -21,6 +22,7 @@ export default function PhoneVerificationModal({
   sendingPhone,
   verifyingPhone,
   phoneVerified,
+  errorMessage,
   onPhoneChange,
   onPhoneCodeChange,
   onClose,
@@ -77,6 +79,8 @@ export default function PhoneVerificationModal({
         </div>
 
         <div className="identityTimer">남은 시간 {phoneMinutes}:{phoneSeconds}</div>
+
+        {errorMessage ? <p className="formError">{errorMessage}</p> : null}
 
         <button className="primaryButton" type="button" onClick={onVerifyPhone} disabled={verifyingPhone}>
           {verifyingPhone ? "확인 중..." : phoneVerified ? "휴대폰 인증 완료" : "휴대폰 인증 완료"}

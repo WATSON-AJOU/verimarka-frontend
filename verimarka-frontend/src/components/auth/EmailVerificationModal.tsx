@@ -6,6 +6,7 @@ interface EmailVerificationModalProps {
   sendingEmail: boolean;
   verifyingEmail: boolean;
   emailVerified: boolean;
+  errorMessage: string;
   onEmailChange: (value: string) => void;
   onEmailCodeChange: (value: string) => void;
   onClose: () => void;
@@ -21,6 +22,7 @@ export default function EmailVerificationModal({
   sendingEmail,
   verifyingEmail,
   emailVerified,
+  errorMessage,
   onEmailChange,
   onEmailCodeChange,
   onClose,
@@ -77,6 +79,8 @@ export default function EmailVerificationModal({
         </div>
 
         <div className="identityTimer">남은 시간 {emailMinutes}:{emailSeconds}</div>
+
+        {errorMessage ? <p className="formError">{errorMessage}</p> : null}
 
         <button className="primaryButton" type="button" onClick={onVerifyEmail} disabled={verifyingEmail}>
           {verifyingEmail ? "확인 중..." : emailVerified ? "이메일 인증 완료" : "이메일 인증 완료"}

@@ -80,6 +80,8 @@ function getJobProgress(response: AnalysisJobStatusResponse, fallback = 0) {
   return Math.max(0, Math.min(response.progress, 100));
 }
 
+const MAX_JOB_POLL_FAILURES = 3;
+
 export function useAppController() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -109,11 +111,13 @@ export function useAppController() {
   const [phoneTimer, setPhoneTimer] = useState(0);
   const [sendingPhoneCode, setSendingPhoneCode] = useState(false);
   const [verifyingPhoneCode, setVerifyingPhoneCode] = useState(false);
+  const [phoneVerificationError, setPhoneVerificationError] = useState("");
   const [emailInput, setEmailInput] = useState("");
   const [emailCodeInput, setEmailCodeInput] = useState("");
   const [emailTimer, setEmailTimer] = useState(0);
   const [sendingEmailCode, setSendingEmailCode] = useState(false);
   const [verifyingEmailCode, setVerifyingEmailCode] = useState(false);
+  const [emailVerificationError, setEmailVerificationError] = useState("");
   const [profileEditOpen, setProfileEditOpen] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
@@ -141,6 +145,10 @@ export function useAppController() {
   const [watermarkProgress, setWatermarkProgress] = useState(0);
   const [, setWatermarkRequestPending] = useState(false);
   const [watermarkJobId, setWatermarkJobId] = useState<string | null>(null);
+  const [registerFlowError, setRegisterFlowError] = useState<{
+    message: string;
+    retryAction: "analysis" | "watermark" | "review";
+  } | null>(null);
   const [mintProgress, setMintProgress] = useState(0);
   const [mintRequestPending, setMintRequestPending] = useState(false);
   const [mintErrorMessage, setMintErrorMessage] = useState("");
@@ -153,6 +161,7 @@ export function useAppController() {
   const [verifyJobId, setVerifyJobId] = useState<string | null>(null);
   const [verifyResult, setVerifyResult] = useState<VerifyResultResponse | null>(null);
   const [verifyRequestedAt, setVerifyRequestedAt] = useState<number | null>(null);
+  const [verifyFlowError, setVerifyFlowError] = useState("");
 
   const [historyFilter, setHistoryFilter] = useState<"all" | "allow" | "block" | "review" | "verify">("all");
   const [historyEntries, setHistoryEntries] = useState<HistoryItem[]>([]);
@@ -185,6 +194,9 @@ export function useAppController() {
   const walletClientRef = useRef(walletClient);
   const publicClientRef = useRef(publicClient);
   const fallbackWalletClientRef = useRef<WalletClient | null>(null);
+  const analysisPollFailureCountRef = useRef(0);
+  const watermarkPollFailureCountRef = useRef(0);
+  const verifyPollFailureCountRef = useRef(0);
 
   const routeLocale = useMemo(() => getCurrentLocale(location.pathname), [location.pathname]);
   const phoneVerified = Boolean(user?.phone_verified);
@@ -767,6 +779,7 @@ export function useAppController() {
       setReviewVoteModalOpen(false);
       setReviewVoteDraft(null);
       setWatermarkProgress(0);
+      setRegisterFlowError(null);
       setMintProgress(0);
       setContentResult(null);
       return;
@@ -779,6 +792,7 @@ export function useAppController() {
     setReviewVoteProgress(0);
     setWatermarkProgress(0);
     setMintProgress(0);
+    setRegisterFlowError(null);
 
     return () => URL.revokeObjectURL(objectUrl);
   }, [selectedFile]);
@@ -818,6 +832,7 @@ export function useAppController() {
       setVerifyJobId(null);
       setVerifyResult(null);
       setVerifyRequestedAt(null);
+      setVerifyFlowError("");
       return;
     }
 
@@ -826,6 +841,7 @@ export function useAppController() {
     setVerifyProgress(0);
     setVerifyRunning(false);
     setVerifyResult(null);
+    setVerifyFlowError("");
 
     return () => URL.revokeObjectURL(objectUrl);
   }, [verifyFile]);
@@ -915,6 +931,7 @@ export function useAppController() {
         });
         if (cancelled) return;
 
+        analysisPollFailureCountRef.current = 0;
         setAnalysisProgress((current) => getJobProgress(response, current));
 
         if (response.status === "success" && response.content) {
@@ -944,10 +961,26 @@ export function useAppController() {
           setAnalysisProgress(0);
           setAnalysisRequestPending(false);
           setAnalysisJobId(null);
-          window.alert(response.error_message || "등록 가능 여부 확인에 실패했습니다.");
+          setRegisterFlowError({
+            message: response.error_message || "등록 가능 여부 확인에 실패했습니다. 잠시 후 다시 시도해주세요.",
+            retryAction: "analysis",
+          });
+          openToast("등록 가능 여부 확인에 실패했습니다.");
         }
-      } catch {
+      } catch (error) {
         if (cancelled) return;
+        analysisPollFailureCountRef.current += 1;
+        if (analysisPollFailureCountRef.current >= MAX_JOB_POLL_FAILURES) {
+          setAnalysisStage("ready");
+          setAnalysisProgress(0);
+          setAnalysisRequestPending(false);
+          setAnalysisJobId(null);
+          setRegisterFlowError({
+            message: error instanceof Error ? error.message : "분석 상태를 불러오지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해주세요.",
+            retryAction: "analysis",
+          });
+          openToast("분석 상태를 불러오지 못했습니다.");
+        }
       }
     };
 
@@ -975,6 +1008,7 @@ export function useAppController() {
         });
         if (cancelled) return;
 
+        watermarkPollFailureCountRef.current = 0;
         setWatermarkProgress((current) => getJobProgress(response, current));
 
         if (response.status === "success" && response.content) {
@@ -992,10 +1026,26 @@ export function useAppController() {
           setWatermarkProgress(0);
           setWatermarkRequestPending(false);
           setWatermarkJobId(null);
-          window.alert(response.error_message || "워터마크 삽입에 실패했습니다.");
+          setRegisterFlowError({
+            message: response.error_message || "워터마크 삽입에 실패했습니다. 잠시 후 다시 시도해주세요.",
+            retryAction: "watermark",
+          });
+          openToast("워터마크 삽입에 실패했습니다.");
         }
-      } catch {
+      } catch (error) {
         if (cancelled) return;
+        watermarkPollFailureCountRef.current += 1;
+        if (watermarkPollFailureCountRef.current >= MAX_JOB_POLL_FAILURES) {
+          setAnalysisStage("allow");
+          setWatermarkProgress(0);
+          setWatermarkRequestPending(false);
+          setWatermarkJobId(null);
+          setRegisterFlowError({
+            message: error instanceof Error ? error.message : "워터마크 상태를 불러오지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해주세요.",
+            retryAction: "watermark",
+          });
+          openToast("워터마크 상태를 불러오지 못했습니다.");
+        }
       }
     };
 
@@ -1023,6 +1073,7 @@ export function useAppController() {
         });
         if (cancelled) return;
 
+        verifyPollFailureCountRef.current = 0;
         setVerifyProgress((current) => getJobProgress(response, current));
 
         if (response.status === "success" && response.result) {
@@ -1038,10 +1089,19 @@ export function useAppController() {
           setVerifyProgress(0);
           setVerifyRunning(false);
           setVerifyJobId(null);
-          window.alert(response.error_message || "저작물 검증에 실패했습니다.");
+          setVerifyFlowError(response.error_message || "저작물 검증에 실패했습니다. 잠시 후 다시 시도해주세요.");
+          openToast("저작물 검증에 실패했습니다.");
         }
-      } catch {
+      } catch (error) {
         if (cancelled) return;
+        verifyPollFailureCountRef.current += 1;
+        if (verifyPollFailureCountRef.current >= MAX_JOB_POLL_FAILURES) {
+          setVerifyProgress(0);
+          setVerifyRunning(false);
+          setVerifyJobId(null);
+          setVerifyFlowError(error instanceof Error ? error.message : "검증 상태를 불러오지 못했습니다. 네트워크 상태를 확인한 뒤 다시 시도해주세요.");
+          openToast("검증 상태를 불러오지 못했습니다.");
+        }
       }
     };
 
@@ -1605,6 +1665,8 @@ export function useAppController() {
     setAnalysisJobId(null);
     setContentResult(null);
     setMintErrorMessage("");
+    setRegisterFlowError(null);
+    analysisPollFailureCountRef.current = 0;
     openToast("등록 가능 여부 분석을 요청했습니다.");
 
     try {
@@ -1619,7 +1681,11 @@ export function useAppController() {
       setAnalysisStage("ready");
       setAnalysisProgress(0);
       setAnalysisRequestPending(false);
-      window.alert(error instanceof Error ? error.message : "등록 가능 여부 확인에 실패했습니다.");
+      setRegisterFlowError({
+        message: error instanceof Error ? error.message : "등록 가능 여부 확인에 실패했습니다.",
+        retryAction: "analysis",
+      });
+      openToast("등록 가능 여부 확인에 실패했습니다.");
     }
   }
 
@@ -1637,6 +1703,7 @@ export function useAppController() {
     setVerifyFile(nextFile);
     setVerifyResult(null);
     setVerifyRequestedAt(Date.now());
+    setVerifyFlowError("");
     openToast("검증 파일 업로드가 완료되었습니다.");
   }
 
@@ -1663,6 +1730,8 @@ export function useAppController() {
     setVerifyJobId(null);
     setVerifyResult(null);
     setVerifyRequestedAt(requestedAt);
+    setVerifyFlowError("");
+    verifyPollFailureCountRef.current = 0;
     openToast("저작물 검증을 요청했습니다.");
 
     try {
@@ -1675,7 +1744,8 @@ export function useAppController() {
     } catch (error) {
       setVerifyProgress(0);
       setVerifyRunning(false);
-      window.alert(error instanceof Error ? error.message : "저작물 검증에 실패했습니다.");
+      setVerifyFlowError(error instanceof Error ? error.message : "저작물 검증에 실패했습니다.");
+      openToast("저작물 검증에 실패했습니다.");
     }
   }
 
@@ -1701,6 +1771,8 @@ export function useAppController() {
     setWatermarkProgress(0);
     setWatermarkRequestPending(true);
     setWatermarkJobId(null);
+    setRegisterFlowError(null);
+    watermarkPollFailureCountRef.current = 0;
     openToast("워터마크 삽입을 요청했습니다.");
 
     try {
@@ -1714,7 +1786,11 @@ export function useAppController() {
       setAnalysisStage("allow");
       setWatermarkProgress(0);
       setWatermarkRequestPending(false);
-      window.alert(error instanceof Error ? error.message : "워터마크 삽입에 실패했습니다.");
+      setRegisterFlowError({
+        message: error instanceof Error ? error.message : "워터마크 삽입에 실패했습니다.",
+        retryAction: "watermark",
+      });
+      openToast("워터마크 삽입에 실패했습니다.");
     }
   }
 
@@ -1757,7 +1833,11 @@ export function useAppController() {
     } catch (error) {
       setAnalysisStage("review");
       setReviewVoteProgress(0);
-      window.alert(error instanceof Error ? error.message : "커뮤니티 검증 투표 생성에 실패했습니다.");
+      setRegisterFlowError({
+        message: error instanceof Error ? error.message : "커뮤니티 검증 투표 생성에 실패했습니다.",
+        retryAction: "review",
+      });
+      openToast("커뮤니티 검증 투표 생성에 실패했습니다.");
     } finally {
       setReviewVoteRequestPending(false);
     }
@@ -1789,7 +1869,11 @@ export function useAppController() {
       }
     } catch (error) {
       if (!options?.silent) {
-        window.alert(error instanceof Error ? error.message : "커뮤니티 검증 상태를 불러오지 못했습니다.");
+        setRegisterFlowError({
+          message: error instanceof Error ? error.message : "커뮤니티 검증 상태를 불러오지 못했습니다.",
+          retryAction: "review",
+        });
+        openToast("커뮤니티 검증 상태를 불러오지 못했습니다.");
       }
     }
   }
@@ -2027,6 +2111,7 @@ export function useAppController() {
     setWatermarkProgress(0);
     setWatermarkRequestPending(false);
     setWatermarkJobId(null);
+    setRegisterFlowError(null);
     setMintProgress(0);
     setMintRequestPending(false);
     setMintErrorMessage("");
@@ -2076,11 +2161,12 @@ export function useAppController() {
   async function sendPhoneVerificationCode() {
     const normalizedPhone = phoneInput.replace(/\D/g, "");
     if (!/^01\d{8,9}$/.test(normalizedPhone)) {
-      window.alert("휴대폰 번호를 정확히 입력해주세요.");
+      setPhoneVerificationError("휴대폰 번호를 정확히 입력해주세요.");
       return;
     }
 
     setSendingPhoneCode(true);
+    setPhoneVerificationError("");
     try {
       await apiRequest("/accounts/phone/send-code/", {
         method: "POST",
@@ -2091,7 +2177,7 @@ export function useAppController() {
       setPhoneTimer(180);
       openToast("인증번호를 전송했습니다. 메시지를 확인해주세요.");
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "인증번호 발송에 실패했습니다.");
+      setPhoneVerificationError(error instanceof Error ? error.message : "인증번호 발송에 실패했습니다.");
     } finally {
       setSendingPhoneCode(false);
     }
@@ -2100,11 +2186,12 @@ export function useAppController() {
   async function verifyPhone() {
     const normalizedPhone = phoneInput.replace(/\D/g, "");
     if (!/^\d{6}$/.test(phoneCodeInput)) {
-      window.alert("인증번호 6자리를 입력해주세요.");
+      setPhoneVerificationError("인증번호 6자리를 입력해주세요.");
       return;
     }
 
     setVerifyingPhoneCode(true);
+    setPhoneVerificationError("");
     try {
       await apiRequest("/accounts/phone/verify-code/", {
         method: "POST",
@@ -2117,7 +2204,7 @@ export function useAppController() {
       setPhoneVerificationModalOpen(false);
       openToast("휴대폰 인증이 완료되었습니다.");
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "본인 인증에 실패했습니다.");
+      setPhoneVerificationError(error instanceof Error ? error.message : "본인 인증에 실패했습니다.");
     } finally {
       setVerifyingPhoneCode(false);
     }
@@ -2126,11 +2213,12 @@ export function useAppController() {
   async function sendEmailVerificationCode() {
     const normalizedEmail = emailInput.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
-      window.alert("이메일 주소를 정확히 입력해주세요.");
+      setEmailVerificationError("이메일 주소를 정확히 입력해주세요.");
       return;
     }
 
     setSendingEmailCode(true);
+    setEmailVerificationError("");
     try {
       await apiRequest("/accounts/email/send-code/", {
         method: "POST",
@@ -2141,7 +2229,7 @@ export function useAppController() {
       setEmailTimer(180);
       openToast("이메일로 인증번호를 전송했습니다.");
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "이메일 인증번호 발송에 실패했습니다.");
+      setEmailVerificationError(error instanceof Error ? error.message : "이메일 인증번호 발송에 실패했습니다.");
     } finally {
       setSendingEmailCode(false);
     }
@@ -2150,11 +2238,12 @@ export function useAppController() {
   async function verifyEmail() {
     const normalizedEmail = emailInput.trim().toLowerCase();
     if (!/^\d{6}$/.test(emailCodeInput)) {
-      window.alert("이메일 인증번호 6자리를 입력해주세요.");
+      setEmailVerificationError("이메일 인증번호 6자리를 입력해주세요.");
       return;
     }
 
     setVerifyingEmailCode(true);
+    setEmailVerificationError("");
     try {
       await apiRequest("/accounts/email/verify-code/", {
         method: "POST",
@@ -2167,7 +2256,7 @@ export function useAppController() {
       setEmailVerificationModalOpen(false);
       openToast("이메일 인증이 완료되었습니다.");
     } catch (error) {
-      window.alert(error instanceof Error ? error.message : "이메일 인증에 실패했습니다.");
+      setEmailVerificationError(error instanceof Error ? error.message : "이메일 인증에 실패했습니다.");
     } finally {
       setVerifyingEmailCode(false);
     }
@@ -2201,6 +2290,7 @@ export function useAppController() {
     setVerifyJobId(null);
     setVerifyResult(null);
     setVerifyRequestedAt(null);
+    setVerifyFlowError("");
   };
 
   return {
@@ -2251,6 +2341,8 @@ export function useAppController() {
       watermarkProgress,
       mintProgress,
       mintErrorMessage,
+      registerFlowError,
+      setRegisterFlowError,
       setReviewConsentModalOpen,
       setReviewConsentNotifyByEmail,
       setReviewVoteModalOpen,
@@ -2280,6 +2372,8 @@ export function useAppController() {
       verifyRunning,
       verifyResult,
       verifyRequestedAt,
+      verifyFlowError,
+      setVerifyFlowError,
       recentItems: ongoingVoteVerifyItems,
       uploadInputRef: verifyInputRef,
       handlePickVerifyFile,
@@ -2343,6 +2437,8 @@ export function useAppController() {
       phoneTimer,
       sendingPhoneCode,
       verifyingPhoneCode,
+      phoneVerificationError,
+      setPhoneVerificationError,
       sendPhoneVerificationCode,
       verifyPhone,
       emailVerificationModalOpen,
@@ -2354,6 +2450,8 @@ export function useAppController() {
       emailTimer,
       sendingEmailCode,
       verifyingEmailCode,
+      emailVerificationError,
+      setEmailVerificationError,
       sendEmailVerificationCode,
       verifyEmail,
     },

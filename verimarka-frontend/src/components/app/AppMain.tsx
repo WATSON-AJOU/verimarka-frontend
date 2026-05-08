@@ -127,6 +127,19 @@ export default function AppMain({ controller }: AppMainProps) {
             watermarkProgress={controller.register.watermarkProgress}
             mintProgress={controller.register.mintProgress}
             mintErrorMessage={controller.register.mintErrorMessage}
+            operationError={controller.register.registerFlowError}
+            onClearOperationError={() => controller.register.setRegisterFlowError(null)}
+            onRetryOperation={(action) => {
+              if (action === "analysis") {
+                void controller.register.startAnalysis();
+                return;
+              }
+              if (action === "watermark") {
+                void controller.register.startWatermark();
+                return;
+              }
+              void controller.register.startReviewVote();
+            }}
             onCloseReviewConsentModal={() => controller.register.setReviewConsentModalOpen(false)}
             onToggleReviewConsentNotify={() => {
               if (!controller.session.emailVerified) return;
@@ -160,6 +173,7 @@ export default function AppMain({ controller }: AppMainProps) {
             verifyProgress={controller.verify.verifyProgress}
             verifyRunning={controller.verify.verifyRunning}
             verifyResult={controller.verify.verifyResult}
+            verifyErrorMessage={controller.verify.verifyFlowError}
             verifierName={controller.session.verifyUserLabel}
             verifyRequestedAt={controller.verify.verifyRequestedAt}
             recentItems={controller.verify.recentItems}
@@ -170,6 +184,7 @@ export default function AppMain({ controller }: AppMainProps) {
             onTriggerPicker={controller.verify.triggerVerifyPicker}
             onStartVerify={controller.verify.startVerify}
             onResetVerify={controller.verify.resetVerifyFlow}
+            onClearVerifyError={() => controller.verify.setVerifyFlowError("")}
           />
         ) : null}
 

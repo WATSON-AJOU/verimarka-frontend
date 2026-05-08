@@ -94,6 +94,12 @@ interface RegisterPageProps {
   watermarkProgress: number;
   mintProgress: number;
   mintErrorMessage: string;
+  operationError: {
+    message: string;
+    retryAction: "analysis" | "watermark" | "review";
+  } | null;
+  onClearOperationError: () => void;
+  onRetryOperation: (action: "analysis" | "watermark" | "review") => void;
   onCloseReviewConsentModal: () => void;
   onToggleReviewConsentNotify: () => void;
   onConfirmReviewConsent: () => void;
@@ -135,6 +141,9 @@ export default function RegisterPage({
   watermarkProgress,
   mintProgress,
   mintErrorMessage,
+  operationError,
+  onClearOperationError,
+  onRetryOperation,
   onCloseReviewConsentModal,
   onToggleReviewConsentNotify,
   onConfirmReviewConsent,
@@ -233,6 +242,33 @@ export default function RegisterPage({
           <h2>{pageHeaderTitle}</h2>
           <p>{pageHeaderSubtitle}</p>
         </div>
+
+        {operationError ? (
+          <div className="operation-error-panel" role="alert">
+            <div>
+              <strong>
+                {operationError.retryAction === "analysis"
+                  ? "분석을 완료하지 못했습니다."
+                  : operationError.retryAction === "watermark"
+                    ? "워터마크 처리를 완료하지 못했습니다."
+                    : "커뮤니티 검증 상태를 처리하지 못했습니다."}
+              </strong>
+              <p>{operationError.message}</p>
+            </div>
+            <div className="operation-error-actions">
+              <button
+                className="btn btn-primary"
+                type="button"
+                onClick={() => onRetryOperation(operationError.retryAction)}
+              >
+                다시 시도
+              </button>
+              <button className="btn btn-secondary" type="button" onClick={onClearOperationError}>
+                닫기
+              </button>
+            </div>
+          </div>
+        ) : null}
 
         <input
           ref={uploadInputRef}

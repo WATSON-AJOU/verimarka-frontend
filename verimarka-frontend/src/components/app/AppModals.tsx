@@ -58,9 +58,19 @@ export default function AppModals({ controller }: AppModalsProps) {
         sendingPhone={controller.identity.sendingPhoneCode}
         verifyingPhone={controller.identity.verifyingPhoneCode}
         phoneVerified={controller.session.phoneVerified}
-        onPhoneChange={controller.identity.setPhoneInput}
-        onPhoneCodeChange={controller.identity.setPhoneCodeInput}
-        onClose={() => controller.identity.setPhoneVerificationModalOpen(false)}
+        errorMessage={controller.identity.phoneVerificationError}
+        onPhoneChange={(value) => {
+          controller.identity.setPhoneInput(value);
+          controller.identity.setPhoneVerificationError("");
+        }}
+        onPhoneCodeChange={(value) => {
+          controller.identity.setPhoneCodeInput(value);
+          controller.identity.setPhoneVerificationError("");
+        }}
+        onClose={() => {
+          controller.identity.setPhoneVerificationError("");
+          controller.identity.setPhoneVerificationModalOpen(false);
+        }}
         onSendPhoneCode={controller.identity.sendPhoneVerificationCode}
         onVerifyPhone={controller.identity.verifyPhone}
       />
@@ -82,9 +92,19 @@ export default function AppModals({ controller }: AppModalsProps) {
         sendingEmail={controller.identity.sendingEmailCode}
         verifyingEmail={controller.identity.verifyingEmailCode}
         emailVerified={controller.session.emailVerified}
-        onEmailChange={controller.identity.setEmailInput}
-        onEmailCodeChange={controller.identity.setEmailCodeInput}
-        onClose={() => controller.identity.setEmailVerificationModalOpen(false)}
+        errorMessage={controller.identity.emailVerificationError}
+        onEmailChange={(value) => {
+          controller.identity.setEmailInput(value);
+          controller.identity.setEmailVerificationError("");
+        }}
+        onEmailCodeChange={(value) => {
+          controller.identity.setEmailCodeInput(value);
+          controller.identity.setEmailVerificationError("");
+        }}
+        onClose={() => {
+          controller.identity.setEmailVerificationError("");
+          controller.identity.setEmailVerificationModalOpen(false);
+        }}
         onSendEmailCode={controller.identity.sendEmailVerificationCode}
         onVerifyEmail={controller.identity.verifyEmail}
       />
