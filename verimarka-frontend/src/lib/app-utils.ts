@@ -14,6 +14,8 @@ export const LOADING_RING_MAX_PENDING_PROGRESS = 99;
 export const AUTO_LOGOUT_IDLE_MS = 30 * 60 * 1000;
 export const POST_LOGOUT_TOAST_KEY = "verimarka:post-logout-toast";
 export const SUSPENDED_ACCOUNT_MESSAGE = "정지된 계정입니다.";
+export const SUPPORTED_UPLOAD_ACCEPT = ".jpg,.jpeg,.png,.pdf,.doc,.docx,image/jpeg,image/png,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+export const SUPPORTED_UPLOAD_DESCRIPTION = "지원 포맷: JPG, PNG, PDF, DOC, DOCX / 최대 20MB";
 
 export function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
@@ -120,6 +122,13 @@ export function isSupportedUploadMimeType(mimeType: string) {
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   ].includes(mimeType);
+}
+
+export function isSupportedUploadFile(file: File) {
+  if (isSupportedUploadMimeType(file.type)) return true;
+  return [".jpg", ".jpeg", ".png", ".pdf", ".doc", ".docx"].some((extension) =>
+    file.name.toLowerCase().endsWith(extension),
+  );
 }
 
 export function formatReviewVoteEndAt(baseTime: number) {

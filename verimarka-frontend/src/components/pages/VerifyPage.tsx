@@ -1,3 +1,4 @@
+import { SUPPORTED_UPLOAD_ACCEPT, SUPPORTED_UPLOAD_DESCRIPTION } from "../../lib/app-utils";
 import type { VerifyHistoryItem, VerifyResultResponse } from "../../types/app";
 
 function isImageMimeType(mimeType: string | null | undefined) {
@@ -82,7 +83,7 @@ export default function VerifyPage({
   onStartVerify,
   onResetVerify,
 }: VerifyPageProps) {
-  const uploadedPreview = previewUrl || null;
+  const uploadedPreview = previewUrl || verifyResult?.uploaded.preview_url || null;
   const verifyRequestedAtLabel = formatDisplayDateTime(verifyRequestedAt);
   const selectedMimeType = selectedFile?.type || "";
   const renderFilePreview = (src: string | null, alt: string, mimeType: string) => {
@@ -104,7 +105,7 @@ export default function VerifyPage({
           ref={uploadInputRef}
           className="upload-input"
           type="file"
-          accept="image/png,image/jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          accept={SUPPORTED_UPLOAD_ACCEPT}
           onChange={onPickFile}
         />
 
@@ -114,7 +115,7 @@ export default function VerifyPage({
               <div>
                 <div className="verify-dropzone-icon">✓</div>
                 <p className="upload-title">검증할 파일을 드래그하거나 클릭하여 업로드하세요.</p>
-                <p className="upload-desc">지원 포맷: JPG, PNG, PDF, DOC, DOCX / 최대 20MB</p>
+                <p className="upload-desc">{SUPPORTED_UPLOAD_DESCRIPTION}</p>
               </div>
             </div>
           </button>

@@ -1,4 +1,5 @@
 import grapeImage from "../../assets/verimarka.png";
+import { SUPPORTED_UPLOAD_ACCEPT, SUPPORTED_UPLOAD_DESCRIPTION } from "../../lib/app-utils";
 import type { AnalysisStage, RegisterResultConfig, RegisteredContentResponse, UploadHistoryItem } from "../../types/app";
 
 function isImageMimeType(mimeType: string | null | undefined) {
@@ -237,7 +238,7 @@ export default function RegisterPage({
           ref={uploadInputRef}
           className="upload-input"
           type="file"
-          accept="image/png,image/jpeg,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          accept={SUPPORTED_UPLOAD_ACCEPT}
           onChange={onPickFile}
         />
 
@@ -247,7 +248,7 @@ export default function RegisterPage({
               <div>
                 <div className="upload-icon">↑</div>
                 <p className="upload-title">파일을 드래그하거나 클릭하여 업로드하세요.</p>
-                <p className="upload-desc">지원 포맷: JPG, PNG, PDF, DOC, DOCX / 최대 20MB</p>
+                <p className="upload-desc">{SUPPORTED_UPLOAD_DESCRIPTION}</p>
               </div>
             </div>
           </button>

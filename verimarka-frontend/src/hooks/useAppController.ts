@@ -24,7 +24,7 @@ import {
   getTabFromPath,
   getWalletInstallMessage,
   getWalletNetworkLabel,
-  isSupportedUploadMimeType,
+  isSupportedUploadFile,
   LOADING_RING_DURATION_MS,
   LOADING_RING_MAX_PENDING_PROGRESS,
   POST_LOGOUT_TOAST_KEY,
@@ -1554,7 +1554,7 @@ export function useAppController() {
   function handlePickFile(event: ChangeEvent<HTMLInputElement>) {
     const nextFile = event.target.files?.[0];
     if (!nextFile) return;
-    if (!isSupportedUploadMimeType(nextFile.type)) {
+    if (!isSupportedUploadFile(nextFile)) {
       window.alert("JPG, PNG, PDF, DOC, DOCX 파일만 업로드할 수 있습니다.");
       return;
     }
@@ -1646,7 +1646,7 @@ export function useAppController() {
   function handlePickVerifyFile(event: ChangeEvent<HTMLInputElement>) {
     const nextFile = event.target.files?.[0];
     if (!nextFile) return;
-    if (!isSupportedUploadMimeType(nextFile.type)) {
+    if (!isSupportedUploadFile(nextFile)) {
       window.alert("JPG, PNG, PDF, DOC, DOCX 파일만 업로드할 수 있습니다.");
       return;
     }
