@@ -320,23 +320,32 @@ export default function VerifyPage({
       <aside className="register-history verify-history-panel">
         <h3>진행 중인 투표</h3>
         <div className="history-scroll">
-          {recentItems.map((item, index) => (
-            <button
-              key={item.id}
-              type="button"
-              className="history-item history-item-button verify-history-item"
-              onClick={() => onOpenOngoingVote(item.id)}
-            >
-              <div
-                className={`history-thumb ${item.previewUrl ? "" : index % 3 === 0 ? "history-thumb-city" : index % 3 === 1 ? "history-thumb-review" : "history-thumb-green"}`}
-                style={item.previewUrl ? { backgroundImage: `url(${item.previewUrl})` } : undefined}
-              />
+          {recentItems.length === 0 ? (
+            <div className="history-item">
               <div className="history-meta">
-                <p>{item.title}</p>
-                <span>{item.description}</span>
+                <p>진행 중인 투표가 없습니다.</p>
+                <span>새 투표가 시작되면 이 영역에 표시됩니다.</span>
               </div>
-            </button>
-          ))}
+            </div>
+          ) : (
+            recentItems.map((item, index) => (
+              <button
+                key={item.id}
+                type="button"
+                className="history-item history-item-button verify-history-item"
+                onClick={() => onOpenOngoingVote(item.id)}
+              >
+                <div
+                  className={`history-thumb ${item.previewUrl ? "" : index % 3 === 0 ? "history-thumb-city" : index % 3 === 1 ? "history-thumb-review" : "history-thumb-green"}`}
+                  style={item.previewUrl ? { backgroundImage: `url(${item.previewUrl})` } : undefined}
+                />
+                <div className="history-meta">
+                  <p>{item.title}</p>
+                  <span>{item.description}</span>
+                </div>
+              </button>
+            ))
+          )}
         </div>
       </aside>
     </section>

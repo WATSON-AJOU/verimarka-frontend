@@ -48,6 +48,10 @@ export class ApiRequestError extends Error {
 
 let refreshInFlight: Promise<string | null> | null = null;
 
+function getNetworkErrorMessage() {
+  return "서버에 연결할 수 없습니다. 네트워크 상태를 확인한 뒤 다시 시도해주세요.";
+}
+
 function redactSensitiveBody(value: unknown): unknown {
   if (Array.isArray(value)) {
     return value.map((item) => redactSensitiveBody(item));
@@ -77,14 +81,28 @@ export async function refreshAccessToken(options: { dispatchEvents?: boolean } =
       method: "POST",
     });
 
-    const response = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Request-Id": requestId,
-      },
-      credentials: "include",
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${API_BASE_URL}/auth/token/refresh/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Request-Id": requestId,
+        },
+        credentials: "include",
+      });
+    } catch (error) {
+      appLogger.error("api.refresh.network_error", {
+        request_id: requestId,
+        path: "/auth/token/refresh/",
+        error,
+      });
+      clearTokens();
+      if (dispatchEvents) {
+        window.dispatchEvent(new CustomEvent(AUTH_REFRESH_FAILED_EVENT));
+      }
+      return null;
+    }
 
     const responseRequestId = response.headers.get("X-Request-Id");
     const responseId = response.headers.get("X-Response-Id");
@@ -146,11 +164,22 @@ export async function authenticatedFetch(
     auth: headers.has("Authorization"),
   });
 
-  const response = await fetch(input, {
-    ...init,
-    headers,
-    credentials: init.credentials ?? "include",
-  });
+  let response: Response;
+  try {
+    response = await fetch(input, {
+      ...init,
+      headers,
+      credentials: init.credentials ?? "include",
+    });
+  } catch (error) {
+    appLogger.error("api.fetch.network_error", {
+      request_id: requestId,
+      url: typeof input === "string" ? input : input.toString(),
+      method: init.method || "GET",
+      error,
+    });
+    throw new Error(getNetworkErrorMessage());
+  }
 
   appLogger.info("api.fetch.response", {
     request_id: response.headers.get("X-Request-Id") || requestId,
@@ -167,11 +196,20 @@ export async function authenticatedFetch(
       const retryHeaders = new Headers(init.headers ?? {});
       retryHeaders.set("X-Request-Id", createClientRequestId());
       retryHeaders.set("Authorization", `Bearer ${nextAccessToken}`);
-      return fetch(input, {
-        ...init,
-        headers: retryHeaders,
-        credentials: init.credentials ?? "include",
-      });
+      try {
+        return await fetch(input, {
+          ...init,
+          headers: retryHeaders,
+          credentials: init.credentials ?? "include",
+        });
+      } catch (error) {
+        appLogger.error("api.fetch.retry_network_error", {
+          url: typeof input === "string" ? input : input.toString(),
+          method: init.method || "GET",
+          error,
+        });
+        throw new Error(getNetworkErrorMessage());
+      }
     }
   }
 
@@ -209,12 +247,29 @@ export async function apiRequest<T>(
     body: isFormData ? { kind: "FormData" } : redactSensitiveBody(body),
   });
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers,
-    body: body ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
-    credentials: "include",
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers,
+      body: body ? (isFormData ? (body as FormData) : JSON.stringify(body)) : undefined,
+      credentials: "include",
+    });
+  } catch (error) {
+    const message = getNetworkErrorMessage();
+    appLogger.error("api.network_error", {
+      request_id: requestId,
+      path,
+      method,
+      error,
+    });
+    throw new ApiRequestError(message, {
+      status: 0,
+      requestId,
+      path,
+      errorCode: "NETWORK_ERROR",
+    });
+  }
 
   const responseRequestId = response.headers.get("X-Request-Id") || requestId;
   const responseId = response.headers.get("X-Response-Id");
@@ -260,10 +315,13 @@ export async function apiRequest<T>(
     };
 
     const message =
+      data?.error_message ||
       data?.detail ||
       data?.message ||
       flattenError(data) ||
-      "요청 처리 중 오류가 발생했습니다.";
+      (response.status >= 500
+        ? "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요."
+        : "요청 처리 중 오류가 발생했습니다.");
     const error = new ApiRequestError(message, {
       status: response.status,
       requestId: responseRequestId,
