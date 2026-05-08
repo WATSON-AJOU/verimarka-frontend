@@ -15,6 +15,7 @@ import KakaoCallback from "./pages/auth/KakaoCallback";
 import PrivacyPage from "./pages/legal/PrivacyPage";
 import SupportPage from "./pages/legal/SupportPage";
 import TermsPage from "./pages/legal/TermsPage";
+import ErrorPage from "./pages/ErrorPage";
 
 void initSentry();
 
@@ -40,13 +41,20 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       <QueryClientProvider client={walletQueryClient}>
         <BrowserRouter>
           <Routes>
-            <Route path="/*" element={<App />} />
+            <Route path="/" element={<App />} />
+            <Route path="/register" element={<App />} />
+            <Route path="/verify" element={<App />} />
+            <Route path="/history" element={<App />} />
+            <Route path="/mypage" element={<App />} />
             <Route path="/auth/apple/callback" element={<AppleCallback />} />
             <Route path="/auth/google/callback" element={<GoogleCallback />} />
             <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/privacy" element={<PrivacyPage />} />
             <Route path="/support" element={<SupportPage />} />
+            <Route path="/403" element={<ErrorPage statusCode={403} />} />
+            <Route path="/404" element={<ErrorPage statusCode={404} />} />
+            <Route path="*" element={<ErrorPage statusCode={404} />} />
           </Routes>
         </BrowserRouter>
       </QueryClientProvider>

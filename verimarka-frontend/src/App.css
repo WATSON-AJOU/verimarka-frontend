@@ -342,6 +342,57 @@ main {
   padding: var(--main-pad-top) var(--main-pad-x) 36px;
 }
 
+.error-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 32px 20px;
+  background: #ffffff;
+}
+
+.error-page-content {
+  width: min(520px, 100%);
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  text-align: center;
+  color: #1f3152;
+}
+
+.error-page-code {
+  color: #3f5fb2;
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.error-page-content h1 {
+  margin: 0;
+  font-size: clamp(1.7rem, 5vw, 2.45rem);
+  line-height: 1.2;
+  word-break: keep-all;
+}
+
+.error-page-logo {
+  width: min(210px, 58vw);
+  height: auto;
+  margin: 6px 0;
+}
+
+.error-page-content p {
+  margin: 0;
+  color: #5e6f8f;
+  font-size: 1.05rem;
+  font-weight: 700;
+  word-break: keep-all;
+}
+
+.error-page-mail {
+  color: #2e5bb0;
+  font-size: 0.98rem;
+  font-weight: 800;
+  text-decoration: none;
+}
+
 #page-home {
   position: relative;
   min-height: calc(100vh - 120px);
