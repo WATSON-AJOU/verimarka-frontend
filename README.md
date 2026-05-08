@@ -55,17 +55,59 @@ flowchart LR
 
 ## 6. 화면 캡처
 
-| 화면 | 캡처                                                            | 설명 |
-| --- |---------------------------------------------------------------| --- |
-| 홈 | <img src="./image/userhome.png" width="360" alt="사용자 홈 화면">   | 서비스 진입 화면과 주요 등록/검증 플로우로 이동하는 시작점입니다. |
-| 저작물 등록 | <img src="./image/userregistry.png" width="360" alt="저작물 등록"> | 파일 업로드 후 AI 분석 진행 상태와 결과를 단계적으로 보여줍니다. |
-| 승인 결과 | <img src="./image/user_approve.png" width="360" alt="승인 결과">  | `ALLOW` 결과에서 워터마크/NFT 발급으로 이어지는 화면입니다. |
-| 차단 결과 | <img src="./image/user_block.png" width="360" alt="차단 결과">    | 중복 또는 유사 콘텐츠 판단 시 이유와 비교 후보를 보여줍니다. |
-| 투표 | <img src="./image/user_vote.jpeg" width="360" alt="투표 화면">    | REVIEW 상태의 저작물을 비교하고 지갑 서명 기반으로 투표합니다. |
-| 문서 승인 | <img src="./image/user_docs.png" width="360" alt="문서 승인">     | PDF/DOC/DOCX 등록 결과와 문서 워터마크 처리 결과를 표시합니다. |
-| 지갑 | <img src="./image/user_wallet.png" width="240" alt="지갑 연결">   | 지갑 연결 상태, 네트워크, NFT 발급 조건을 확인합니다. |
-| 마이페이지 | <img src="./image/user_me.png" width="360" alt="마이페이지">       | 계정, 인증, 지갑, 활동 정보를 한 화면에서 관리합니다. |
-| 기록 | <img src="./image/user_log.png" width="360" alt="기록 화면">      | 등록/검증/투표 이력과 블록체인 기록을 확인합니다. |
+### 홈
+
+<img src="./image/userhome.png" width="820" alt="사용자 홈 화면">
+
+서비스 진입 화면과 주요 등록/검증 플로우로 이동하는 시작점입니다.
+
+### 저작물 등록
+
+<img src="./image/userregistry.png" width="820" alt="저작물 등록">
+
+파일 업로드 후 AI 분석 진행 상태와 결과를 단계적으로 보여줍니다.
+
+### 승인 결과
+
+<img src="./image/user_approve.png" width="820" alt="승인 결과">
+
+`ALLOW` 결과에서 워터마크/NFT 발급으로 이어지는 화면입니다.
+
+### 차단 결과
+
+<img src="./image/user_block.png" width="820" alt="차단 결과">
+
+중복 또는 유사 콘텐츠 판단 시 이유와 비교 후보를 보여줍니다.
+
+### 투표
+
+<img src="./image/user_vote.jpeg" width="820" alt="투표 화면">
+
+REVIEW 상태의 저작물을 비교하고 지갑 서명 기반으로 투표합니다.
+
+### 문서 승인
+
+<img src="./image/user_docs.png" width="820" alt="문서 승인">
+
+PDF/DOC/DOCX 등록 결과와 문서 워터마크 처리 결과를 표시합니다.
+
+### 지갑
+
+<img src="./image/user_wallet.png" width="520" alt="지갑 연결">
+
+지갑 연결 상태, 네트워크, NFT 발급 조건을 확인합니다.
+
+### 마이페이지
+
+<img src="./image/user_me.png" width="820" alt="마이페이지">
+
+계정, 인증, 지갑, 활동 정보를 한 화면에서 관리합니다.
+
+### 기록
+
+<img src="./image/user_log.png" width="820" alt="기록 화면">
+
+등록/검증/투표 이력과 블록체인 기록을 확인합니다.
 
 ## 7. 내가 맡은 역할
 
