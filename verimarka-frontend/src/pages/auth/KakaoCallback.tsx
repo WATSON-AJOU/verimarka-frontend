@@ -8,6 +8,7 @@ import {
 
 const KAKAO_OAUTH_CODE_KEY = "verimarka:oauth:kakao:last-code"
 const KAKAO_OAUTH_PENDING_CODE_KEY = "verimarka:oauth:kakao:pending-code"
+const KAKAO_OAUTH_STATE_KEY = "verimarka:oauth:kakao:state"
 
 interface OAuthTokenResponse {
   access: string
@@ -24,10 +25,16 @@ export default function KakaoCallback() {
     async function login() {
       const params = new URLSearchParams(window.location.search)
       const code = params.get("code")
+      const state = params.get("state")
+      const expectedState = window.sessionStorage.getItem(KAKAO_OAUTH_STATE_KEY)
 
       if (!code) {
         throw new Error("Kakao authorization code가 없습니다.")
       }
+      if (!state || !expectedState || state !== expectedState) {
+        throw new Error("Kakao 로그인 state 검증에 실패했습니다.")
+      }
+      window.sessionStorage.removeItem(KAKAO_OAUTH_STATE_KEY)
 
       const lastHandledCode = window.sessionStorage.getItem(KAKAO_OAUTH_CODE_KEY)
       if (lastHandledCode === code) {

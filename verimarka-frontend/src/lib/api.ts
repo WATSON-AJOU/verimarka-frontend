@@ -49,6 +49,23 @@ export class ApiRequestError extends Error {
 
 let refreshInFlight: Promise<string | null> | null = null;
 
+function redactSensitiveBody(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => redactSensitiveBody(item));
+  }
+  if (!value || typeof value !== "object" || value instanceof FormData) {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, item]) => {
+      if (/token|password|refresh|access/i.test(key)) {
+        return [key, "[redacted]"];
+      }
+      return [key, redactSensitiveBody(item)];
+    }),
+  );
+}
+
 async function refreshAccessToken(): Promise<string | null> {
   if (refreshInFlight) return refreshInFlight;
 
@@ -193,7 +210,7 @@ export async function apiRequest<T>(
     path,
     method,
     auth,
-    body: isFormData ? { kind: "FormData" } : body,
+    body: isFormData ? { kind: "FormData" } : redactSensitiveBody(body),
   });
 
   const response = await fetch(`${API_BASE_URL}${path}`, {

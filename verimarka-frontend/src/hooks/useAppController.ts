@@ -719,7 +719,7 @@ export function useAppController() {
       }
 
       inactivityTimeoutRef.current = window.setTimeout(() => {
-        logout();
+        void logout();
         navigateToTab("home", { replace: true });
         setModal("none");
         setSelectedFile(null);
@@ -1254,7 +1254,7 @@ export function useAppController() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "로그인에 실패했습니다.";
       if (message.includes("사용 정지된 계정입니다.") || message.includes(SUSPENDED_ACCOUNT_MESSAGE)) {
-        logout();
+        void logout();
         setModal("none");
         navigateToTab("home", { replace: true });
         openToast(SUSPENDED_ACCOUNT_MESSAGE);
@@ -1277,15 +1277,16 @@ export function useAppController() {
   }
 
   function handleLogout() {
-    logout();
-    navigateToTab("home", { replace: true });
-    setSelectedFile(null);
-    setPhoneVerificationModalOpen(false);
-    setEmailVerificationModalOpen(false);
-    setPhoneRequiredModalOpen(false);
-    setProfileEditOpen(false);
-    window.sessionStorage.setItem(POST_LOGOUT_TOAST_KEY, "로그아웃되었습니다.");
-    window.location.reload();
+    void logout().finally(() => {
+      navigateToTab("home", { replace: true });
+      setSelectedFile(null);
+      setPhoneVerificationModalOpen(false);
+      setEmailVerificationModalOpen(false);
+      setPhoneRequiredModalOpen(false);
+      setProfileEditOpen(false);
+      window.sessionStorage.setItem(POST_LOGOUT_TOAST_KEY, "로그아웃되었습니다.");
+      window.location.reload();
+    });
   }
 
   async function handleProfileUpdate(payload: { display_name: string }) {

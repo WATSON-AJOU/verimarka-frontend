@@ -8,6 +8,7 @@ import {
 
 const GOOGLE_OAUTH_CODE_KEY = "verimarka:oauth:google:last-code"
 const GOOGLE_OAUTH_PENDING_CODE_KEY = "verimarka:oauth:google:pending-code"
+const GOOGLE_OAUTH_STATE_KEY = "verimarka:oauth:google:state"
 
 interface OAuthTokenResponse {
   access: string
@@ -24,10 +25,16 @@ export default function GoogleCallback() {
     async function login() {
       const params = new URLSearchParams(window.location.search)
       const code = params.get("code")
+      const state = params.get("state")
+      const expectedState = window.sessionStorage.getItem(GOOGLE_OAUTH_STATE_KEY)
 
       if (!code) {
         throw new Error("Google authorization code가 없습니다.")
       }
+      if (!state || !expectedState || state !== expectedState) {
+        throw new Error("Google 로그인 state 검증에 실패했습니다.")
+      }
+      window.sessionStorage.removeItem(GOOGLE_OAUTH_STATE_KEY)
 
       const lastHandledCode = window.sessionStorage.getItem(GOOGLE_OAUTH_CODE_KEY)
       if (lastHandledCode === code) {

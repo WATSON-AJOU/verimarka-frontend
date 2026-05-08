@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiRequest } from "../lib/api";
-import { clearTokens, getAccessToken, setTokens } from "../lib/token";
+import { clearTokens, getAccessToken, getRefreshToken, setTokens } from "../lib/token";
 
 export interface MeResponse {
   id: number;
@@ -100,9 +100,19 @@ export function useAuth() {
     return data.user;
   }
 
-  function logout() {
-    clearTokens();
-    setUser(null);
+  async function logout() {
+    const refresh = getRefreshToken();
+    try {
+      if (refresh) {
+        await apiRequest("/accounts/logout/", {
+          method: "POST",
+          body: { refresh },
+        });
+      }
+    } finally {
+      clearTokens();
+      setUser(null);
+    }
   }
 
   async function updateProfile(payload: UpdateProfilePayload) {
@@ -117,9 +127,11 @@ export function useAuth() {
   }
 
   async function withdraw() {
+    const refresh = getRefreshToken();
     await apiRequest<{ message: string }>("/accounts/withdraw/", {
       method: "DELETE",
       auth: true,
+      body: { refresh },
     });
     clearTokens();
     setUser(null);

@@ -11,6 +11,8 @@ interface Props {
 }
 
 const APPLE_OAUTH_STATE_KEY = "verimarka:oauth:apple:state";
+const GOOGLE_OAUTH_STATE_KEY = "verimarka:oauth:google:state";
+const KAKAO_OAUTH_STATE_KEY = "verimarka:oauth:kakao:state";
 const DEFAULT_APPLE_CLIENT_ID = "com.verimarka.web.login";
 
 export default function LoginChoiceModal({
@@ -27,13 +29,17 @@ export default function LoginChoiceModal({
       import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
       `${window.location.origin}/auth/google/callback`;
 
+    const state = crypto.randomUUID();
+    window.sessionStorage.setItem(GOOGLE_OAUTH_STATE_KEY, state);
+
     const url =
       "https://accounts.google.com/o/oauth2/v2/auth" +
       "?response_type=code" +
       `&client_id=${encodeURIComponent(clientId)}` +
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
       "&scope=openid%20email%20profile" +
-      "&access_type=offline";
+      "&access_type=offline" +
+      `&state=${encodeURIComponent(state)}`;
 
     window.location.href = url;
   }
@@ -44,11 +50,15 @@ export default function LoginChoiceModal({
       import.meta.env.VITE_KAKAO_REDIRECT_URI ||
       `${window.location.origin}/auth/kakao/callback`;
 
+    const state = crypto.randomUUID();
+    window.sessionStorage.setItem(KAKAO_OAUTH_STATE_KEY, state);
+
     const url =
       "https://kauth.kakao.com/oauth/authorize" +
       "?response_type=code" +
       `&client_id=${encodeURIComponent(clientId)}` +
-      `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+      `&state=${encodeURIComponent(state)}`;
 
     window.location.href = url;
   }
