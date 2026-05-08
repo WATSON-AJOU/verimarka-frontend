@@ -73,8 +73,9 @@ function updateStructuredData(structuredData?: StructuredData) {
         "@context": "https://schema.org",
         "@graph": structuredData.map((item) => {
           if ("@context" in item) {
-            const { "@context": _ignored, ...rest } = item;
-            return rest;
+            return Object.fromEntries(
+              Object.entries(item).filter(([key]) => key !== "@context"),
+            );
           }
           return item;
         }),
