@@ -1282,7 +1282,7 @@ export function useAppController() {
         comparison_label?: string;
         download_url?: string | null;
         blockchain?: HistoryItem["blockchain"];
-      }>>("/logs/history/", {
+      }>>("/logs/history/?page_size=100", {
         method: "GET",
         auth: true,
       });
