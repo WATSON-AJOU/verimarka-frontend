@@ -1,4 +1,4 @@
-import verimarkaLogo from "../assets/verimarka.png";
+import verimarkaLogo from "../assets/verimarka.webp";
 
 type ErrorPageProps = {
   statusCode: 403 | 404;

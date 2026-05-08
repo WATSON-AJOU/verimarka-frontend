@@ -1,4 +1,4 @@
-import grapeImage from "../../assets/verimarka.png";
+import grapeImage from "../../assets/verimarka.webp";
 import { SUPPORTED_UPLOAD_ACCEPT, SUPPORTED_UPLOAD_DESCRIPTION } from "../../lib/app-utils";
 import type { AnalysisStage, RegisterResultConfig, RegisteredContentResponse, UploadHistoryItem } from "../../types/app";
 
