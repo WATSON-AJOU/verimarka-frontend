@@ -12,6 +12,7 @@ declare global {
 }
 
 const SENTRY_BROWSER_BUNDLE_URL = "https://browser.sentry-cdn.com/9.18.0/bundle.tracing.min.js";
+const SENTRY_BROWSER_BUNDLE_INTEGRITY = "sha384-oCdDUQ/+Aj0VJ9fi4jeZTENsQ35fqB7UuVtGKNxY6Q+eI25KAXKVab5ulE3IygL4";
 const SENSITIVE_KEY_PATTERN = /address|authorization|cookie|email|name|password|phone|secret|signature|token/i;
 
 function sanitizeSentryValue(value: unknown): unknown {
@@ -49,6 +50,7 @@ function loadScript(src: string): Promise<void> {
     script.src = src;
     script.async = true;
     script.crossOrigin = "anonymous";
+    script.integrity = SENTRY_BROWSER_BUNDLE_INTEGRITY;
     script.dataset.sentrySrc = src;
     script.addEventListener(
       "load",
