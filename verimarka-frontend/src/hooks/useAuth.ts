@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { apiRequest, refreshAccessToken } from "../lib/api";
-import { clearTokens, getAccessToken, setTokens } from "../lib/token";
+import { clearTokens, getAccessToken, hasRefreshSessionHint, setTokens } from "../lib/token";
 
 export interface MeResponse {
   id: number;
@@ -70,7 +70,7 @@ export function useAuth() {
     const timeout = window.setTimeout(() => {
       void (async () => {
         let token = getAccessToken();
-        if (!token) {
+        if (!token && hasRefreshSessionHint()) {
           token = await refreshAccessToken({ dispatchEvents: false });
         }
         if (cancelled) return;

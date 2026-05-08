@@ -1,4 +1,4 @@
-import { clearTokens, getAccessToken, setAccessToken } from "./token";
+import { clearTokens, getAccessToken, hasRefreshSessionHint, setAccessToken } from "./token";
 import { appLogger, createClientRequestId } from "./logger";
 import { captureSentryMessage } from "./sentry";
 
@@ -71,6 +71,9 @@ function redactSensitiveBody(value: unknown): unknown {
 
 export async function refreshAccessToken(options: { dispatchEvents?: boolean } = {}): Promise<string | null> {
   const dispatchEvents = options.dispatchEvents ?? true;
+  if (!getAccessToken() && !hasRefreshSessionHint()) {
+    return null;
+  }
   if (refreshInFlight) return refreshInFlight;
 
   refreshInFlight = (async () => {

@@ -1660,8 +1660,8 @@ export function useAppController() {
       window.alert("JPG, PNG, PDF, DOC, DOCX 파일만 업로드할 수 있습니다.");
       return;
     }
-    if (nextFile.size > 20 * 1024 * 1024) {
-      window.alert("파일 크기는 20MB 이하만 가능합니다.");
+    if (nextFile.size > 30 * 1024 * 1024) {
+      window.alert("파일 크기는 30MB 이하만 가능합니다.");
       return;
     }
     setSelectedFile(nextFile);
@@ -1758,8 +1758,8 @@ export function useAppController() {
       window.alert("JPG, PNG, PDF, DOC, DOCX 파일만 업로드할 수 있습니다.");
       return;
     }
-    if (nextFile.size > 20 * 1024 * 1024) {
-      window.alert("파일 크기는 20MB 이하만 가능합니다.");
+    if (nextFile.size > 30 * 1024 * 1024) {
+      window.alert("파일 크기는 30MB 이하만 가능합니다.");
       return;
     }
     setVerifyFile(nextFile);

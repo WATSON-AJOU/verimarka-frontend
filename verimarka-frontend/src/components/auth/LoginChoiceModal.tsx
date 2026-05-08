@@ -85,7 +85,6 @@ export default function LoginChoiceModal({
       "&response_mode=query" +
       `&client_id=${encodeURIComponent(clientId)}` +
       `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-      "&scope=name%20email" +
       `&state=${encodeURIComponent(state)}`;
 
     window.location.href = url;
