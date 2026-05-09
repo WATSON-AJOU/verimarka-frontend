@@ -42,6 +42,7 @@ export default function AppMain({ controller }: AppMainProps) {
           <RegisterPage
             isLoggedIn={controller.session.isLoggedIn}
             selectedFile={controller.register.selectedFile}
+            uploadContentType={controller.register.uploadContentType}
             previewUrl={controller.register.previewUrl}
             analysisStage={controller.register.analysisStage}
             analysisProgress={controller.register.analysisProgress}
@@ -50,6 +51,7 @@ export default function AppMain({ controller }: AppMainProps) {
             recentUploads={controller.register.recentUploads}
             onOpenOngoingVote={controller.common.openOngoingVoteHistory}
             onPickFile={controller.register.handlePickFile}
+            onChangeUploadContentType={controller.register.setUploadContentType}
             onTriggerPicker={controller.register.triggerFilePicker}
             onStartAnalysis={controller.register.startAnalysis}
             onResetToHome={() => {
@@ -169,6 +171,7 @@ export default function AppMain({ controller }: AppMainProps) {
         {controller.navigation.activeTab === "verify" ? (
           <VerifyPage
             selectedFile={controller.verify.selectedFile}
+            contentType={controller.verify.contentType}
             previewUrl={controller.verify.previewUrl}
             verifyProgress={controller.verify.verifyProgress}
             verifyRunning={controller.verify.verifyRunning}
@@ -181,6 +184,7 @@ export default function AppMain({ controller }: AppMainProps) {
             uploadInputRef={controller.verify.uploadInputRef}
             formatFileSize={controller.common.formatFileSize}
             onPickFile={controller.verify.handlePickVerifyFile}
+            onChangeContentType={controller.verify.setVerifyContentType}
             onTriggerPicker={controller.verify.triggerVerifyPicker}
             onStartVerify={controller.verify.startVerify}
             onResetVerify={controller.verify.resetVerifyFlow}

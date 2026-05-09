@@ -50,6 +50,7 @@ function formatDisplayDateTime(value: number | string | null | undefined) {
 
 interface VerifyPageProps {
   selectedFile: File | null;
+  contentType: "image" | "document";
   previewUrl: string;
   verifyProgress: number;
   verifyRunning: boolean;
@@ -62,6 +63,7 @@ interface VerifyPageProps {
   uploadInputRef: React.RefObject<HTMLInputElement | null>;
   formatFileSize: (bytes: number) => string;
   onPickFile: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onChangeContentType: (contentType: "image" | "document") => void;
   onTriggerPicker: () => void;
   onStartVerify: () => void;
   onResetVerify: () => void;
@@ -70,6 +72,7 @@ interface VerifyPageProps {
 
 export default function VerifyPage({
   selectedFile,
+  contentType,
   previewUrl,
   verifyProgress,
   verifyRunning,
@@ -82,6 +85,7 @@ export default function VerifyPage({
   uploadInputRef,
   formatFileSize,
   onPickFile,
+  onChangeContentType,
   onTriggerPicker,
   onStartVerify,
   onResetVerify,
@@ -303,7 +307,7 @@ export default function VerifyPage({
             <div className="verify-ready-grid">
               <div className="mint-complete-card">
                 <div className="mint-complete-frame">
-                  {uploadedPreview ? <img src={uploadedPreview} alt={selectedFile.name} /> : null}
+                  {renderFilePreview(uploadedPreview, selectedFile.name, selectedMimeType)}
                 </div>
                 <div className="verify-ready-meta">
                   <strong>{selectedFile.name}</strong>
@@ -311,6 +315,22 @@ export default function VerifyPage({
                   <div className="verify-ready-table">
                     <div><span>검증자</span><strong>{verifierName}</strong></div>
                     <div><span>검증 시각</span><strong>{verifyRequestedAtLabel}</strong></div>
+                  </div>
+                  <div className="upload-mode-control" aria-label="검증 처리 방식">
+                    <button
+                      type="button"
+                      className={contentType === "image" ? "is-active" : ""}
+                      onClick={() => onChangeContentType("image")}
+                    >
+                      이미지
+                    </button>
+                    <button
+                      type="button"
+                      className={contentType === "document" ? "is-active" : ""}
+                      onClick={() => onChangeContentType("document")}
+                    >
+                      문서
+                    </button>
                   </div>
                 </div>
               </div>

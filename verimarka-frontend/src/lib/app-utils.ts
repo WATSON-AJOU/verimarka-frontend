@@ -142,6 +142,19 @@ export function isSupportedUploadFile(file: File) {
   );
 }
 
+export type UploadContentType = "image" | "document";
+
+export function getDefaultUploadContentType(file: File): UploadContentType {
+  const mimeType = file.type || getMimeTypeFromFileName(file.name);
+  return [
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ].includes(mimeType)
+    ? "document"
+    : "image";
+}
+
 export function formatReviewVoteEndAt(baseTime: number) {
   const date = new Date(baseTime + 72 * 60 * 60 * 1000);
   const month = date.getMonth() + 1;

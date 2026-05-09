@@ -58,6 +58,7 @@ function shortenMiddle(value: string, leading = 8, trailing = 4) {
 interface RegisterPageProps {
   isLoggedIn: boolean;
   selectedFile: File | null;
+  uploadContentType: "image" | "document";
   previewUrl: string;
   analysisStage: AnalysisStage;
   analysisProgress: number;
@@ -66,6 +67,7 @@ interface RegisterPageProps {
   recentUploads: UploadHistoryItem[];
   onOpenOngoingVote: (id: string) => void;
   onPickFile: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  onChangeUploadContentType: (contentType: "image" | "document") => void;
   onTriggerPicker: () => void;
   onStartAnalysis: () => void;
   onResetToHome: () => void;
@@ -111,6 +113,7 @@ interface RegisterPageProps {
 
 export default function RegisterPage({
   selectedFile,
+  uploadContentType,
   previewUrl,
   analysisStage,
   analysisProgress,
@@ -119,6 +122,7 @@ export default function RegisterPage({
   recentUploads,
   onOpenOngoingVote,
   onPickFile,
+  onChangeUploadContentType,
   onTriggerPicker,
   onStartAnalysis,
   onResetToHome,
@@ -312,6 +316,22 @@ export default function RegisterPage({
                     </div>
 
                     <div className="analysis-card">
+                      <div className="upload-mode-control" aria-label="등록 처리 방식">
+                        <button
+                          type="button"
+                          className={uploadContentType === "image" ? "is-active" : ""}
+                          onClick={() => onChangeUploadContentType("image")}
+                        >
+                          이미지
+                        </button>
+                        <button
+                          type="button"
+                          className={uploadContentType === "document" ? "is-active" : ""}
+                          onClick={() => onChangeUploadContentType("document")}
+                        >
+                          문서
+                        </button>
+                      </div>
                       <h4>AI 유사도 분석을 시작하시겠습니까?</h4>
                       <ul className="analysis-list">
                         <li>의미 기반 임베딩 비교</li>
