@@ -194,8 +194,8 @@ export const resultConfig: Record<"verified" | "allow" | "review" | "block" | "f
     metricLabel: "Cosine Similarity",
   },
   failed: {
-    badge: "FAILED",
-    title: "문서 등록 처리에 실패했습니다.",
+    badge: "BLOCK",
+    title: "등록이 제한된 문서입니다.",
     subtitle: "파일 처리, 렌더링, 워터마크 또는 OCR 처리 중 문제가 발생했습니다.",
     similarity: "-",
     note: "문서 파일을 확인한 뒤 다시 업로드해주세요.",

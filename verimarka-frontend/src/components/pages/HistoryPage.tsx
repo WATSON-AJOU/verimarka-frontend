@@ -13,7 +13,7 @@ interface HistoryPageProps {
   onResumeAllowFlow: (item: HistoryAllowResumePayload) => void;
   reviewVoteSubmitting?: boolean;
   initialExpandedId?: string | null;
-  initialDetailType?: "allow" | "review" | "block" | null;
+  initialDetailType?: "allow" | "verified" | "review" | "block" | null;
 }
 
 export default function HistoryPage({
@@ -129,6 +129,14 @@ export default function HistoryPage({
     return Boolean(item.downloadUrl);
   }
 
+  function isSuccessfulRegistration(item: HistoryItem) {
+    return item.type === "allow" || item.type === "verified";
+  }
+
+  function getRegistrationBadge(item: HistoryItem) {
+    return item.type === "verified" ? "VERIFIED" : "ALLOW";
+  }
+
   function buildAllowDecisionText(item: HistoryItem) {
     if (item.extra && item.extra !== "-") return item.extra;
     return "중복 후보 없음";
@@ -199,7 +207,7 @@ export default function HistoryPage({
     if (!items.some((item) => item.id === initialExpandedId && item.type === initialDetailType)) return;
 
     const timer = window.setTimeout(() => {
-      if (initialDetailType === "allow") setAllowDetailId(initialExpandedId);
+      if (initialDetailType === "allow" || initialDetailType === "verified") setAllowDetailId(initialExpandedId);
       if (initialDetailType === "review") setReviewDetailId(initialExpandedId);
       if (initialDetailType === "block") setBlockDetailId(initialExpandedId);
     }, 0);
@@ -207,7 +215,7 @@ export default function HistoryPage({
   }, [initialExpandedId, initialDetailType, items]);
 
   const allowDetailItem = allowDetailId
-    ? (items.find((item) => item.id === allowDetailId && item.type === "allow") ?? null)
+    ? (items.find((item) => item.id === allowDetailId && isSuccessfulRegistration(item)) ?? null)
     : null;
   const reviewDetailItem = reviewDetailId
     ? (items.find((item) => item.id === reviewDetailId && item.type === "review") ?? null)
@@ -259,7 +267,7 @@ export default function HistoryPage({
       <section className="history-shell">
         <div className="history-allow-detail-view">
           <div className="history-allow-detail-card">
-            <span className="history-allow-detail-badge">ALLOW</span>
+            <span className="history-allow-detail-badge">{getRegistrationBadge(allowDetailItem)}</span>
             <h2>{contentMinted ? "토큰 발행 상세 정보" : "기록 상세 정보"}</h2>
             <p>{contentMinted ? "블록체인에 안전하게 저장된 자산 보호 기록입니다." : "등록 승인 상태의 저작물 기록입니다."}</p>
 
@@ -781,6 +789,7 @@ export default function HistoryPage({
                   <div
                     className={`history-log-thumb ${
                       item.type === "allow"
+                        || item.type === "verified"
                         ? "history-thumb-landscape"
                         : item.type === "block"
                           ? "history-thumb-review"
@@ -796,6 +805,7 @@ export default function HistoryPage({
                       <span
                         className={`history-state-badge ${
                           item.type === "allow"
+                            || item.type === "verified"
                             ? "is-allow"
                             : item.type === "block"
                               ? "is-block"
@@ -816,7 +826,7 @@ export default function HistoryPage({
                 <div className="history-log-expand">
                   <div className="history-expand-card history-expand-card--result">
                     <h4>{item.type === "verify" ? "검증 결과" : "AI 분석 결과"}</h4>
-                    {item.type === "allow" ? (
+                    {isSuccessfulRegistration(item) ? (
                       <div className="history-detail-line-list">
                         <p>
                           <strong>의미 기반 유사도:</strong> {item.cosine}
@@ -846,7 +856,7 @@ export default function HistoryPage({
                     )}
                   </div>
                   <div className="history-expand-card history-expand-card--status">
-                    {item.type === "allow" ? (
+                    {isSuccessfulRegistration(item) ? (
                       <>
                         <h4>블록체인 기록</h4>
                         <div className="history-detail-line-list history-detail-line-list--blockchain">

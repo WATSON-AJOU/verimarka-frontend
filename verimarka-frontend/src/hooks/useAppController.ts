@@ -71,7 +71,7 @@ function getAnalysisCompleteToast(decision: AnalysisResult, contentType?: Regist
   if (contentType === "document") {
     if (decision === "verified") return "문서 분석이 완료되었습니다. VERIFIED 상태입니다.";
     if (decision === "review") return "문서 분석이 완료되었습니다. REVIEW 상태입니다.";
-    if (decision === "failed") return "문서 분석이 완료되었습니다. FAILED 상태입니다.";
+    if (decision === "failed") return "문서 분석이 완료되었습니다. BLOCK 상태입니다.";
   }
 
   return decision === "allow"
@@ -238,9 +238,9 @@ export function useAppController() {
   });
 
   const historyEntryFromUrl = useMemo(() => new URLSearchParams(location.search).get("entry"), [location.search]);
-  const historyDetailTypeFromUrl = useMemo<"allow" | "review" | "block" | null>(() => {
+  const historyDetailTypeFromUrl = useMemo<"allow" | "verified" | "review" | "block" | null>(() => {
     const value = new URLSearchParams(location.search).get("detail");
-    if (value === "allow" || value === "review" || value === "block") return value;
+    if (value === "allow" || value === "verified" || value === "review" || value === "block") return value;
     return null;
   }, [location.search]);
   const displayName = useMemo(() => {
@@ -1234,8 +1234,8 @@ export function useAppController() {
       try {
         const response = await apiRequest<Array<{
           id?: string;
-          type?: "allow" | "review" | "block" | "verify";
-          status: "ALLOW" | "REVIEW" | "BLOCK" | "VERIFY";
+          type?: "allow" | "verified" | "review" | "block" | "verify";
+          status: "ALLOW" | "VERIFIED" | "REVIEW" | "BLOCK" | "VERIFY";
           title: string;
           description: string;
           extra?: string;
@@ -1284,7 +1284,7 @@ export function useAppController() {
     try {
       const response = await apiRequest<Array<{
         id: string;
-        type: "allow" | "review" | "block" | "verify";
+        type: "allow" | "verified" | "review" | "block" | "verify";
         file_name: string;
         summary: string;
         timestamp: string;
@@ -1353,6 +1353,9 @@ export function useAppController() {
 
   const filteredHistory = useMemo(() => {
     if (historyFilter === "all") return historyEntries;
+    if (historyFilter === "allow") {
+      return historyEntries.filter((item) => item.type === "allow" || item.type === "verified");
+    }
     return historyEntries.filter((item) => item.type === historyFilter);
   }, [historyEntries, historyFilter]);
 

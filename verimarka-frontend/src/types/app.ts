@@ -16,8 +16,8 @@ export type AnalysisStage =
 
 export interface ActivityItem {
   id?: string;
-  type?: "allow" | "review" | "block" | "verify";
-  status: "ALLOW" | "REVIEW" | "BLOCK" | "VERIFY";
+  type?: "allow" | "verified" | "review" | "block" | "verify";
+  status: "ALLOW" | "VERIFIED" | "REVIEW" | "BLOCK" | "VERIFY";
   title: string;
   description: string;
   extra?: string;
@@ -46,7 +46,7 @@ export interface VerifyHistoryItem {
 
 export interface HistoryItem {
   id: string;
-  type: "allow" | "review" | "block" | "verify";
+  type: "allow" | "verified" | "review" | "block" | "verify";
   fileName: string;
   summary: string;
   timestamp: string;
