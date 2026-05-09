@@ -140,7 +140,20 @@ export const verifyHistoryItems: VerifyHistoryItem[] = [
   },
 ];
 
-export const resultConfig: Record<"allow" | "review" | "block", RegisterResultConfig> = {
+export const resultConfig: Record<"verified" | "allow" | "review" | "block" | "failed", RegisterResultConfig> = {
+  verified: {
+    badge: "VERIFIED",
+    title: "문서 등록 처리가 완료되었습니다.",
+    subtitle: "문서 워터마크 처리와 OCR 확인이 완료되었습니다.",
+    similarity: "-",
+    note: "다음 단계에서 NFT 토큰 발행을 진행할 수 있습니다.",
+    tone: "allow",
+    threshold: "-",
+    phashDistance: "-",
+    delta: "-",
+    primaryAction: "NFT 토큰 발행하기",
+    metricLabel: "Document Status",
+  },
   allow: {
     badge: "ALLOW",
     title: "등록 가능한 콘텐츠입니다.",
@@ -179,5 +192,18 @@ export const resultConfig: Record<"allow" | "review" | "block", RegisterResultCo
     delta: "+0.1128",
     primaryAction: "다른 이미지 업로드",
     metricLabel: "Cosine Similarity",
+  },
+  failed: {
+    badge: "FAILED",
+    title: "문서 등록 처리에 실패했습니다.",
+    subtitle: "파일 처리, 렌더링, 워터마크 또는 OCR 처리 중 문제가 발생했습니다.",
+    similarity: "-",
+    note: "문서 파일을 확인한 뒤 다시 업로드해주세요.",
+    tone: "block",
+    threshold: "-",
+    phashDistance: "-",
+    delta: "-",
+    primaryAction: "다른 문서 업로드",
+    metricLabel: "Document Status",
   },
 };

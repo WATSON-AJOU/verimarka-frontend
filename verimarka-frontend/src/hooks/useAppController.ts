@@ -19,6 +19,7 @@ import {
   formatPhoneNumber,
   formatReviewVoteEndAt,
   getCurrentLocale,
+  getDefaultUploadContentType,
   formatWalletAddress,
   getInitial,
   getMimeTypeFromFileName,
@@ -43,6 +44,7 @@ import {
 import type {
   ActivityItem,
   AnalysisJobStatusResponse,
+  AnalysisResult,
   AnalysisStage,
   AsyncContentJobResponse,
   AsyncVerifyJobResponse,
@@ -58,6 +60,26 @@ import type {
   UploadHistoryItem,
   WalletSummaryResponse,
 } from "../types/app";
+
+const REGISTER_DECISIONS = new Set<AnalysisResult>(["verified", "allow", "review", "block", "failed"]);
+
+function isRegisterDecision(value: string | null | undefined): value is AnalysisResult {
+  return Boolean(value && REGISTER_DECISIONS.has(value as AnalysisResult));
+}
+
+function getAnalysisCompleteToast(decision: AnalysisResult, contentType?: RegisteredContentResponse["content_type"]) {
+  if (contentType === "document") {
+    if (decision === "verified") return "문서 분석이 완료되었습니다. VERIFIED 상태입니다.";
+    if (decision === "review") return "문서 분석이 완료되었습니다. REVIEW 상태입니다.";
+    if (decision === "failed") return "문서 분석이 완료되었습니다. FAILED 상태입니다.";
+  }
+
+  return decision === "allow"
+    ? "분석이 완료되었습니다. 등록 가능한 콘텐츠입니다."
+    : decision === "review"
+      ? "분석이 완료되었습니다. 보류 판정이 생성되었습니다."
+      : "분석이 완료되었습니다. 등록 제한 판정이 생성되었습니다.";
+}
 
 function getDefaultWalletSummary(user?: MeResponse | null): WalletSummaryResponse {
   return {
@@ -124,6 +146,7 @@ export function useAppController() {
   const [withdrawing, setWithdrawing] = useState(false);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploadContentType, setUploadContentType] = useState<"image" | "document">("image");
   const [previewUrl, setPreviewUrl] = useState("");
   const [analysisStage, setAnalysisStage] = useState<AnalysisStage>("idle");
   const [analysisProgress, setAnalysisProgress] = useState(0);
@@ -156,6 +179,7 @@ export function useAppController() {
   const [contentResult, setContentResult] = useState<RegisteredContentResponse | null>(null);
 
   const [verifyFile, setVerifyFile] = useState<File | null>(null);
+  const [verifyContentType, setVerifyContentType] = useState<"image" | "document">("image");
   const [verifyPreviewUrl, setVerifyPreviewUrl] = useState("");
   const [verifyProgress, setVerifyProgress] = useState(0);
   const [verifyRunning, setVerifyRunning] = useState(false);
@@ -778,6 +802,7 @@ export function useAppController() {
     if (!selectedFile) {
       const timer = window.setTimeout(() => {
         setPreviewUrl("");
+        setUploadContentType("image");
         setAnalysisStage("idle");
         setAnalysisProgress(0);
         setAnalysisJobId(null);
@@ -843,6 +868,7 @@ export function useAppController() {
     if (!verifyFile) {
       const timer = window.setTimeout(() => {
         setVerifyPreviewUrl("");
+        setVerifyContentType("image");
         setVerifyProgress(0);
         setVerifyRunning(false);
         setVerifyJobId(null);
@@ -963,23 +989,14 @@ export function useAppController() {
 
         if (response.status === "success" && response.content) {
           const resolvedContent = response.content;
-          const decision =
-            resolvedContent.decision === "allow" || resolvedContent.decision === "review" || resolvedContent.decision === "block"
-              ? resolvedContent.decision
-              : "block";
+          const decision = isRegisterDecision(resolvedContent.decision) ? resolvedContent.decision : "block";
 
           setContentResult(resolvedContent);
           setAnalysisProgress(100);
           setAnalysisStage(decision);
           setAnalysisRequestPending(false);
           setAnalysisJobId(null);
-          openToast(
-            decision === "allow"
-              ? "분석이 완료되었습니다. 등록 가능한 콘텐츠입니다."
-              : decision === "review"
-                ? "분석이 완료되었습니다. 보류 판정이 생성되었습니다."
-                : "분석이 완료되었습니다. 등록 제한 판정이 생성되었습니다.",
-          );
+          openToast(getAnalysisCompleteToast(decision, resolvedContent.content_type));
           return;
         }
 
@@ -1340,9 +1357,9 @@ export function useAppController() {
   }, [historyEntries, historyFilter]);
 
   const registerDecision =
-    analysisStage === "allow" || analysisStage === "review" || analysisStage === "block"
+    isRegisterDecision(analysisStage)
       ? analysisStage
-      : contentResult?.decision === "allow" || contentResult?.decision === "review" || contentResult?.decision === "block"
+      : isRegisterDecision(contentResult?.decision)
         ? contentResult.decision
         : null;
 
@@ -1665,6 +1682,7 @@ export function useAppController() {
       return;
     }
     setSelectedFile(nextFile);
+    setUploadContentType(getDefaultUploadContentType(nextFile));
     setContentResult(null);
     setMintErrorMessage("");
     openToast("파일 업로드가 완료되었습니다.");
@@ -1720,6 +1738,7 @@ export function useAppController() {
 
     const formData = new FormData();
     formData.append("file", selectedFile);
+    formData.append("content_type", uploadContentType);
 
     setAnalysisProgress(0);
     setAnalysisStage("running");
@@ -1763,6 +1782,7 @@ export function useAppController() {
       return;
     }
     setVerifyFile(nextFile);
+    setVerifyContentType(getDefaultUploadContentType(nextFile));
     setVerifyResult(null);
     setVerifyRequestedAt(Date.now());
     setVerifyFlowError("");
@@ -1785,6 +1805,7 @@ export function useAppController() {
 
     const formData = new FormData();
     formData.append("file", verifyFile);
+    formData.append("content_type", verifyContentType);
     const requestedAt = Date.now();
 
     setVerifyProgress(0);
@@ -2352,6 +2373,7 @@ export function useAppController() {
     },
     register: {
       selectedFile,
+      uploadContentType,
       previewUrl,
       analysisStage,
       analysisProgress,
@@ -2385,6 +2407,7 @@ export function useAppController() {
       saveFileWithPicker,
       buildWatermarkedFileName,
       setSelectedFile,
+      setUploadContentType,
       setPreviewUrl,
       setReviewConsentOpenedAt,
       setContentResult,
@@ -2394,6 +2417,7 @@ export function useAppController() {
     },
     verify: {
       selectedFile: verifyFile,
+      contentType: verifyContentType,
       previewUrl: verifyPreviewUrl,
       verifyProgress,
       verifyRunning,
@@ -2401,6 +2425,7 @@ export function useAppController() {
       verifyRequestedAt,
       verifyFlowError,
       setVerifyFlowError,
+      setVerifyContentType,
       recentItems: ongoingVoteVerifyItems,
       uploadInputRef: verifyInputRef,
       handlePickVerifyFile,

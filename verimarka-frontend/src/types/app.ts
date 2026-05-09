@@ -1,6 +1,6 @@
 export type TabName = "home" | "add" | "verify" | "history" | "mypage";
 export type ModalType = "none" | "loginChoice" | "emailLogin" | "signup";
-export type AnalysisResult = "allow" | "review" | "block";
+export type AnalysisResult = "allow" | "review" | "block" | "verified" | "failed";
 export type AnalysisStage =
   | "idle"
   | "ready"
@@ -114,14 +114,14 @@ export interface RegisteredContentResponse {
   id: number;
   public_id: string;
   content_type: "image" | "document";
-  status: "pending" | "allow" | "review" | "block" | "failed";
+  status: "pending" | "verified" | "allow" | "review" | "block" | "failed";
   original_filename: string;
   original_storage_key: string;
   mime_type: string;
   file_size: number;
   file_url: string | null;
   watermark_file_url: string | null;
-  decision: "allow" | "review" | "block" | "";
+  decision: "verified" | "allow" | "review" | "block" | "failed" | "";
   reason: string;
   next_action: "none" | "start_vote" | "";
   top_cosine: number | null;
