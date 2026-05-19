@@ -3,12 +3,15 @@
 VeriMarka is a web service for image copyright registration, watermark insertion, blockchain proof issuance, and authenticity verification.
 
 ## Core pages
-- Home: https://verimarka.com/
-- Register content: https://verimarka.com/register
-- Verify content: https://verimarka.com/verify
-- Support and FAQ: https://verimarka.com/support
-- Terms: https://verimarka.com/terms
-- Privacy: https://verimarka.com/privacy
+- Korean home: https://verimarka.com/ko
+- Register content: https://verimarka.com/ko/register
+- Verify content: https://verimarka.com/ko/verify
+- Support and FAQ: https://verimarka.com/ko/support
+- Terms: https://verimarka.com/ko/terms
+- Privacy: https://verimarka.com/ko/privacy
+- English home: https://verimarka.com/en
+- Japanese home: https://verimarka.com/ja
+- Simplified Chinese home: https://verimarka.com/zh-CN
 
 ## What the service does
 - Upload image-based content for similarity analysis

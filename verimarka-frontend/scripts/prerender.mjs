@@ -7,6 +7,21 @@ const SITE_URL = (process.env.VITE_SITE_URL || "https://verimarka.com").replace(
 const DEFAULT_IMAGE_PATH = "/verimarka-og.png";
 const DEFAULT_ROBOTS = "index, follow, max-image-preview:large";
 const ROOT_ID_PATTERN = /<div id="root"><\/div>/;
+const LOCALES = ["ko", "en", "ja", "zh-CN"];
+const HREFLANG_BY_LOCALE = {
+  ko: "ko",
+  en: "en",
+  ja: "ja",
+  "zh-CN": "zh-CN",
+};
+const PATH_BY_ALTERNATE_GROUP = {
+  home: "",
+  register: "/register",
+  verify: "/verify",
+  support: "/support",
+  terms: "/terms",
+  privacy: "/privacy",
+};
 
 const projectRoot = process.cwd();
 const clientDist = path.join(projectRoot, "dist");
@@ -50,6 +65,19 @@ function metaProperty(property, content) {
   return `<meta property="${escapeAttribute(property)}" content="${escapeAttribute(content)}" />`;
 }
 
+function buildAlternateLinks(alternateGroup) {
+  const suffix = PATH_BY_ALTERNATE_GROUP[alternateGroup];
+  if (typeof suffix === "undefined") return [];
+
+  return [
+    ...LOCALES.map((locale) => {
+      const href = absoluteUrl(`/${locale}${suffix}`);
+      return `<link rel="alternate" hreflang="${escapeAttribute(HREFLANG_BY_LOCALE[locale])}" href="${escapeAttribute(href)}" />`;
+    }),
+    `<link rel="alternate" hreflang="x-default" href="${escapeAttribute(absoluteUrl(`/ko${suffix}`))}" />`,
+  ];
+}
+
 function normalizeStructuredData(structuredData) {
   if (!structuredData) return null;
   if (!Array.isArray(structuredData)) return structuredData;
@@ -83,6 +111,7 @@ function buildHead(seo) {
     metaName("twitter:description", seo.description),
     metaName("twitter:image", imageUrl),
     `<link rel="canonical" href="${escapeAttribute(canonicalUrl)}" />`,
+    ...buildAlternateLinks(seo.alternateGroup),
   ];
   const structuredData = normalizeStructuredData(seo.structuredData);
 
@@ -101,6 +130,7 @@ function stripExistingSeo(html) {
     .replace(/\s*<meta\s+property="og:[^"]+"[\s\S]*?>/gi, "")
     .replace(/\s*<meta\s+name="twitter:[^"]+"[\s\S]*?>/gi, "")
     .replace(/\s*<link\s+rel="canonical"[\s\S]*?>/gi, "")
+    .replace(/\s*<link\s+rel="alternate"[\s\S]*?>/gi, "")
     .replace(/\s*<script\s+id="verimarka-jsonld"[\s\S]*?<\/script>/gi, "");
 }
 
@@ -129,3 +159,5 @@ for (const routePath of getPrerenderRoutes()) {
   await writeFile(outputPath, renderHtml(routePath));
   console.log(`prerendered ${routePath} -> ${path.relative(projectRoot, outputPath)}`);
 }
+
+process.exit(0);

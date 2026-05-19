@@ -5,8 +5,18 @@ const DEFAULT_SITE_URL = "https://verimarka.com";
 const DEFAULT_IMAGE_PATH = "/verimarka-og.png";
 const DEFAULT_INDEX_ROBOTS = "index, follow, max-image-preview:large";
 const JSON_LD_SCRIPT_ID = "verimarka-jsonld";
+const SUPPORTED_SEO_LOCALES = ["ko", "en", "ja", "zh-CN"] as const;
+const ALTERNATE_PATHS = {
+  home: "",
+  register: "/register",
+  verify: "/verify",
+  support: "/support",
+  terms: "/terms",
+  privacy: "/privacy",
+} as const;
 
 type StructuredData = Record<string, unknown> | Array<Record<string, unknown>>;
+type AlternateGroup = keyof typeof ALTERNATE_PATHS;
 
 export interface SeoOptions {
   title: string;
@@ -17,6 +27,7 @@ export interface SeoOptions {
   robots?: string;
   structuredData?: StructuredData;
   locale?: string;
+  alternateGroup?: AlternateGroup;
 }
 
 function getSiteUrl() {
@@ -57,6 +68,37 @@ function upsertLink(selector: string, rel: string, href: string) {
     document.head.appendChild(element);
   }
   element.setAttribute("href", href);
+}
+
+function updateAlternateLinks(alternateGroup?: AlternateGroup) {
+  if (typeof document === "undefined") return;
+
+  document.head.querySelectorAll<HTMLLinkElement>('link[rel="alternate"][data-verimarka-seo="alternate"]').forEach((element) => {
+    element.remove();
+  });
+
+  if (!alternateGroup) return;
+
+  const path = ALTERNATE_PATHS[alternateGroup];
+  const alternates = [
+    ...SUPPORTED_SEO_LOCALES.map((locale) => ({
+      hreflang: locale,
+      href: buildAbsoluteUrl(`/${locale}${path}`),
+    })),
+    {
+      hreflang: "x-default",
+      href: buildAbsoluteUrl(`/ko${path}`),
+    },
+  ];
+
+  alternates.forEach(({ hreflang, href }) => {
+    const element = document.createElement("link");
+    element.setAttribute("rel", "alternate");
+    element.setAttribute("hreflang", hreflang);
+    element.setAttribute("href", href);
+    element.setAttribute("data-verimarka-seo", "alternate");
+    document.head.appendChild(element);
+  });
 }
 
 function updateStructuredData(structuredData?: StructuredData) {
@@ -101,6 +143,7 @@ export function useSeo({
   robots = DEFAULT_INDEX_ROBOTS,
   structuredData,
   locale = "ko-KR",
+  alternateGroup,
 }: SeoOptions) {
   useEffect(() => {
     const absoluteUrl = buildAbsoluteUrl(path);
@@ -124,12 +167,13 @@ export function useSeo({
     upsertMeta('meta[name="twitter:description"]', "name", "twitter:description", description);
     upsertMeta('meta[name="twitter:image"]', "name", "twitter:image", absoluteImageUrl);
     upsertLink('link[rel="canonical"]', "canonical", absoluteUrl);
+    updateAlternateLinks(alternateGroup);
     updateStructuredData(structuredData);
 
     return () => {
       updateStructuredData(undefined);
     };
-  }, [description, imagePath, locale, path, robots, structuredData, title, type]);
+  }, [alternateGroup, description, imagePath, locale, path, robots, structuredData, title, type]);
 }
 
 export function toOpenGraphLocale(locale: string) {
