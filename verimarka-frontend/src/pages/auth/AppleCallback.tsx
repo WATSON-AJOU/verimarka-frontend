@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import OAuthCallbackStatus from "../../components/auth/OAuthCallbackStatus"
 import { apiRequest } from "../../lib/api"
+import { getOAuthRedirectUri } from "../../lib/oauth"
 import { clearTokens, setTokens } from "../../lib/token"
 import {
   buildTabPath,
@@ -42,9 +43,7 @@ export default function AppleCallback() {
       window.sessionStorage.setItem(APPLE_OAUTH_CODE_KEY, code)
       window.sessionStorage.removeItem(APPLE_OAUTH_STATE_KEY)
 
-      const redirect_uri =
-        import.meta.env.VITE_APPLE_REDIRECT_URI ||
-        `${window.location.origin}/auth/apple/callback`
+      const redirect_uri = getOAuthRedirectUri("apple")
 
       const data = await apiRequest<OAuthTokenResponse>("/accounts/auth/oauth/apple/", {
         method: "POST",

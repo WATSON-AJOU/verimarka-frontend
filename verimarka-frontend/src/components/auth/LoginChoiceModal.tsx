@@ -4,6 +4,7 @@ import kakaoLogo from "../../assets/kakaologo.svg";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "react-router-dom";
 import { getLocaleFromPathname, withLocalePath } from "../../lib/locales";
+import { getOAuthRedirectUri } from "../../lib/oauth";
 
 interface Props {
   open: boolean;
@@ -29,9 +30,7 @@ export default function LoginChoiceModal({
 
   function loginWithGoogle() {
     const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-    const redirectUri =
-      import.meta.env.VITE_GOOGLE_REDIRECT_URI ||
-      `${window.location.origin}/auth/google/callback`;
+    const redirectUri = getOAuthRedirectUri("google");
 
     const state = crypto.randomUUID();
     window.sessionStorage.setItem(GOOGLE_OAUTH_STATE_KEY, state);
@@ -50,9 +49,7 @@ export default function LoginChoiceModal({
 
   function loginWithKakao() {
     const clientId = import.meta.env.VITE_KAKAO_CLIENT_ID;
-    const redirectUri =
-      import.meta.env.VITE_KAKAO_REDIRECT_URI ||
-      `${window.location.origin}/auth/kakao/callback`;
+    const redirectUri = getOAuthRedirectUri("kakao");
 
     const state = crypto.randomUUID();
     window.sessionStorage.setItem(KAKAO_OAUTH_STATE_KEY, state);
@@ -73,9 +70,7 @@ export default function LoginChoiceModal({
       window.alert("Apple 로그인 설정이 누락되었습니다.");
       return;
     }
-    const redirectUri =
-      import.meta.env.VITE_APPLE_REDIRECT_URI ||
-      `${window.location.origin}/auth/apple/callback`;
+    const redirectUri = getOAuthRedirectUri("apple");
     const state = crypto.randomUUID();
     window.sessionStorage.setItem(APPLE_OAUTH_STATE_KEY, state);
 

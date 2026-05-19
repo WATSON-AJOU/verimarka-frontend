@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import OAuthCallbackStatus from "../../components/auth/OAuthCallbackStatus"
 import { apiRequest } from "../../lib/api"
 import { clearTokens, setTokens } from "../../lib/token"
+import { getOAuthRedirectUri } from "../../lib/oauth"
 import {
   buildTabPath,
   POST_LOGOUT_TOAST_KEY,
@@ -50,9 +51,7 @@ export default function KakaoCallback() {
       }
       window.sessionStorage.setItem(KAKAO_OAUTH_PENDING_CODE_KEY, code)
 
-      const redirect_uri =
-        import.meta.env.VITE_KAKAO_REDIRECT_URI ||
-        `${window.location.origin}/auth/kakao/callback`
+      const redirect_uri = getOAuthRedirectUri("kakao")
 
       const data = await apiRequest<OAuthTokenResponse>("/accounts/auth/oauth/kakao/", {
         method: "POST",
