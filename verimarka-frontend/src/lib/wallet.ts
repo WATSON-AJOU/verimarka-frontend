@@ -3,26 +3,13 @@ import { createConfig, http } from "wagmi";
 import { polygon } from "wagmi/chains";
 import { injected, walletConnect } from "wagmi/connectors";
 import { appLogger } from "./logger";
-
-const METAMASK_CONNECTOR_IDS = new Set([
-  "metaMask",
-  "metaMaskSDK",
-  "io.metamask",
-  "io.metamask.mobile",
-  "io.metamask.extension",
-]);
-
-const RABBY_CONNECTOR_IDS = new Set([
-  "rabby",
-  "io.rabby",
-]);
-
-const TRUST_WALLET_CONNECTOR_IDS = new Set([
-  "trustWallet",
-  "trustwallet",
-  "trust",
-  "com.trustwallet.app",
-]);
+import {
+  METAMASK_CONNECTOR_IDS,
+  isMetaMaskConnectorId,
+  isRabbyConnectorId,
+  isTrustWalletConnectorId,
+  normalizeWalletConnectorId,
+} from "./wallet-identifiers";
 
 const defaultPolygonRpcUrl =
   import.meta.env.VITE_POLYGON_RPC_URL || "https://polygon-rpc.com";
@@ -130,26 +117,6 @@ function getProviderForConnector(connectorId?: string, windowObject?: unknown) {
   return getInjectedProviders(windowObject)[0];
 }
 
-export function isMetaMaskConnectorId(connectorId?: string) {
-  return Boolean(connectorId && METAMASK_CONNECTOR_IDS.has(connectorId));
-}
-
-export function isRabbyConnectorId(connectorId?: string) {
-  return Boolean(connectorId && RABBY_CONNECTOR_IDS.has(connectorId));
-}
-
-export function isTrustWalletConnectorId(connectorId?: string) {
-  return Boolean(connectorId && TRUST_WALLET_CONNECTOR_IDS.has(connectorId));
-}
-
-export function normalizeWalletConnectorId(connectorId?: string) {
-  if (!connectorId) return connectorId;
-  if (isMetaMaskConnectorId(connectorId)) return "metaMask";
-  if (isRabbyConnectorId(connectorId)) return "rabby";
-  if (isTrustWalletConnectorId(connectorId)) return "trustWallet";
-  return connectorId;
-}
-
 export function hasConnectorProvider(connectorId?: string) {
   if (typeof window === "undefined") return false;
 
@@ -228,4 +195,12 @@ export const walletConfig = createConfig({
   },
 });
 
-export { METAMASK_CONNECTOR_IDS, polygon as walletChain, walletConnectEnabled };
+export {
+  METAMASK_CONNECTOR_IDS,
+  isMetaMaskConnectorId,
+  isRabbyConnectorId,
+  isTrustWalletConnectorId,
+  normalizeWalletConnectorId,
+  polygon as walletChain,
+  walletConnectEnabled,
+};

@@ -11,7 +11,7 @@ interface HeaderTab {
 
 interface HeaderProps {
   tabs: HeaderTab[];
-  activeTab: TabName;
+  activeTab: TabName | null;
   loading: boolean;
   isLoggedIn: boolean;
   displayName: string;
@@ -20,6 +20,7 @@ interface HeaderProps {
   onOpenLogin: () => void;
   onOpenSignup: () => void;
   onLogout: () => void;
+  showAuthActions?: boolean;
 }
 
 export default function Header({
@@ -33,6 +34,7 @@ export default function Header({
   onOpenLogin,
   onOpenSignup,
   onLogout,
+  showAuthActions = true,
 }: HeaderProps) {
   const { t, i18n } = useTranslation();
   const location = useLocation();
@@ -109,40 +111,44 @@ export default function Header({
           </nav>
 
           <div className="auth-slot">
-            {!loading && !isLoggedIn ? (
-              <div className="guest-actions">
-                <button className="auth-text-btn" type="button" onClick={() => {
-                  onOpenLogin();
-                  setMobileMenuOpen(false);
-                }}>
-                  {t("header.login")}
-                </button>
-                <button className="auth-text-btn signup-link" type="button" onClick={() => {
-                  onOpenSignup();
-                  setMobileMenuOpen(false);
-                }}>
-                  {t("header.signup")}
-                </button>
-              </div>
-            ) : null}
-
-            {!loading && isLoggedIn ? (
+            {showAuthActions ? (
               <>
-                <button className="user-session" type="button" onClick={() => {
-                  onMoveTab("mypage");
-                  setMobileMenuOpen(false);
-                }}>
-                  <span className="user-nickname">{t("header.greeting", { name: displayName })}</span>
-                  <span className="profile-shortcut">
-                    <span className="profile-shortcut-circle">{avatarInitial}</span>
-                  </span>
-                </button>
-                <button className="logout-btn" type="button" onClick={() => {
-                  onLogout();
-                  setMobileMenuOpen(false);
-                }}>
-                  {t("header.logout")}
-                </button>
+                {!loading && !isLoggedIn ? (
+                  <div className="guest-actions">
+                    <button className="auth-text-btn" type="button" onClick={() => {
+                      onOpenLogin();
+                      setMobileMenuOpen(false);
+                    }}>
+                      {t("header.login")}
+                    </button>
+                    <button className="auth-text-btn signup-link" type="button" onClick={() => {
+                      onOpenSignup();
+                      setMobileMenuOpen(false);
+                    }}>
+                      {t("header.signup")}
+                    </button>
+                  </div>
+                ) : null}
+
+                {!loading && isLoggedIn ? (
+                  <>
+                    <button className="user-session" type="button" onClick={() => {
+                      onMoveTab("mypage");
+                      setMobileMenuOpen(false);
+                    }}>
+                      <span className="user-nickname">{t("header.greeting", { name: displayName })}</span>
+                      <span className="profile-shortcut">
+                        <span className="profile-shortcut-circle">{avatarInitial}</span>
+                      </span>
+                    </button>
+                    <button className="logout-btn" type="button" onClick={() => {
+                      onLogout();
+                      setMobileMenuOpen(false);
+                    }}>
+                      {t("header.logout")}
+                    </button>
+                  </>
+                ) : null}
               </>
             ) : null}
 

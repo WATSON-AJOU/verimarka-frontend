@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import OAuthCallbackStatus from "../../components/auth/OAuthCallbackStatus"
 import { apiRequest } from "../../lib/api"
 import { clearTokens, setTokens } from "../../lib/token"
 import {
@@ -17,6 +18,7 @@ interface OAuthTokenResponse {
 
 export default function KakaoCallback() {
   const hasStartedRef = useRef(false)
+  const [errorMessage, setErrorMessage] = useState("")
 
   useEffect(() => {
     if (hasStartedRef.current) return
@@ -76,10 +78,9 @@ export default function KakaoCallback() {
         window.location.replace(buildTabPath("home"))
         return
       }
-      window.alert(message)
-      window.location.replace(buildTabPath("home"))
+      setErrorMessage(message)
     })
   }, [])
 
-  return <div>Kakao 로그인 처리중...</div>
+  return <OAuthCallbackStatus provider="Kakao" errorMessage={errorMessage} />
 }

@@ -1,4 +1,3 @@
-import "./App.css";
 import AppMain from "./components/app/AppMain";
 import AppModals from "./components/app/AppModals";
 import { useAppController } from "./hooks/useAppController";

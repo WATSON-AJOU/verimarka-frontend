@@ -1,6 +1,8 @@
-import { normalizeWalletConnectorId, walletChain } from "./wallet";
+import { normalizeWalletConnectorId } from "./wallet-identifiers";
 import { getLocaleFromPathname, getPreferredLocale, stripLocaleFromPathname, type SupportedLocale } from "./locales";
 import type { TabName } from "../types/app";
+
+const POLYGON_CHAIN_ID = 137;
 
 export const TAB_PATHS: Record<TabName, string> = {
   home: "/",
@@ -51,7 +53,7 @@ export function formatWalletAddress(value: string | null | undefined) {
 }
 
 export function getWalletNetworkLabel(chainId: number | null | undefined) {
-  if (chainId === walletChain.id) return "Polygon";
+  if (chainId === POLYGON_CHAIN_ID) return "Polygon";
   if (!chainId) return "Polygon";
   return `Chain #${chainId}`;
 }
