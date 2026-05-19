@@ -22,14 +22,16 @@ function parseReviewMeta(extra?: string) {
   const yesVotes = Number(safeExtra.match(/찬성\s+(\d+)/)?.[1] ?? 0);
   const noVotes = Number(safeExtra.match(/반대\s+(\d+)/)?.[1] ?? 0);
   const total = yesVotes + noVotes;
-  const yesRate = total > 0 ? Math.round((yesVotes / total) * 100) : 50;
+  const hasVotes = total > 0;
+  const yesRate = hasVotes ? Math.round((yesVotes / total) * 100) : 0;
   return {
     deadline,
     yesVotes,
     noVotes,
     total,
+    hasVotes,
     yesRate,
-    noRate: 100 - yesRate,
+    noRate: hasVotes ? 100 - yesRate : 0,
   };
 }
 
@@ -210,13 +212,19 @@ export default function HomePage({
             </div>
 
             <div className="review-vote-modal-bar">
-              <div className="review-vote-modal-bar-track">
-                <div className="review-vote-modal-bar-fill is-yes" style={{ width: `${selectedReviewMeta.yesRate}%` }}>
-                  {t("home.approveRate", { rate: selectedReviewMeta.yesRate })}
-                </div>
-                <div className="review-vote-modal-bar-fill is-no" style={{ width: `${selectedReviewMeta.noRate}%` }}>
-                  {t("home.rejectRate", { rate: selectedReviewMeta.noRate })}
-                </div>
+              <div className={`review-vote-modal-bar-track ${selectedReviewMeta.hasVotes ? "" : "is-empty"}`}>
+                {selectedReviewMeta.hasVotes ? (
+                  <>
+                    <div className="review-vote-modal-bar-fill is-yes" style={{ width: `${selectedReviewMeta.yesRate}%` }}>
+                      {t("home.approveRate", { rate: selectedReviewMeta.yesRate })}
+                    </div>
+                    <div className="review-vote-modal-bar-fill is-no" style={{ width: `${selectedReviewMeta.noRate}%` }}>
+                      {t("home.rejectRate", { rate: selectedReviewMeta.noRate })}
+                    </div>
+                  </>
+                ) : (
+                  <span className="review-vote-empty-label">아직 집계된 투표가 없습니다.</span>
+                )}
               </div>
             </div>
 

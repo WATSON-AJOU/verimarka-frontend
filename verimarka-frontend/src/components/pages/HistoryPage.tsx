@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { authenticatedFetch } from "../../lib/api";
 import { buildTabPath, getCurrentLocale } from "../../lib/app-utils";
@@ -14,6 +14,25 @@ interface HistoryPageProps {
   reviewVoteSubmitting?: boolean;
   initialExpandedId?: string | null;
   initialDetailType?: "allow" | "verified" | "review" | "block" | null;
+}
+
+type WorkFormatFilter = "all" | "image" | "document";
+
+const IMAGE_FILE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "webp"]);
+const DOCUMENT_FILE_EXTENSIONS = new Set(["pdf", "doc", "docx"]);
+
+function getFileExtension(fileName: string) {
+  const normalized = fileName.trim().toLowerCase();
+  const dotIndex = normalized.lastIndexOf(".");
+  if (dotIndex < 0 || dotIndex === normalized.length - 1) return "";
+  return normalized.slice(dotIndex + 1);
+}
+
+function getWorkFormat(item: HistoryItem): Exclude<WorkFormatFilter, "all"> | "unknown" {
+  const extension = getFileExtension(item.fileName);
+  if (IMAGE_FILE_EXTENSIONS.has(extension)) return "image";
+  if (DOCUMENT_FILE_EXTENSIONS.has(extension)) return "document";
+  return "unknown";
 }
 
 export default function HistoryPage({
@@ -137,9 +156,39 @@ export default function HistoryPage({
     return item.type === "verified" ? "VERIFIED" : "ALLOW";
   }
 
+  function isDocumentVerificationItem(item: HistoryItem) {
+    if (item.type !== "verify") return false;
+    return /\.(pdf|doc|docx)$/i.test(item.fileName.trim());
+  }
+
+  function getHistoryTypeLabel(item: HistoryItem) {
+    if (item.type === "verify") {
+      return isDocumentVerificationItem(item) ? "문서 검증" : "저작물 검증";
+    }
+    return item.type.toUpperCase();
+  }
+
+  function isWatermarkVerificationSuccess(item: HistoryItem) {
+    if (item.type !== "verify") return false;
+    return /워터마크.*검증 성공/.test(item.summary) || /검증 성공/.test(item.summary);
+  }
+
   function buildAllowDecisionText(item: HistoryItem) {
-    if (item.extra && item.extra !== "-") return item.extra;
-    return "중복 후보 없음";
+    const tokenId = getHistoryTokenId(item);
+    const network = getHistoryNetwork(item);
+    if (tokenId !== "-") return `${network} · Token ${tokenId}`;
+    if (hasWatermarkedAsset(item)) return "워터마크 삽입본 생성 완료";
+    return "발급 대기 정보 없음";
+  }
+
+  function getAllowResultMemo(item: HistoryItem) {
+    if (hasWatermarkedAsset(item) && getHistoryTokenId(item) !== "-") {
+      return "워터마크 삽입 및 블록체인 토큰 발급이 완료되었습니다.";
+    }
+    if (hasWatermarkedAsset(item)) {
+      return "워터마크 삽입본 생성이 완료되었습니다.";
+    }
+    return item.extra && item.extra !== "-" ? item.extra : "중복 후보 없음";
   }
 
   function parseReviewMeta(extra: string) {
@@ -147,14 +196,16 @@ export default function HistoryPage({
     const yesVotes = Number(extra.match(/찬성\s+(\d+)/)?.[1] ?? 0);
     const noVotes = Number(extra.match(/반대\s+(\d+)/)?.[1] ?? 0);
     const total = yesVotes + noVotes;
-    const yesRate = total > 0 ? Math.round((yesVotes / total) * 100) : 50;
+    const hasVotes = total > 0;
+    const yesRate = hasVotes ? Math.round((yesVotes / total) * 100) : 0;
     return {
       deadline,
       yesVotes,
       noVotes,
       total,
+      hasVotes,
       yesRate,
-      noRate: 100 - yesRate,
+      noRate: hasVotes ? 100 - yesRate : 0,
     };
   }
 
@@ -194,6 +245,7 @@ export default function HistoryPage({
   const [blockDetailId, setBlockDetailId] = useState<string | null>(null);
   const [reviewVoteModalOpen, setReviewVoteModalOpen] = useState(false);
   const [closedReviewNoticeIds, setClosedReviewNoticeIds] = useState<string[]>([]);
+  const [workFormatFilter, setWorkFormatFilter] = useState<WorkFormatFilter>("all");
 
   useEffect(() => {
     if (initialExpandedId && items.some((item) => item.id === initialExpandedId)) {
@@ -213,6 +265,11 @@ export default function HistoryPage({
     }, 0);
     return () => window.clearTimeout(timer);
   }, [initialExpandedId, initialDetailType, items]);
+
+  const visibleItems = useMemo(() => {
+    if (workFormatFilter === "all") return items;
+    return items.filter((item) => getWorkFormat(item) === workFormatFilter);
+  }, [items, workFormatFilter]);
 
   const allowDetailItem = allowDetailId
     ? (items.find((item) => item.id === allowDetailId && isSuccessfulRegistration(item)) ?? null)
@@ -484,10 +541,10 @@ export default function HistoryPage({
                   </div>
                   <div>
                     <dt>진행률</dt>
-                    <dd>{reviewMeta.yesRate}%</dd>
+                    <dd>{reviewMeta.hasVotes ? `${reviewMeta.yesRate}%` : "집계 대기"}</dd>
                   </div>
                 </dl>
-                <div className="history-vote-progress history-vote-progress--detail">
+                <div className={`history-vote-progress history-vote-progress--detail ${reviewMeta.hasVotes ? "" : "is-empty"}`}>
                   <div className="history-vote-bar">
                     <div
                       className="history-vote-fill"
@@ -582,13 +639,19 @@ export default function HistoryPage({
               </div>
 
               <div className="review-vote-modal-bar">
-                <div className="review-vote-modal-bar-track">
-                  <div className="review-vote-modal-bar-fill is-yes" style={{ width: `${yesRate}%` }}>
-                    찬성 {yesRate}%
-                  </div>
-                  <div className="review-vote-modal-bar-fill is-no" style={{ width: `${noRate}%` }}>
-                    반대 {noRate}%
-                  </div>
+                <div className={`review-vote-modal-bar-track ${reviewMeta.hasVotes ? "" : "is-empty"}`}>
+                  {reviewMeta.hasVotes ? (
+                    <>
+                      <div className="review-vote-modal-bar-fill is-yes" style={{ width: `${yesRate}%` }}>
+                        찬성 {yesRate}%
+                      </div>
+                      <div className="review-vote-modal-bar-fill is-no" style={{ width: `${noRate}%` }}>
+                        반대 {noRate}%
+                      </div>
+                    </>
+                  ) : (
+                    <span className="review-vote-empty-label">아직 집계된 투표가 없습니다.</span>
+                  )}
                 </div>
               </div>
 
@@ -751,30 +814,70 @@ export default function HistoryPage({
         <div className="history-header">
           <h2>분석 기록</h2>
           <p>ALLOW, BLOCK, REVIEW, 저작물 검증 기록을 한 번에 확인하세요.</p>
-          <div className="history-filters">
-            {(["all", "allow", "block", "review", "verify"] as const).map((filter) => (
-              <button
-                key={filter}
-                type="button"
-                className={`history-filter-btn ${historyFilter === filter ? "is-active" : ""}`}
-                onClick={() => onFilterChange(filter)}
-              >
-                {filter === "all"
-                  ? "전체"
-                  : filter === "allow"
-                    ? "ALLOW"
-                    : filter === "block"
-                      ? "BLOCK"
-                      : filter === "review"
-                        ? "REVIEW"
-                        : "저작물 검증"}
-              </button>
-            ))}
+          <div className="history-filter-row">
+            <div className="history-filters" aria-label="분석 상태 필터">
+              {(["all", "allow", "block", "review", "verify"] as const).map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  className={`history-filter-btn ${historyFilter === filter ? "is-active" : ""}`}
+                  onClick={() => onFilterChange(filter)}
+                >
+                  {filter === "all"
+                    ? "전체"
+                    : filter === "allow"
+                      ? "ALLOW"
+                      : filter === "block"
+                        ? "BLOCK"
+                        : filter === "review"
+                          ? "REVIEW"
+                          : "저작물 검증"}
+                </button>
+              ))}
+            </div>
+            <div className="history-format-filter">
+              <div className="history-format-label">
+                <span>저작물 형식</span>
+                <span className="history-format-help">
+                  <button
+                    type="button"
+                    className="history-help-icon"
+                    aria-label="저작물 분류 기준 보기"
+                  >
+                    <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                      <circle cx="10" cy="10" r="8.25" />
+                      <path d="M7.8 7.7a2.25 2.25 0 0 1 4.4.65c0 1.55-1.55 2-2.05 2.85" />
+                      <path d="M10 14.25h.01" />
+                    </svg>
+                  </button>
+                  <span className="history-format-tooltip" role="tooltip">
+                    저작물 분류 기준<br />
+                    이미지: jpg, jpeg, png, webp<br />
+                    문서: pdf, doc, docx
+                  </span>
+                </span>
+              </div>
+              <div className="history-format-options" aria-label="저작물 형식 필터">
+                {(["all", "image", "document"] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    type="button"
+                    className={`history-format-btn ${workFormatFilter === filter ? "is-active" : ""}`}
+                    onClick={() => setWorkFormatFilter(filter)}
+                  >
+                    {filter === "all" ? "전체" : filter === "image" ? "이미지" : "문서"}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="history-list">
-          {items.map((item) => (
+          {visibleItems.length === 0 ? (
+            <div className="history-empty-state">선택한 조건에 해당하는 분석 기록이 없습니다.</div>
+          ) : null}
+          {visibleItems.map((item) => (
             <article
               key={item.id}
               className={`history-log-item ${expandedId === item.id ? "is-expanded" : ""}`}
@@ -814,7 +917,7 @@ export default function HistoryPage({
                                 : "is-review"
                         }`}
                       >
-                        {item.type === "verify" ? "저작물 검증" : item.type.toUpperCase()}
+                        {getHistoryTypeLabel(item)}
                       </span>
                     </div>
                     <p className="history-log-desc">{item.summary}</p>
@@ -835,7 +938,22 @@ export default function HistoryPage({
                           <strong>pHash 비교:</strong> {item.phash}
                         </p>
                         <p>
-                          <strong>판정:</strong> {buildAllowDecisionText(item)}
+                          <strong>발급 토큰 정보:</strong> {buildAllowDecisionText(item)}
+                        </p>
+                        <p>
+                          <strong>처리 결과:</strong> {getAllowResultMemo(item)}
+                        </p>
+                      </div>
+                    ) : isWatermarkVerificationSuccess(item) ? (
+                      <div className="history-detail-line-list">
+                        <p>
+                          <strong>검출 결과:</strong> 등록된 워터마크가 검출되었습니다.
+                        </p>
+                        <p>
+                          <strong>식별 정보:</strong> {getHistoryTokenId(item) !== "-" ? `Token ${getHistoryTokenId(item)}` : "등록 기록 확인"}
+                        </p>
+                        <p>
+                          <strong>판정 메모:</strong> 문서 내 워터마크가 원본 등록 기록과 일치합니다.
                         </p>
                       </div>
                     ) : (
@@ -903,8 +1021,12 @@ export default function HistoryPage({
                             <strong>{parseReviewMeta(item.extra).total}명</strong>
                           </div>
                         </div>
-                        <div className="history-vote-progress">
-                          <span>진행률 {parseReviewMeta(item.extra).yesRate}%</span>
+                        <div className={`history-vote-progress ${parseReviewMeta(item.extra).hasVotes ? "" : "is-empty"}`}>
+                          <span>
+                            {parseReviewMeta(item.extra).hasVotes
+                              ? `진행률 ${parseReviewMeta(item.extra).yesRate}%`
+                              : "투표 집계 대기"}
+                          </span>
                           <div className="history-vote-bar">
                             <div
                               className="history-vote-fill"
