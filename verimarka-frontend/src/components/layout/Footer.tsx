@@ -1,7 +1,10 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation, useNavigate } from "react-router-dom";
+import kakaoLogo from "../../assets/kakaologo.svg";
 import { getLocaleFromPathname, withLocalePath, type SupportedLocale } from "../../lib/locales";
+
+const KAKAO_CHANNEL_URL = "http://pf.kakao.com/_xhtpsX";
 
 export default function Footer() {
   const { t, i18n } = useTranslation();
@@ -32,16 +35,36 @@ export default function Footer() {
     setLanguageMenuOpen(false);
   }
 
+  function scrollToTop() {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
     <footer className="site-footer">
       <div className="footer-inner">
         <div className="footer-main">
           <div className="footer-topline">
-            <h2 className="footer-logo">VeriMarka</h2>
+            <h2 className="footer-logo">
+              <button className="footer-logo-button" type="button" onClick={scrollToTop}>
+                VeriMarka
+              </button>
+            </h2>
             <div className="footer-links">
               <a href={withLocalePath("/terms", currentLocale)}>{t("footer.terms")}</a>
               <a href={withLocalePath("/privacy", currentLocale)}>{t("footer.privacy")}</a>
               <a href={withLocalePath("/support", currentLocale)}>{t("footer.support")}</a>
+            </div>
+          </div>
+
+          <div className="footer-support">
+            <a className="footer-kakao-link" href={KAKAO_CHANNEL_URL} target="_blank" rel="noreferrer">
+              <img src={kakaoLogo} alt="" aria-hidden="true" />
+              <span>{t("footer.kakaoChannel")}</span>
+            </a>
+            <div className="footer-support-details" aria-label={t("footer.supportInfoLabel")}>
+              <span>{t("footer.email")}: <a href="mailto:emfpdlzj@gmail.com">emfpdlzj@gmail.com</a></span>
+              <span>{t("footer.hours")}</span>
+              <span>{t("footer.responseTime")}</span>
             </div>
           </div>
 

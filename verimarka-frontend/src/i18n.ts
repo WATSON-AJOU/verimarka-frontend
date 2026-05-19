@@ -29,6 +29,11 @@ const resources = {
         terms: "이용약관",
         privacy: "개인정보처리방침",
         support: "고객센터",
+        kakaoChannel: "카톡상담채널",
+        supportInfoLabel: "고객센터 운영 정보",
+        email: "문의 메일",
+        hours: "운영 시간: 평일 10:00-18:00",
+        responseTime: "답변 예상 시간: 영업일 기준 1-2일",
         businessInfo: "사업자등록번호: 123-45-67890 | 통신판매업신고번호: 제2026-서울성동-0001 | 전화문의: 1544-5678",
         address: "주소: 서울특별시 성동구 예시로 100, VeriMarka 그린팩토리, 12345",
         copyright: "© VeriMarka Corp. All Rights Reserved.",
@@ -129,6 +134,11 @@ const resources = {
         terms: "Terms",
         privacy: "Privacy",
         support: "Support",
+        kakaoChannel: "KakaoTalk Support",
+        supportInfoLabel: "Customer support information",
+        email: "Email",
+        hours: "Hours: Weekdays 10:00-18:00",
+        responseTime: "Expected reply: 1-2 business days",
         businessInfo: "Business No.: 123-45-67890 | E-commerce Reg.: 2026-Seoul-Seongdong-0001 | Phone: 1544-5678",
         address: "Address: 100 Example-ro, Seongdong-gu, Seoul, VeriMarka Green Factory, 12345",
         copyright: "© VeriMarka Corp. All Rights Reserved.",
@@ -186,6 +196,11 @@ const resources = {
       header: { mainMenu: "メインメニュー", login: "ログイン", signup: "会員登録", logout: "ログアウト", greeting: "{{name}}さん" },
       footer: {
         terms: "利用規約", privacy: "プライバシーポリシー", support: "サポート",
+        kakaoChannel: "KakaoTalk相談",
+        supportInfoLabel: "カスタマーサポート情報",
+        email: "問い合わせメール",
+        hours: "運営時間: 平日 10:00-18:00",
+        responseTime: "返信目安: 営業日基準 1-2日",
         businessInfo: "事業者番号: 123-45-67890 | 通販届出番号: 2026-ソウル城東-0001 | 電話: 1544-5678",
         address: "住所: ソウル特別市 城東区 例示路100, VeriMarka Green Factory, 12345",
         copyright: "© VeriMarka Corp. All Rights Reserved.",
@@ -224,6 +239,11 @@ const resources = {
       header: { mainMenu: "主菜单", login: "登录", signup: "注册", logout: "退出登录", greeting: "{{name}}" },
       footer: {
         terms: "服务条款", privacy: "隐私政策", support: "客服中心",
+        kakaoChannel: "KakaoTalk 咨询",
+        supportInfoLabel: "客服信息",
+        email: "咨询邮箱",
+        hours: "服务时间: 工作日 10:00-18:00",
+        responseTime: "预计回复: 1-2 个工作日",
         businessInfo: "营业执照号: 123-45-67890 | 电商申报号: 2026-首尔城东-0001 | 电话: 1544-5678",
         address: "地址: 首尔特别市城东区示例路100, VeriMarka Green Factory, 12345",
         copyright: "© VeriMarka Corp. 保留所有权利。",
@@ -257,6 +277,7 @@ const resources = {
 } as const;
 
 function resolveInitialLanguage() {
+  if (typeof window === "undefined") return "ko";
   return getLocaleFromPathname(window.location.pathname) || getPreferredLocale();
 }
 
@@ -270,6 +291,7 @@ void i18n.use(initReactI18next).init({
 });
 
 void i18n.on("languageChanged", (language) => {
+  if (typeof window === "undefined") return;
   window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
 });
 
