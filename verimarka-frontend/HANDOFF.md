@@ -4,11 +4,10 @@
 
 ## 로컬 실행
 
-### 1. 백엔드 실행
-프론트 개발 서버는 기본적으로 `/api` 요청을 `http://127.0.0.1:8000` 백엔드로 프록시합니다.
-먼저 백엔드를 별도 터미널에서 실행합니다.
+### 1. API 서버 확인
+프론트 개발 서버는 기본적으로 `/api` 요청을 배포 서버 `https://verimarka.com`으로 프록시합니다.
 
-Redis/Celery 없이 화면과 일반 API 연결만 확인하려면:
+로컬 백엔드로 전환해서 Redis/Celery 없이 화면과 일반 API 연결만 확인하려면:
 
 ```bash
 cd /Users/emfpdlzj/Desktop/verimarka/verimarka-BACKEND
@@ -26,10 +25,10 @@ npm install
 
 ### 3. 환경변수 설정
 API는 Vite proxy를 쓰므로 로컬에서는 `VITE_API_BASE_URL`을 생략해도 됩니다.
-백엔드 프록시를 쓰지 않고 API 주소를 직접 지정하려면:
+로컬 백엔드로 프록시 대상을 바꾸려면:
 
 ```bash
-VITE_API_BASE_URL=http://127.0.0.1:8000/api
+VITE_API_PROXY_TARGET=http://127.0.0.1:8000
 ```
 
 OAuth 로그인을 테스트할 때는 프로젝트 루트에 `.env.local`을 만들고 필요한 클라이언트 ID와 redirect URI를 넣습니다.
@@ -69,7 +68,7 @@ npm run build
 
 ## 전체 로컬 실행 주소
 
-- 백엔드: `http://127.0.0.1:8000/`
+- 백엔드: `https://verimarka.com/` (로컬 백엔드 사용 시 `http://127.0.0.1:8000/`)
 - 사용자 프론트엔드: `http://127.0.0.1:5173/`
 - 관리자 프론트엔드: `http://127.0.0.1:4173/`
 
