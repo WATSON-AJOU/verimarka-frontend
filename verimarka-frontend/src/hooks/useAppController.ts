@@ -456,14 +456,37 @@ export function useAppController() {
       return false;
     }
 
-    const providerChainId = (await resolveConnectorChainId()) ?? currentWalletChainId ?? null;
+    let providerChainId = (await resolveConnectorChainId()) ?? currentWalletChainId ?? null;
     if (providerChainId !== targetChainId) {
-      appLogger.info("wallet.watch_asset.skipped_chain_mismatch", {
+      appLogger.info("wallet.watch_asset.switch_chain_required", {
         publicId: response.public_id,
         providerChainId,
         targetChainId,
       });
-      return false;
+
+      try {
+        await switchChainAsync({ chainId: targetChainId });
+      } catch (switchError) {
+        appLogger.warn("wallet.watch_asset.switch_chain_failed", {
+          publicId: response.public_id,
+          providerChainId,
+          targetChainId,
+          switchError,
+        });
+        openToast(`${getWalletNetworkLabel(targetChainId)} 네트워크로 전환한 뒤 NFT 추가를 다시 시도해주세요.`);
+        return false;
+      }
+
+      providerChainId = (await resolveConnectorChainId()) ?? currentWalletChainId ?? null;
+      if (providerChainId !== targetChainId) {
+        appLogger.info("wallet.watch_asset.skipped_chain_mismatch", {
+          publicId: response.public_id,
+          providerChainId,
+          targetChainId,
+        });
+        openToast(`${getWalletNetworkLabel(targetChainId)} 네트워크로 전환한 뒤 NFT 추가를 다시 시도해주세요.`);
+        return false;
+      }
     }
 
     const provider = await getConnectedWalletProvider();
