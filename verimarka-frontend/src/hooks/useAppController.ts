@@ -671,6 +671,36 @@ export function useAppController() {
     openToast(message);
   }
 
+  async function getCurrentUserForProtectedAction() {
+    if (!hasAuthSession) {
+      setModal("loginChoice");
+      return null;
+    }
+
+    if (!loading && user) {
+      return user;
+    }
+
+    return await refreshMe();
+  }
+
+  async function ensureProtectedActionReady(options: { phoneMessage: string; walletMessage: string }) {
+    const currentUser = await getCurrentUserForProtectedAction();
+    if (!currentUser) return null;
+
+    if (!currentUser.phone_verified) {
+      promptPhoneRequired(options.phoneMessage);
+      return null;
+    }
+
+    if (!currentUser.wallet_address) {
+      promptWalletRequired(options.walletMessage);
+      return null;
+    }
+
+    return currentUser;
+  }
+
   useEffect(() => {
     walletClientRef.current = walletClient;
     if (walletClient) {
@@ -1811,35 +1841,21 @@ export function useAppController() {
     setMintErrorMessage("");
   }
 
-  function triggerFilePicker() {
-    if (!hasAuthSession) {
-      setModal("loginChoice");
-      return;
-    }
-    if (!phoneVerified) {
-      promptPhoneRequired("휴대폰 인증이 필요합니다.");
-      return;
-    }
-    if (walletRequired) {
-      promptWalletRequired("지갑 연결 후 저작물 등록을 이용할 수 있습니다.");
-      return;
-    }
+  async function triggerFilePicker() {
+    const readyUser = await ensureProtectedActionReady({
+      phoneMessage: "휴대폰 인증이 필요합니다.",
+      walletMessage: "지갑 연결 후 저작물 등록을 이용할 수 있습니다.",
+    });
+    if (!readyUser) return;
     uploadInputRef.current?.click();
   }
 
-  function triggerVerifyPicker() {
-    if (!hasAuthSession) {
-      setModal("loginChoice");
-      return;
-    }
-    if (!phoneVerified) {
-      promptPhoneRequired("휴대폰 인증이 필요합니다.");
-      return;
-    }
-    if (walletRequired) {
-      promptWalletRequired("지갑 연결 후 저작물 검증을 이용할 수 있습니다.");
-      return;
-    }
+  async function triggerVerifyPicker() {
+    const readyUser = await ensureProtectedActionReady({
+      phoneMessage: "휴대폰 인증이 필요합니다.",
+      walletMessage: "지갑 연결 후 저작물 검증을 이용할 수 있습니다.",
+    });
+    if (!readyUser) return;
     verifyInputRef.current?.click();
   }
 
@@ -1848,14 +1864,11 @@ export function useAppController() {
       window.alert("먼저 업로드할 파일을 선택해주세요.");
       return;
     }
-    if (!phoneVerified) {
-      promptPhoneRequired("휴대폰 인증이 필요합니다.");
-      return;
-    }
-    if (walletRequired) {
-      promptWalletRequired("지갑 연결 후 저작물 등록을 이용할 수 있습니다.");
-      return;
-    }
+    const readyUser = await ensureProtectedActionReady({
+      phoneMessage: "휴대폰 인증이 필요합니다.",
+      walletMessage: "지갑 연결 후 저작물 등록을 이용할 수 있습니다.",
+    });
+    if (!readyUser) return;
 
     const formData = new FormData();
     formData.append("file", selectedFile);
@@ -1916,14 +1929,11 @@ export function useAppController() {
       window.alert("먼저 검증할 파일을 선택해주세요.");
       return;
     }
-    if (!phoneVerified) {
-      promptPhoneRequired("휴대폰 인증이 필요합니다.");
-      return;
-    }
-    if (walletRequired) {
-      promptWalletRequired("지갑 연결 후 저작물 검증을 이용할 수 있습니다.");
-      return;
-    }
+    const readyUser = await ensureProtectedActionReady({
+      phoneMessage: "휴대폰 인증이 필요합니다.",
+      walletMessage: "지갑 연결 후 저작물 검증을 이용할 수 있습니다.",
+    });
+    if (!readyUser) return;
 
     const formData = new FormData();
     formData.append("file", verifyFile);
@@ -1961,14 +1971,11 @@ export function useAppController() {
       window.alert("먼저 등록 가능 여부 분석을 완료해주세요.");
       return;
     }
-    if (!phoneVerified) {
-      promptPhoneRequired("휴대폰 인증이 필요합니다.");
-      return;
-    }
-    if (walletRequired) {
-      promptWalletRequired("지갑 연결 후 서비스를 이용할 수 있습니다.");
-      return;
-    }
+    const readyUser = await ensureProtectedActionReady({
+      phoneMessage: "휴대폰 인증이 필요합니다.",
+      walletMessage: "지갑 연결 후 서비스를 이용할 수 있습니다.",
+    });
+    if (!readyUser) return;
     if (hasWatermarkArtifact(contentResult)) {
       setAnalysisStage("watermarked");
       return;
@@ -2022,14 +2029,11 @@ export function useAppController() {
       window.alert("먼저 REVIEW 판정 콘텐츠를 준비해주세요.");
       return;
     }
-    if (!phoneVerified) {
-      promptPhoneRequired("휴대폰 인증이 필요합니다.");
-      return;
-    }
-    if (walletRequired) {
-      promptWalletRequired("지갑 연결 후 서비스를 이용할 수 있습니다.");
-      return;
-    }
+    const readyUser = await ensureProtectedActionReady({
+      phoneMessage: "휴대폰 인증이 필요합니다.",
+      walletMessage: "지갑 연결 후 서비스를 이용할 수 있습니다.",
+    });
+    if (!readyUser) return;
 
     setAnalysisStage("reviewStarting");
     setReviewVoteProgress(0);
@@ -2063,19 +2067,28 @@ export function useAppController() {
     }
   }
 
+  async function openReviewConsent() {
+    const readyUser = await ensureProtectedActionReady({
+      phoneMessage: "휴대폰 인증이 필요합니다.",
+      walletMessage: "지갑 연결 후 서비스를 이용할 수 있습니다.",
+    });
+    if (!readyUser) return;
+
+    setReviewConsentNotifyByEmail(false);
+    setReviewConsentOpenedAt(Date.now());
+    setReviewConsentModalOpen(true);
+  }
+
   async function startMint() {
     if (!contentResult) {
       window.alert("먼저 워터마크 삽입을 완료해주세요.");
       return;
     }
-    if (!phoneVerified) {
-      promptPhoneRequired("휴대폰 인증이 필요합니다.");
-      return;
-    }
-    if (walletRequired) {
-      promptWalletRequired("지갑 연결 후 서비스를 이용할 수 있습니다.");
-      return;
-    }
+    const readyUser = await ensureProtectedActionReady({
+      phoneMessage: "휴대폰 인증이 필요합니다.",
+      walletMessage: "지갑 연결 후 서비스를 이용할 수 있습니다.",
+    });
+    if (!readyUser) return;
     if (hasMintedContent(contentResult)) {
       setMintErrorMessage("");
       setAnalysisStage("minted");
@@ -2570,6 +2583,7 @@ export function useAppController() {
       startAnalysis,
       resetRegisterFlow,
       startWatermark,
+      openReviewConsent,
       startReviewVote,
       refreshReviewVote,
       startMint,

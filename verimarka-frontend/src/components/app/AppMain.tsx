@@ -71,10 +71,6 @@ export default function AppMain({ controller }: AppMainProps) {
                 controller.register.triggerFilePicker();
                 return;
               }
-              if (!controller.session.phoneVerified) {
-                controller.register.promptPhoneRequired("휴대폰 인증이 필요합니다.");
-                return;
-              }
               if (controller.register.registerResult?.tone === "allow") {
                 if (controller.register.contentResult?.watermark?.applied) {
                   void controller.register.startMint();
@@ -84,9 +80,7 @@ export default function AppMain({ controller }: AppMainProps) {
                 return;
               }
               if (controller.register.registerResult?.tone === "review") {
-                controller.register.setReviewConsentNotifyByEmail(false);
-                controller.register.setReviewConsentOpenedAt(Date.now());
-                controller.register.setReviewConsentModalOpen(true);
+                void controller.register.openReviewConsent();
                 return;
               }
             }}

@@ -56,9 +56,11 @@ export function useAuth() {
         auth: true,
       });
       setUser(me);
+      return me;
     } catch {
       clearTokens();
       setUser(null);
+      return null;
     } finally {
       setLoading(false);
     }
