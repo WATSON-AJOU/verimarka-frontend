@@ -2,7 +2,7 @@ import { clearTokens, getAccessToken, hasRefreshSessionHint, setAccessToken } fr
 import { appLogger, createClientRequestId } from "./logger";
 import { captureSentryMessage } from "./sentry";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 export const AUTH_REFRESH_SUCCESS_EVENT = "verimarka:auth-refresh-success";
 export const AUTH_REFRESH_FAILED_EVENT = "verimarka:auth-refresh-failed";
 
@@ -384,4 +384,55 @@ export async function apiRequest<T>(
   }
 
   return data as T;
+}
+
+export async function streamAuthenticatedJsonEvents<T>(
+  path: string,
+  options: {
+    signal?: AbortSignal;
+    onEvent: (payload: T) => void;
+  },
+): Promise<void> {
+  const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
+    method: "GET",
+    headers: {
+      Accept: "text/event-stream",
+    },
+    signal: options.signal,
+  });
+
+  if (!response.ok || !response.body) {
+    throw new ApiRequestError("실시간 상태 스트림을 열지 못했습니다.", {
+      status: response.status,
+      requestId: response.headers.get("X-Request-Id"),
+      responseId: response.headers.get("X-Response-Id"),
+      path,
+      errorCode: "JOB_STREAM_UNAVAILABLE",
+    });
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+    const events = buffer.split("\n\n");
+    buffer = events.pop() || "";
+
+    for (const eventText of events) {
+      const dataLines = eventText
+        .split("\n")
+        .filter((line) => line.startsWith("data:"))
+        .map((line) => line.slice(5).trimStart());
+      if (!dataLines.length) continue;
+
+      const data = dataLines.join("\n");
+      if (!data || data.startsWith("{\"error\"")) continue;
+      options.onEvent(JSON.parse(data) as T);
+    }
+  }
 }

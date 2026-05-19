@@ -1,16 +1,32 @@
 import { SUPPORTED_UPLOAD_ACCEPT, SUPPORTED_UPLOAD_DESCRIPTION } from "../../lib/app-utils";
+import FilePreview from "../common/FilePreview";
+import LoadingPulse from "../common/LoadingPulse";
 import type { VerifyHistoryItem, VerifyResultResponse } from "../../types/app";
 
-function isImageMimeType(mimeType: string | null | undefined) {
-  return (mimeType || "").startsWith("image/");
-}
+const VERIFY_LOADING_MESSAGES = [
+  "검증 파일의 기본 정보를 확인하고 있습니다.",
+  "파일 형식과 무결성을 점검하고 있습니다.",
+  "워터마크 검출 워크플로우를 준비하고 있습니다.",
+  "파일에 삽입된 워터마크 정보를 탐색하고 있습니다.",
+  "검출 결과와 토큰 정보를 대조하고 있습니다.",
+  "블록체인 등록 정보를 조회하고 있습니다.",
+  "검출 실패 시 유사 후보를 탐색하고 있습니다.",
+  "검증 결과의 근거 데이터를 정리하고 있습니다.",
+  "최종 검증 결과를 생성하고 있습니다.",
+  "완료 화면으로 전환을 준비하고 있습니다.",
+];
 
-function getFileKindLabel(mimeType: string | null | undefined) {
+function getFileKindLabel(mimeType: string | null | undefined, fileName = "") {
   const normalized = (mimeType || "").toLowerCase();
+  const lowerName = fileName.toLowerCase();
   if (normalized === "application/pdf") return "PDF 문서";
+  if (lowerName.endsWith(".pdf")) return "PDF 문서";
   if (normalized === "application/msword") return "DOC 문서";
+  if (lowerName.endsWith(".doc")) return "DOC 문서";
   if (normalized === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "DOCX 문서";
+  if (lowerName.endsWith(".docx")) return "DOCX 문서";
   if (normalized.startsWith("image/")) return "이미지";
+  if (/\.(jpe?g|png)$/i.test(fileName)) return "이미지";
   return "파일";
 }
 
@@ -53,6 +69,7 @@ interface VerifyPageProps {
   contentType: "image" | "document";
   previewUrl: string;
   verifyProgress: number;
+  verifyProgressMessage: string;
   verifyRunning: boolean;
   verifyResult: VerifyResultResponse | null;
   verifyErrorMessage: string;
@@ -75,6 +92,7 @@ export default function VerifyPage({
   contentType,
   previewUrl,
   verifyProgress,
+  verifyProgressMessage,
   verifyRunning,
   verifyResult,
   verifyErrorMessage,
@@ -94,11 +112,21 @@ export default function VerifyPage({
   const uploadedPreview = previewUrl || verifyResult?.uploaded.preview_url || null;
   const verifyRequestedAtLabel = formatDisplayDateTime(verifyRequestedAt);
   const selectedMimeType = selectedFile?.type || "";
-  const renderFilePreview = (src: string | null, alt: string, mimeType: string) => {
-    if (src && isImageMimeType(mimeType)) {
-      return <img src={src} alt={alt} />;
-    }
-    return <div className="verify-placeholder-frame">{getFileKindLabel(mimeType)}</div>;
+  const selectedFileName = selectedFile?.name || verifyResult?.uploaded.file_name || "";
+  const selectedFileKindLabel = getFileKindLabel(selectedMimeType, selectedFileName);
+  const isDocumentMode = contentType === "document";
+  const selectedFileObjectLabel = isDocumentMode ? "문서" : selectedFileKindLabel === "이미지" ? "이미지" : "파일";
+  const candidateObjectLabel = isDocumentMode ? "문서" : "콘텐츠";
+  const fallbackSearchLabel = isDocumentMode ? "유사 문서 탐색" : "유사 콘텐츠 탐색";
+  const renderFilePreview = (src: string | null, alt: string, mimeType: string, fallbackLabel?: string) => {
+    return (
+      <FilePreview
+        src={src}
+        alt={alt}
+        mimeType={mimeType}
+        fallbackLabel={fallbackLabel || getFileKindLabel(mimeType, alt)}
+      />
+    );
   };
 
   return (
@@ -146,19 +174,19 @@ export default function VerifyPage({
           </button>
         ) : verifyRunning ? (
           <div className="verify-shell">
-              <div className="analysis-running-layout">
-                <div className="analysis-preview-card">
-                  {renderFilePreview(uploadedPreview, selectedFile.name, selectedMimeType)}
-                <div className="analysis-progress-overlay">
-                  <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(verifyProgress)) }}>
-                    <span>{Math.round(verifyProgress)}%</span>
-                  </div>
-                </div>
+            <div className="analysis-running-layout">
+              <div className="analysis-preview-card">
+                {renderFilePreview(uploadedPreview, selectedFile.name, selectedMimeType)}
               </div>
 
               <div className="analysis-timeline-card">
                 <h3 className="analysis-running-title">검증을 진행하고 있습니다.</h3>
-                <p className="analysis-running-subtitle">검증 결과를 정리하고 있습니다.</p>
+                <p className="analysis-running-subtitle">{verifyProgressMessage || "검증 결과를 정리하고 있습니다."}</p>
+                <LoadingPulse
+                  message={verifyProgressMessage}
+                  fallbackMessage="검증 결과를 정리하고 있습니다."
+                  messages={VERIFY_LOADING_MESSAGES}
+                />
                 <ul className="analysis-step-list">
                   <li className={getStepClass(verifyProgress, 0, 4)}>
                     <span className="analysis-step-dot" />
@@ -170,7 +198,7 @@ export default function VerifyPage({
                   </li>
                   <li className={getStepClass(verifyProgress, 2, 4)}>
                     <span className="analysis-step-dot" />
-                    <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(verifyProgress, 2, 4)}]</span> 유사 이미지 탐색 (검출 실패 시)</p>
+                    <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(verifyProgress, 2, 4)}]</span> {fallbackSearchLabel} (검출 실패 시)</p>
                   </li>
                   <li className={getStepClass(verifyProgress, 3, 4)}>
                     <span className="analysis-step-dot" />
@@ -234,18 +262,19 @@ export default function VerifyPage({
                   <>
                     <div className="analysis-result-layout verify-result-layout">
                       <div className="result-preview-card verify-preview-card">
-                        <h4>업로드 이미지</h4>
+                        <h4>업로드 {selectedFileObjectLabel}</h4>
                       <div className="verify-result-frame">
                         {renderFilePreview(uploadedPreview, selectedFile.name, selectedMimeType)}
                       </div>
                       </div>
                       <div className="result-summary-card verify-summary-card">
-                        <h4>확인 대상 정보</h4>
+                        <h4>확인 대상 {candidateObjectLabel}</h4>
                         <div className="verify-result-frame">
-                          {verifyResult.candidate?.preview_url ? (
-                            <img src={verifyResult.candidate.preview_url} alt={verifyResult.candidate.file_name || "유사 이미지 후보"} />
-                          ) : (
-                            <div className="verify-placeholder-frame">후보 이미지 없음</div>
+                          {renderFilePreview(
+                            verifyResult.candidate?.preview_url || null,
+                            verifyResult.candidate?.file_name || `유사 ${candidateObjectLabel} 후보`,
+                            "preview-image",
+                            `후보 ${candidateObjectLabel} 미리보기 없음`,
                           )}
                         </div>
                         <div className="verify-candidate-meta">
@@ -296,7 +325,7 @@ export default function VerifyPage({
 
                 <div className="verify-reset-actions">
                   <button className="btn btn-primary" type="button" onClick={onResetVerify}>
-                    다른 이미지 검증
+                    다른 파일 검증
                   </button>
                 </div>
               </div>
@@ -337,13 +366,13 @@ export default function VerifyPage({
 
               <div className="analysis-card">
                 <h4>검증 시나리오</h4>
-                <p className="verify-scenario-copy">워터마크 검출과 블록체인 연계 조회, 유사 이미지 탐색을 순차적으로 수행합니다.</p>
+                <p className="verify-scenario-copy">워터마크 검출과 블록체인 연계 조회, {fallbackSearchLabel}을 순차적으로 수행합니다.</p>
                 <div className="verify-scenario-panel">
                   <h5>검증 안내</h5>
                   <ul className="analysis-list">
                     <li>워터마크 검출을 우선 시도합니다.</li>
                     <li>검출 성공 시 토큰 연계 정보를 조회합니다.</li>
-                    <li>검출 실패 시 서비스 DB 유사 이미지를 탐색합니다.</li>
+                    <li>검출 실패 시 서비스 DB에서 유사 {candidateObjectLabel}를 탐색합니다.</li>
                   </ul>
                 </div>
                 <button className="btn btn-primary analysis-cta" type="button" onClick={onStartVerify}>

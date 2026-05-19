@@ -1,17 +1,72 @@
 import grapeImage from "../../assets/verimarka.webp";
+import FilePreview from "../common/FilePreview";
+import LoadingPulse from "../common/LoadingPulse";
 import { SUPPORTED_UPLOAD_ACCEPT, SUPPORTED_UPLOAD_DESCRIPTION } from "../../lib/app-utils";
 import type { AnalysisStage, RegisterResultConfig, RegisteredContentResponse, UploadHistoryItem } from "../../types/app";
 
-function isImageMimeType(mimeType: string | null | undefined) {
-  return (mimeType || "").startsWith("image/");
-}
+const REGISTRATION_LOADING_MESSAGES = [
+  "업로드 파일의 기본 정보를 확인하고 있습니다.",
+  "파일 무결성과 등록 조건을 점검하고 있습니다.",
+  "의미 기반 임베딩 분석을 준비하고 있습니다.",
+  "기존 등록 저작물과 유사도를 비교하고 있습니다.",
+  "픽셀 단위 특징을 정밀하게 대조하고 있습니다.",
+  "유사 후보의 판정 근거를 정리하고 있습니다.",
+  "등록 가능성 기준과 분석 결과를 대조하고 있습니다.",
+  "최종 판정 결과를 생성하고 있습니다.",
+  "결과 화면에 표시할 정보를 구성하고 있습니다.",
+  "잠시 후 다음 단계로 자동 전환됩니다.",
+];
 
-function getFileKindLabel(mimeType: string | null | undefined) {
+const REVIEW_STARTING_LOADING_MESSAGES = [
+  "커뮤니티 검증에 필요한 정보를 정리하고 있습니다.",
+  "유사 후보와 원본 파일 정보를 대조하고 있습니다.",
+  "투표 생성 조건을 확인하고 있습니다.",
+  "블록체인 투표 생성을 요청하고 있습니다.",
+  "투표 토큰 정보를 확인하고 있습니다.",
+  "참여자에게 보여줄 비교 정보를 준비하고 있습니다.",
+  "검증 시작 상태를 동기화하고 있습니다.",
+  "투표 현황 화면에 반영할 데이터를 구성하고 있습니다.",
+  "완료 후 자동으로 다음 화면으로 이동합니다.",
+  "네트워크 응답을 기다리고 있습니다.",
+];
+
+const WATERMARK_LOADING_MESSAGES = [
+  "워터마크 삽입 요청을 준비하고 있습니다.",
+  "원본 파일의 처리 가능 여부를 확인하고 있습니다.",
+  "콘텐츠에 삽입할 검증 정보를 구성하고 있습니다.",
+  "워터마크 데이터를 파일에 반영하고 있습니다.",
+  "삽입 결과의 무결성을 확인하고 있습니다.",
+  "다운로드 가능한 결과 파일을 준비하고 있습니다.",
+  "파일 해시를 생성하고 있습니다.",
+  "토큰 발행에 필요한 메타데이터를 정리하고 있습니다.",
+  "처리 결과를 서버에 저장하고 있습니다.",
+  "완료 화면으로 전환을 준비하고 있습니다.",
+];
+
+const MINT_LOADING_MESSAGES = [
+  "토큰 발행 요청을 준비하고 있습니다.",
+  "발행 메타데이터를 구성하고 있습니다.",
+  "콘텐츠 해시와 지갑 정보를 확인하고 있습니다.",
+  "스마트컨트랙트 호출을 준비하고 있습니다.",
+  "블록체인 네트워크 응답을 기다리고 있습니다.",
+  "트랜잭션 제출 상태를 확인하고 있습니다.",
+  "트랜잭션 확정을 기다리고 있습니다.",
+  "토큰 정보를 서버 기록과 동기화하고 있습니다.",
+  "지갑에 표시할 자산 정보를 확인하고 있습니다.",
+  "발행 완료 화면으로 전환을 준비하고 있습니다.",
+];
+
+function getFileKindLabel(mimeType: string | null | undefined, fileName = "") {
   const normalized = (mimeType || "").toLowerCase();
+  const lowerName = fileName.toLowerCase();
   if (normalized === "application/pdf") return "PDF 문서";
+  if (lowerName.endsWith(".pdf")) return "PDF 문서";
   if (normalized === "application/msword") return "DOC 문서";
+  if (lowerName.endsWith(".doc")) return "DOC 문서";
   if (normalized === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") return "DOCX 문서";
+  if (lowerName.endsWith(".docx")) return "DOCX 문서";
   if (normalized.startsWith("image/")) return "이미지";
+  if (/\.(jpe?g|png)$/i.test(fileName)) return "이미지";
   return "파일";
 }
 
@@ -62,6 +117,7 @@ interface RegisterPageProps {
   previewUrl: string;
   analysisStage: AnalysisStage;
   analysisProgress: number;
+  analysisProgressMessage: string;
   registerResult: RegisterResultConfig | null;
   contentResult: RegisteredContentResponse | null;
   recentUploads: UploadHistoryItem[];
@@ -94,6 +150,7 @@ interface RegisterPageProps {
   } | null;
   reviewVoteModalOpen: boolean;
   watermarkProgress: number;
+  watermarkProgressMessage: string;
   mintProgress: number;
   mintErrorMessage: string;
   operationError: {
@@ -117,6 +174,7 @@ export default function RegisterPage({
   previewUrl,
   analysisStage,
   analysisProgress,
+  analysisProgressMessage,
   registerResult,
   contentResult,
   recentUploads,
@@ -143,6 +201,7 @@ export default function RegisterPage({
   reviewVoteDraft,
   reviewVoteModalOpen,
   watermarkProgress,
+  watermarkProgressMessage,
   mintProgress,
   mintErrorMessage,
   operationError,
@@ -160,10 +219,21 @@ export default function RegisterPage({
   const selectedFileName = selectedFile?.name || contentResult?.original_filename || "-";
   const selectedFileSize = selectedFile?.size ?? contentResult?.file_size ?? 0;
   const selectedMimeType = selectedFile?.type || contentResult?.mime_type || "";
+  const effectiveContentType = contentResult?.content_type || uploadContentType;
+  const isDocumentMode = effectiveContentType === "document";
+  const selectedFileKindLabel = getFileKindLabel(selectedMimeType, selectedFileName);
+  const selectedFileObjectLabel = isDocumentMode ? "문서" : selectedFileKindLabel === "이미지" ? "이미지" : "파일";
+  const contentObjectLabel = isDocumentMode ? "문서" : "콘텐츠";
+  const analysisPrimaryStepLabel = isDocumentMode ? "문서 구조 및 의미 분석" : "의미 기반 임베딩 분석";
+  const analysisSecondaryStepLabel = isDocumentMode ? "페이지 시각 특징 비교" : "픽셀 정밀 비교";
+  const analysisCandidateStepLabel = isDocumentMode ? "기존 등록 문서 탐색" : "기존 등록 콘텐츠 탐색";
+  const precisionMetricLabel = isDocumentMode ? "시각 해시 비교" : "pHash 비교";
+  const precisionMetricName = isDocumentMode ? "Visual Hash Distance" : "pHash Distance";
+  const watermarkedFileLabel = contentResult?.content_type === "document" ? "워터마크 PDF" : "워터마크 이미지";
   const watermarkedMimeType = contentResult?.content_type === "document" ? "application/pdf" : selectedMimeType;
   const uploadTimestampLabel = formatDisplayDateTime(selectedFile?.lastModified || contentResult?.blockchain?.minted_at || null);
   const originalPreviewUrl = previewUrl || contentResult?.file_url || grapeImage;
-  const candidatePreviewUrl = contentResult?.top_match?.preview_url || grapeImage;
+  const candidatePreviewUrl = contentResult?.top_match?.preview_url || null;
   const watermarkedPreviewUrl = contentResult?.watermark_file_url || previewUrl || contentResult?.file_url || grapeImage;
   const mintedFileName = selectedFile?.name || contentResult?.original_filename || "-";
   const mintedNetwork = contentResult?.blockchain?.network_name || "-";
@@ -197,8 +267,9 @@ export default function RegisterPage({
   const reviewNoVotes = reviewVoteDraft?.downvotes ?? reviewVote?.downvotes ?? 0;
   const reviewParticipants = reviewVoteDraft?.participantCount ?? reviewVote?.participant_count ?? reviewYesVotes + reviewNoVotes;
   const reviewVoteTotal = reviewYesVotes + reviewNoVotes;
-  const reviewYesRate = reviewVoteTotal > 0 ? Math.round((reviewYesVotes / reviewVoteTotal) * 100) : 50;
-  const reviewNoRate = reviewVoteTotal > 0 ? 100 - reviewYesRate : 50;
+  const reviewVoteHasVotes = reviewVoteTotal > 0;
+  const reviewYesRate = reviewVoteHasVotes ? Math.round((reviewYesVotes / reviewVoteTotal) * 100) : 0;
+  const reviewNoRate = reviewVoteHasVotes ? 100 - reviewYesRate : 0;
   const isWatermarkedStage = registerResult?.tone === "allow" && analysisStage === "watermarked";
   const isMintedStage = registerResult?.tone === "allow" && analysisStage === "minted";
   const pageHeaderTitle = isMintedStage
@@ -209,11 +280,7 @@ export default function RegisterPage({
   const pageHeaderSubtitle = isMintedStage
     ? "콘텐츠가 블록체인에 안전하게 기록되었습니다."
     : isWatermarkedStage
-      ? (
-          contentResult?.content_type === "document"
-            ? "워터마크 PDF가 준비되었습니다. NFT 토큰 발행을 진행할 수 있습니다."
-            : "워터마크 이미지가 준비되었습니다. NFT 토큰 발행을 진행할 수 있습니다."
-        )
+      ? `${watermarkedFileLabel}가 준비되었습니다. NFT 토큰 발행을 진행할 수 있습니다.`
       : "이미지 또는 문서를 업로드하면 등록 절차가 시작됩니다.";
   const resultBadgeLabel = isMintedStage ? "MINTED" : isWatermarkedStage ? "WATERMARKED" : registerResult?.badge ?? "";
   const resultTitle = isMintedStage
@@ -224,18 +291,18 @@ export default function RegisterPage({
   const resultSubtitle = isMintedStage
     ? "콘텐츠가 블록체인에 안전하게 기록되었습니다."
     : isWatermarkedStage
-      ? "워터마크 이미지가 준비되었습니다. NFT 토큰 발행을 진행할 수 있습니다."
+      ? `${watermarkedFileLabel}가 준비되었습니다. NFT 토큰 발행을 진행할 수 있습니다.`
       : registerResult?.subtitle ?? "";
   const resultNote = registerResult?.note ?? "";
   const shouldRenderResultNote = resultNote.trim() !== "" && resultNote.trim() !== resultSubtitle.trim();
-  const renderFilePreview = (src: string, alt: string, mimeType: string) => {
-    if (src && isImageMimeType(mimeType)) {
-      return <img src={src} alt={alt} />;
-    }
+  const renderFilePreview = (src: string | null, alt: string, mimeType: string, fallbackLabel?: string) => {
     return (
-      <div className="verify-placeholder-frame">
-        {getFileKindLabel(mimeType)}
-      </div>
+      <FilePreview
+        src={src}
+        alt={alt}
+        mimeType={mimeType}
+        fallbackLabel={fallbackLabel || getFileKindLabel(mimeType, alt)}
+      />
     );
   };
 
@@ -306,7 +373,7 @@ export default function RegisterPage({
                       <button className="change-file-inline" type="button" onClick={onSelectAnother}>
                         다시 선택
                       </button>
-                      <div className="upload-image-frame">
+                      <div className={`upload-image-frame ${isDocumentMode ? "is-document-preview" : ""}`}>
                         {renderFilePreview(previewUrl, selectedFileName, selectedMimeType)}
                       </div>
                       <div className="upload-file-info">
@@ -334,8 +401,8 @@ export default function RegisterPage({
                       </div>
                       <h4>AI 유사도 분석을 시작하시겠습니까?</h4>
                       <ul className="analysis-list">
-                        <li>의미 기반 임베딩 비교</li>
-                        <li>픽셀 수준 정밀 비교</li>
+                        <li>{isDocumentMode ? "문서 텍스트와 구조 기반 비교" : "의미 기반 임베딩 비교"}</li>
+                        <li>{isDocumentMode ? "페이지 단위 시각 특징 비교" : "픽셀 수준 정밀 비교"}</li>
                         <li>기존 등록된 유사 콘텐츠 탐색</li>
                       </ul>
                       <button className="btn btn-primary analysis-cta" type="button" onClick={onStartAnalysis}>
@@ -347,7 +414,7 @@ export default function RegisterPage({
 
                   <div className="upload-bottom-actions">
                     <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
-                      다른 이미지 선택
+                      다른 파일 선택
                     </button>
                     <button className="btn ghost" type="button" onClick={onResetToHome}>
                       홈으로 이동
@@ -358,32 +425,31 @@ export default function RegisterPage({
 
               {analysisStage === "running" ? (
                 <div className="analysis-running-view">
-                  <h3 className="analysis-running-title">등록 가능 여부를 분석하고 있습니다.</h3>
-                  <p className="analysis-running-subtitle">최종 판정 생성을 진행 중입니다.</p>
-
                   <div className="analysis-running-layout">
                     <div className="analysis-preview-card">
                       {renderFilePreview(originalPreviewUrl, selectedFileName, selectedMimeType)}
-                      <div className="analysis-progress-overlay">
-                        <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(analysisProgress)) }}>
-                          <span>{Math.round(analysisProgress)}%</span>
-                        </div>
-                      </div>
                     </div>
 
                     <div className="analysis-timeline-card">
+                      <h3 className="analysis-running-title">등록 가능 여부를 분석하고 있습니다.</h3>
+                      <p className="analysis-running-subtitle">{analysisProgressMessage || "최종 판정 생성을 진행 중입니다."}</p>
+                      <LoadingPulse
+                        message={analysisProgressMessage}
+                        fallbackMessage="최종 판정 생성을 진행 중입니다."
+                        messages={REGISTRATION_LOADING_MESSAGES}
+                      />
                       <ul className="analysis-step-list">
                         <li className={getStepClass(analysisProgress, 0, 4)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(analysisProgress, 0, 4)}]</span> 의미 기반 임베딩 분석</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(analysisProgress, 0, 4)}]</span> {analysisPrimaryStepLabel}</p>
                         </li>
                         <li className={getStepClass(analysisProgress, 1, 4)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(analysisProgress, 1, 4)}]</span> 픽셀 정밀 비교</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(analysisProgress, 1, 4)}]</span> {analysisSecondaryStepLabel}</p>
                         </li>
                         <li className={getStepClass(analysisProgress, 2, 4)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(analysisProgress, 2, 4)}]</span> 기존 등록 콘텐츠 탐색</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(analysisProgress, 2, 4)}]</span> {analysisCandidateStepLabel}</p>
                         </li>
                         <li className={getStepClass(analysisProgress, 3, 4)}>
                           <span className="analysis-step-dot" />
@@ -396,7 +462,7 @@ export default function RegisterPage({
 
                   <div className="analysis-running-actions">
                     <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
-                      다른 이미지 선택
+                      다른 파일 선택
                     </button>
                   </div>
                 </div>
@@ -404,10 +470,6 @@ export default function RegisterPage({
 
               {analysisStage === "reviewStarting" ? (
                 <div className="analysis-running-view review-starting-view">
-                  <span className="result-badge review-badge-chip">REVIEW</span>
-                  <h3 className="analysis-running-title">커뮤니티 검증을 준비하고 있습니다.</h3>
-                  <p className="analysis-running-subtitle">커뮤니티 검증 시작을(를) 진행 중입니다.</p>
-
                   <div className="analysis-running-layout">
                     <div className="analysis-preview-card review-starting-preview">
                       <div className="review-starting-compare">
@@ -415,17 +477,19 @@ export default function RegisterPage({
                           {renderFilePreview(originalPreviewUrl, selectedFileName, selectedMimeType)}
                         </div>
                         <div className="review-starting-frame">
-                          <img src={candidatePreviewUrl} alt={candidateLabel} />
-                        </div>
-                      </div>
-                      <div className="analysis-progress-overlay">
-                        <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(reviewVoteProgress)) }}>
-                          <span>{Math.round(reviewVoteProgress)}%</span>
+                          {renderFilePreview(candidatePreviewUrl, candidateLabel, "preview-image", "유사 후보 미리보기 없음")}
                         </div>
                       </div>
                     </div>
 
                     <div className="analysis-timeline-card">
+                      <span className="result-badge review-badge-chip">REVIEW</span>
+                      <h3 className="analysis-running-title">커뮤니티 검증을 준비하고 있습니다.</h3>
+                      <p className="analysis-running-subtitle">커뮤니티 검증 시작을 준비하고 있습니다.</p>
+                      <LoadingPulse
+                        fallbackMessage="커뮤니티 검증 시작을 진행 중입니다."
+                        messages={REVIEW_STARTING_LOADING_MESSAGES}
+                      />
                       <ul className="analysis-step-list">
                         <li className={getStepClass(reviewVoteProgress, 0, 3)}>
                           <span className="analysis-step-dot" />
@@ -448,24 +512,23 @@ export default function RegisterPage({
 
               {analysisStage === "watermarking" ? (
                 <div className="analysis-running-view">
-                  <h3 className="analysis-running-title">워터마크를 삽입하고 있습니다.</h3>
-                  <p className="analysis-running-subtitle">토큰 발행 준비를 진행 중입니다.</p>
-
                   <div className="analysis-running-layout">
                     <div className="analysis-preview-card">
                       {renderFilePreview(originalPreviewUrl, selectedFileName, selectedMimeType)}
-                      <div className="analysis-progress-overlay">
-                        <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(watermarkProgress)) }}>
-                          <span>{Math.round(watermarkProgress)}%</span>
-                        </div>
-                      </div>
                     </div>
 
                     <div className="analysis-timeline-card">
+                      <h3 className="analysis-running-title">워터마크를 삽입하고 있습니다.</h3>
+                      <p className="analysis-running-subtitle">{watermarkProgressMessage || "토큰 발행 준비를 진행 중입니다."}</p>
+                      <LoadingPulse
+                        message={watermarkProgressMessage}
+                        fallbackMessage="토큰 발행 준비를 진행 중입니다."
+                        messages={WATERMARK_LOADING_MESSAGES}
+                      />
                       <ul className="analysis-step-list">
                         <li className={getStepClass(watermarkProgress, 0, 3)}>
                           <span className="analysis-step-dot" />
-                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(watermarkProgress, 0, 3)}]</span> 워터마크 삽입 완료</p>
+                          <p className="analysis-step-title"><span className="analysis-step-state">[{getStepState(watermarkProgress, 0, 3)}]</span> 워터마크 삽입</p>
                         </li>
                         <li className={getStepClass(watermarkProgress, 1, 3)}>
                           <span className="analysis-step-dot" />
@@ -484,20 +547,18 @@ export default function RegisterPage({
 
               {analysisStage === "minting" ? (
                 <div className="analysis-running-view">
-                  <h3 className="analysis-running-title">NFT 토큰 발행을 진행하고 있습니다.</h3>
-                  <p className="analysis-running-subtitle">트랜잭션 확정 대기을(를) 진행 중입니다.</p>
-
                   <div className="analysis-running-layout">
                     <div className="analysis-preview-card">
                       {renderFilePreview(watermarkedPreviewUrl, `${selectedFileName} 워터마크 결과`, watermarkedMimeType)}
-                      <div className="analysis-progress-overlay">
-                        <div className="analysis-progress-ring" style={{ ["--progress" as string]: String(Math.round(mintProgress)) }}>
-                          <span>{Math.round(mintProgress)}%</span>
-                        </div>
-                      </div>
                     </div>
 
                     <div className="analysis-timeline-card">
+                      <h3 className="analysis-running-title">NFT 토큰 발행을 진행하고 있습니다.</h3>
+                      <p className="analysis-running-subtitle">트랜잭션 확정을 기다리고 있습니다.</p>
+                      <LoadingPulse
+                        fallbackMessage="트랜잭션 확정을 기다리고 있습니다."
+                        messages={MINT_LOADING_MESSAGES}
+                      />
                       <ul className="analysis-step-list">
                         <li className={getStepClass(mintProgress, 0, 3)}>
                           <span className="analysis-step-dot" />
@@ -555,13 +616,13 @@ export default function RegisterPage({
                             NFT 토큰 발행 다시 시도하기
                           </button>
                           <button className="btn btn-primary" type="button" onClick={onDownloadWatermarked}>
-                            워터마크 이미지 다운로드
+                            {watermarkedFileLabel} 다운로드
                           </button>
                           <button className="btn btn-secondary" type="button" onClick={onMoveToHistory}>
                             분석 기록 보기
                           </button>
                           <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
-                            다른 이미지 업로드
+                            다른 파일 업로드
                           </button>
                         </div>
                       </div>
@@ -630,7 +691,7 @@ export default function RegisterPage({
                                 기록으로 돌아가기
                               </button>
                               <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
-                                다른 이미지 업로드
+                                다른 파일 업로드
                               </button>
                             </div>
                           </div>
@@ -641,7 +702,7 @@ export default function RegisterPage({
                         <div className="watermark-compare-grid">
                           <div className="watermark-compare-card">
                             <div className="watermark-compare-head">
-                              <h4>원본 이미지</h4>
+                              <h4>원본 {selectedFileObjectLabel}</h4>
                               <span className="watermark-compare-chip">Original</span>
                             </div>
                             <div className="watermark-compare-frame">
@@ -670,13 +731,13 @@ export default function RegisterPage({
                             NFT 토큰 발행하기
                           </button>
                           <button className="btn btn-primary" type="button" onClick={onDownloadWatermarked}>
-                            워터마크 이미지 다운로드
+                            {watermarkedFileLabel} 다운로드
                           </button>
                           <button className="btn btn-secondary" type="button" onClick={onMoveToHistory}>
                             분석 기록 보기
                           </button>
                           <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
-                            다른 이미지 업로드
+                            다른 파일 업로드
                           </button>
                         </div>
                       </div>
@@ -684,7 +745,7 @@ export default function RegisterPage({
                       <div className="mint-complete-layout allow-ready-layout">
                         <div className="mint-complete-grid">
                           <div className="mint-complete-card">
-                            <h4>업로드 이미지</h4>
+                            <h4>업로드 {selectedFileObjectLabel}</h4>
                             <div className="mint-complete-frame">
                               {renderFilePreview(originalPreviewUrl, selectedFileName, selectedMimeType)}
                             </div>
@@ -716,7 +777,7 @@ export default function RegisterPage({
                                 <strong>{typeof topCosineValue === "number" ? `${topCosineValue.toFixed(4)} (${topCosinePercent})` : "-"}</strong>
                               </div>
                               <div className="mint-file-row">
-                                <span>pHash 비교</span>
+                                <span>{precisionMetricLabel}</span>
                                 <strong>{topPhashLabel === "-" ? "-" : `Distance ${topPhashLabel} / Threshold 8`}</strong>
                               </div>
                               <div className="mint-file-row">
@@ -725,7 +786,7 @@ export default function RegisterPage({
                               </div>
                               <div className="mint-file-row">
                                 <span>안내</span>
-                                <strong>이제 워터마크 이미지를 생성한 뒤 토큰 발행을 진행할 수 있습니다.</strong>
+                                <strong>이제 {watermarkedFileLabel}를 생성한 뒤 토큰 발행을 진행할 수 있습니다.</strong>
                               </div>
                             </div>
 
@@ -737,7 +798,7 @@ export default function RegisterPage({
                                 분석 기록 보기
                               </button>
                               <button className="btn btn-secondary" type="button" onClick={onSelectAnother}>
-                                다른 이미지 업로드
+                                다른 파일 업로드
                               </button>
                             </div>
                           </div>
@@ -747,9 +808,9 @@ export default function RegisterPage({
                       <div className="review-live-layout">
                         <div className="review-live-compare-grid">
                           <div className="review-live-card">
-                            <h4>업로드 이미지</h4>
+                            <h4>업로드 {selectedFileObjectLabel}</h4>
                             <div className="review-live-image-frame">
-                              <img src={originalPreviewUrl} alt={selectedFileName} />
+                              {renderFilePreview(originalPreviewUrl, selectedFileName, selectedMimeType)}
                             </div>
                             <strong>{selectedFileName}</strong>
                           </div>
@@ -760,21 +821,27 @@ export default function RegisterPage({
                           </div>
 
                           <div className="review-live-card">
-                            <h4>유사 콘텐츠</h4>
+                            <h4>유사 {contentObjectLabel}</h4>
                             <div className="review-live-image-frame">
-                              <img src={candidatePreviewUrl} alt={candidateLabel} />
+                              {renderFilePreview(candidatePreviewUrl, candidateLabel, "preview-image", "유사 후보 미리보기 없음")}
                             </div>
                             <strong>{candidateLabel}</strong>
                           </div>
                         </div>
 
-                        <div className="review-live-vote-bar">
-                          <div className="review-live-vote-fill is-yes" style={{ width: `${reviewYesRate}%` }}>
-                            찬성 {reviewYesRate}%
-                          </div>
-                          <div className="review-live-vote-fill is-no" style={{ width: `${reviewNoRate}%` }}>
-                            반대 {reviewNoRate}%
-                          </div>
+                        <div className={`review-live-vote-bar ${reviewVoteHasVotes ? "" : "is-empty"}`}>
+                          {reviewVoteHasVotes ? (
+                            <>
+                              <div className="review-live-vote-fill is-yes" style={{ width: `${reviewYesRate}%` }}>
+                                찬성 {reviewYesRate}%
+                              </div>
+                              <div className="review-live-vote-fill is-no" style={{ width: `${reviewNoRate}%` }}>
+                                반대 {reviewNoRate}%
+                              </div>
+                            </>
+                          ) : (
+                            <span className="review-vote-empty-label">첫 투표를 기다리는 중입니다.</span>
+                          )}
                         </div>
 
                         <div className="review-live-stat-grid">
@@ -810,14 +877,14 @@ export default function RegisterPage({
                           <div className="review-vote-card">
                             <div className="review-vote-caption">업로드 원본 · {selectedFileName}</div>
                             <div className="review-vote-frame">
-                              <img src={originalPreviewUrl} alt={selectedFileName} />
+                              {renderFilePreview(originalPreviewUrl, selectedFileName, selectedMimeType)}
                             </div>
                           </div>
 
                           <div className="review-vote-card">
                             <div className="review-vote-caption">유사 후보 · {candidateLabel}</div>
                             <div className="review-vote-frame">
-                              <img src={candidatePreviewUrl} alt={candidateLabel} />
+                              {renderFilePreview(candidatePreviewUrl, candidateLabel, "preview-image", "유사 후보 미리보기 없음")}
                             </div>
                           </div>
                         </div>
@@ -828,7 +895,7 @@ export default function RegisterPage({
                             <strong>{topCosineLabel}</strong>
                           </div>
                           <div className="review-vote-metric">
-                            <span>pHash Distance</span>
+                            <span>{precisionMetricName}</span>
                             <strong>{topPhashLabel}</strong>
                             <p>기준 ≤ 8</p>
                           </div>
@@ -858,13 +925,13 @@ export default function RegisterPage({
                           <figure className="reject-image-panel">
                             <figcaption>업로드 원본 · {selectedFileName}</figcaption>
                             <div className="reject-image-frame">
-                              <img src={originalPreviewUrl} alt={selectedFileName} />
+                              {renderFilePreview(originalPreviewUrl, selectedFileName, selectedMimeType)}
                             </div>
                           </figure>
                           <figure className="reject-image-panel">
                             <figcaption>유사 후보 · {candidateLabel}</figcaption>
                             <div className="reject-image-frame">
-                              <img src={candidatePreviewUrl} alt={candidateLabel} />
+                              {renderFilePreview(candidatePreviewUrl, candidateLabel, "preview-image", "유사 후보 미리보기 없음")}
                             </div>
                           </figure>
                         </div>
@@ -875,7 +942,7 @@ export default function RegisterPage({
                             <strong>{topCosineLabel}</strong>
                           </div>
                           <div className="reject-metric">
-                            <span>pHash Distance</span>
+                            <span>{precisionMetricName}</span>
                             <strong>{topPhashLabel}</strong>
                             <p>기준 ≤ 8</p>
                           </div>
@@ -923,11 +990,11 @@ export default function RegisterPage({
 
             <div className="review-live-compare-grid review-vote-modal-compare-grid">
               <div className="review-live-card review-vote-modal-card">
-                <h4>업로드 이미지</h4>
+                <h4>업로드 {selectedFileObjectLabel}</h4>
                 <div className="review-live-image-frame">
-                  <img src={originalPreviewUrl} alt={selectedFileName || "업로드 이미지"} />
+                  {renderFilePreview(originalPreviewUrl, selectedFileName || "업로드 파일", selectedMimeType)}
                 </div>
-                <strong>{selectedFileName || "업로드 이미지"}</strong>
+                <strong>{selectedFileName || "업로드 파일"}</strong>
               </div>
 
               <div className="review-live-similarity-bubble review-vote-modal-bubble">
@@ -938,7 +1005,7 @@ export default function RegisterPage({
               <div className="review-live-card review-vote-modal-card">
                 <h4>유사 후보</h4>
                 <div className="review-live-image-frame">
-                  <img src={candidatePreviewUrl} alt={candidateLabel} />
+                  {renderFilePreview(candidatePreviewUrl, candidateLabel, "preview-image", "유사 후보 미리보기 없음")}
                 </div>
                 <strong>{candidateLabel}</strong>
               </div>
@@ -959,13 +1026,19 @@ export default function RegisterPage({
               </div>
             </div>
 
-            <div className="review-live-vote-bar review-vote-modal-bar">
-              <div className="review-live-vote-fill is-yes" style={{ width: `${reviewYesRate}%` }}>
-                찬성 {reviewYesRate}%
-              </div>
-              <div className="review-live-vote-fill is-no" style={{ width: `${reviewNoRate}%` }}>
-                반대 {reviewNoRate}%
-              </div>
+            <div className={`review-live-vote-bar review-vote-modal-bar ${reviewVoteHasVotes ? "" : "is-empty"}`}>
+              {reviewVoteHasVotes ? (
+                <>
+                  <div className="review-live-vote-fill is-yes" style={{ width: `${reviewYesRate}%` }}>
+                    찬성 {reviewYesRate}%
+                  </div>
+                  <div className="review-live-vote-fill is-no" style={{ width: `${reviewNoRate}%` }}>
+                    반대 {reviewNoRate}%
+                  </div>
+                </>
+              ) : (
+                <span className="review-vote-empty-label">첫 투표를 기다리는 중입니다.</span>
+              )}
             </div>
 
             <div className="review-vote-modal-actions">

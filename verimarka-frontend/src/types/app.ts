@@ -83,6 +83,9 @@ export interface HistoryItem {
       upvotes?: number;
       downvotes?: number;
       participant_count?: number;
+      has_votes?: boolean;
+      upvote_rate?: number;
+      downvote_rate?: number;
       end_time?: string | null;
       end_time_display?: string | null;
       started_at?: string | null;
@@ -189,6 +192,9 @@ export interface RegisteredContentResponse {
       upvotes?: number;
       downvotes?: number;
       participant_count?: number;
+      has_votes?: boolean;
+      upvote_rate?: number;
+      downvote_rate?: number;
       end_time?: string | null;
       end_time_display?: string | null;
       started_at?: string | null;

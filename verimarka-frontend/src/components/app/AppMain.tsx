@@ -46,6 +46,7 @@ export default function AppMain({ controller }: AppMainProps) {
             previewUrl={controller.register.previewUrl}
             analysisStage={controller.register.analysisStage}
             analysisProgress={controller.register.analysisProgress}
+            analysisProgressMessage={controller.register.analysisProgressMessage}
             registerResult={controller.register.registerResult}
             contentResult={controller.register.contentResult}
             recentUploads={controller.register.recentUploads}
@@ -88,9 +89,6 @@ export default function AppMain({ controller }: AppMainProps) {
                 controller.register.setReviewConsentModalOpen(true);
                 return;
               }
-              if (controller.register.registerResult) {
-                controller.register.openToast(controller.register.registerResult.primaryAction);
-              }
             }}
             onDownloadWatermarked={() => {
               const currentContent = controller.register.contentResult;
@@ -105,16 +103,12 @@ export default function AppMain({ controller }: AppMainProps) {
                       controller.register.selectedFile?.name || currentContent?.original_filename || "watermarked.jpg",
                     ),
                   );
-                  controller.register.openToast("이미지 다운로드에 성공했습니다.");
                 })();
-                return;
               }
-              controller.register.openToast("워터마크 결과 파일이 아직 준비되지 않았습니다.");
             }}
             onMoveToHistory={() => controller.navigation.navigateToTab("history")}
             onCopyVerificationUrl={() => {
               void navigator.clipboard.writeText(window.location.href);
-              controller.toast.openToast("URL 복사가 완료되었습니다.");
             }}
             uploadInputRef={controller.register.uploadInputRef}
             formatFileSize={controller.common.formatFileSize}
@@ -127,6 +121,7 @@ export default function AppMain({ controller }: AppMainProps) {
             reviewVoteDraft={controller.register.reviewVoteDraft}
             reviewVoteModalOpen={controller.register.reviewVoteModalOpen}
             watermarkProgress={controller.register.watermarkProgress}
+            watermarkProgressMessage={controller.register.watermarkProgressMessage}
             mintProgress={controller.register.mintProgress}
             mintErrorMessage={controller.register.mintErrorMessage}
             operationError={controller.register.registerFlowError}
@@ -174,6 +169,7 @@ export default function AppMain({ controller }: AppMainProps) {
             contentType={controller.verify.contentType}
             previewUrl={controller.verify.previewUrl}
             verifyProgress={controller.verify.verifyProgress}
+            verifyProgressMessage={controller.verify.verifyProgressMessage}
             verifyRunning={controller.verify.verifyRunning}
             verifyResult={controller.verify.verifyResult}
             verifyErrorMessage={controller.verify.verifyFlowError}
