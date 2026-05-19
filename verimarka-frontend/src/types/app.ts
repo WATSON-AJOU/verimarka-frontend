@@ -258,6 +258,7 @@ export interface VerifyResultResponse {
     status?: string | null;
     verification_link?: string | null;
     network_name?: string | null;
+    file_hash?: string | null;
     content_hash?: string | null;
     transaction_hash?: string | null;
     minted_at?: string | null;

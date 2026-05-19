@@ -2358,6 +2358,53 @@ main {
   letter-spacing: -0.02em;
 }
 
+.verify-token-heading {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.verify-token-heading h4 {
+  margin: 0;
+}
+
+.verify-token-help {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+.verify-token-tooltip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 8px);
+  z-index: 5;
+  width: max-content;
+  max-width: 310px;
+  padding: 10px 12px;
+  border: 1px solid #d9e3f2;
+  border-radius: 8px;
+  box-shadow: 0 14px 30px rgba(24, 40, 70, 0.16);
+  color: #334765;
+  font-size: 0.78rem;
+  font-weight: 700;
+  line-height: 1.55;
+  text-align: left;
+  background: #fff;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+}
+
+.verify-token-help:hover .verify-token-tooltip,
+.verify-token-help:focus-within .verify-token-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+}
+
 .verify-result-frame {
   border-radius: 18px;
   overflow: hidden;

@@ -225,7 +225,27 @@ export default function VerifyPage({
                       </div>
                     </div>
                     <div className="result-summary-card verify-summary-card">
-                      <h4>연결된 토큰 정보</h4>
+                      <div className="verify-token-heading">
+                        <h4>연결된 토큰 정보</h4>
+                        <span className="verify-token-help">
+                          <button
+                            type="button"
+                            className="history-help-icon"
+                            aria-label="해시 정보 설명 보기"
+                          >
+                            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                              <circle cx="10" cy="10" r="8.25" />
+                              <path d="M7.8 7.7a2.25 2.25 0 0 1 4.4.65c0 1.55-1.55 2-2.05 2.85" />
+                              <path d="M10 14.25h.01" />
+                            </svg>
+                          </button>
+                          <span className="verify-token-tooltip" role="tooltip">
+                            Content Hash는 파일 내용의 고유 지문입니다.<br />
+                            Transaction Hash는 Polygon에 기록된 거래 번호입니다.<br />
+                            값이 없으면 검증 응답에 해당 근거가 없는 상태입니다.
+                          </span>
+                        </span>
+                      </div>
                       <div className="verify-token-meta">
                         <div className="verify-token-row">
                           <span>검증자</span>
@@ -245,7 +265,7 @@ export default function VerifyPage({
                         </div>
                         <div className="verify-token-row">
                           <span>Content Hash</span>
-                          <strong>{verifyResult.blockchain?.content_hash || "-"}</strong>
+                          <strong>{verifyResult.blockchain?.content_hash || verifyResult.blockchain?.file_hash || "-"}</strong>
                         </div>
                         <div className="verify-token-row">
                           <span>Transaction Hash</span>
